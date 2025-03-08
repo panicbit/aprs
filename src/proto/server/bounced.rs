@@ -1,6 +1,7 @@
-use archipelago_core::game::SlotId;
 use serde::Serialize;
 use serde_json::Value;
+
+use crate::game::SlotId;
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Bounced {

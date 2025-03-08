@@ -1,11 +1,11 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use archipelago_core::game::TeamAndSlot;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::WebSocketStream;
 
+use crate::game::TeamAndSlot;
 use crate::proto::client::{Connect, Message as ClientMessage, Messages as ClientMessages, Say};
 use crate::proto::common::{Ping, Pong};
 use crate::proto::server::{

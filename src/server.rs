@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anyhow::Result;
-use archipelago_core::game::MultiData;
 use fnv::FnvHashMap;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
@@ -11,6 +10,7 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio_tungstenite::tungstenite::handshake::server::Callback;
 use tokio_tungstenite::tungstenite::http::Uri;
 
+use crate::game::MultiData;
 use crate::server::client::Client;
 use crate::server::event::Event;
 

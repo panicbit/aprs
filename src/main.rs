@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 
 use anyhow::Result;
 use aprs::server::{Config, Server};
-use archipelago_core::game::Game;
 use clap::Parser;
 use tokio::runtime::Runtime;
 
 use crate::cli::Cli;
+use aprs::game::Game;
 
 mod cli;
 

@@ -1,6 +1,6 @@
-use archipelago_core::game::SlotName;
 use uuid::Uuid;
 
+use crate::game::SlotName;
 use crate::proto::client::{Deserialize, NetworkVersion};
 use crate::proto::u128_uuid;
 

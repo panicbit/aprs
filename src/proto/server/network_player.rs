@@ -1,5 +1,6 @@
-use archipelago_core::game::{SlotId, SlotName, TeamId};
 use serde::Serialize;
+
+use crate::game::{SlotId, SlotName, TeamId};
 
 #[derive(Serialize, Clone, Debug)]
 pub struct NetworkPlayer {

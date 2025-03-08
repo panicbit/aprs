@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
-use archipelago_core::game::{LocationId, NetworkSlot, SlotId, TeamId};
 use serde::Serialize;
 
+use crate::game::{LocationId, NetworkSlot, SlotId, TeamId};
 use crate::proto::server::NetworkPlayer;
 
 #[derive(Serialize, Clone, Debug)]

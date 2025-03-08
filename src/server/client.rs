@@ -1,12 +1,12 @@
 use std::net::SocketAddr;
 use std::pin::pin;
 
-use archipelago_core::game::SlotName;
 use tokio::net::TcpStream;
 use tokio::select;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio_tungstenite::WebSocketStream;
 
+use crate::game::SlotName;
 use crate::proto::server::MessageSink;
 use crate::proto::server::{Message as ServerMessage, MessageStream};
 use crate::server::event::Event;
