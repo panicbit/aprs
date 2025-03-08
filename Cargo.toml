@@ -1,0 +1,25 @@
+[package]
+name = "aprs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.97"
+bytes = { version = "1.10.0", features = ["serde"] }
+chrono = "0.4.40"
+clap = { version = "4.5.31", features = ["derive"] }
+fnv = "1.0.7"
+format_serde_error = "0.3.0"
+futures = "0.3.31"
+hex = "0.4.3"
+serde = { version = "1.0.218", features = ["derive"] }
+serde_json = "1.0.140"
+serde_repr = "0.1.19"
+sha1 = "0.10.6"
+smallvec = { version = "1.14.0", features = ["serde"] }
+tokio = { version = "1.43.0", features = ["full"] }
+tokio-stream = "0.1.17"
+tokio-tungstenite = "0.26.2"
+uuid = { version = "1.15.1", features = ["serde"] }
+archipelago_core = { path = "../archipelago_core" }
+serde-pickle = "1.2.0"
