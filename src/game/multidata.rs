@@ -2,15 +2,18 @@ use std::collections::BTreeMap;
 
 use anyhow::{Context, Result};
 use bstr::ByteSlice;
-use serde::{de, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, de};
 use serde_json::{Map, Value};
 use serde_pickle::{HashableValue, Value as PickleValue};
+use serde_with::{FromInto, serde_as};
 
 use crate::game::{
     HashedGameData, LocationId, LocationInfo, MinimumVersions, NetworkSlot, PickledVersion,
     SeedName, ServerOptions, SlotId, SlotName, TeamAndSlot,
 };
+use crate::proto::common::NetworkVersion;
 
+#[serde_as]
 #[derive(Deserialize, Debug)]
 // #[serde(deny_unknown_fields)]
 pub struct MultiData {
@@ -21,7 +24,8 @@ pub struct MultiData {
     pub seed_name: SeedName,
     pub minimum_versions: MinimumVersions,
     pub server_options: ServerOptions,
-    pub version: PickledVersion,
+    #[serde_as(as = "FromInto<PickledVersion>")]
+    pub version: NetworkVersion,
     #[serde(rename = "datapackage")]
     pub data_package: BTreeMap<String, HashedGameData>,
     pub locations: BTreeMap<SlotId, BTreeMap<LocationId, LocationInfo>>,

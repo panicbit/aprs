@@ -57,13 +57,3 @@ impl From<(u32, u32, u32)> for NetworkVersion {
         }
     }
 }
-
-impl From<crate::game::PickledVersion> for NetworkVersion {
-    fn from(value: crate::game::PickledVersion) -> Self {
-        Self {
-            major: value.major,
-            minor: value.minor,
-            build: value.patch,
-        }
-    }
-}

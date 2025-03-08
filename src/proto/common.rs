@@ -1,6 +1,8 @@
+use bytes::Bytes;
 use std::ops;
 
-use bytes::Bytes;
+pub mod network_version;
+pub use network_version::NetworkVersion;
 
 #[derive(Debug, Clone)]
 pub struct Ping(pub Bytes);

@@ -11,9 +11,6 @@ pub use message_stream::MessageStream;
 mod room_info;
 pub use room_info::RoomInfo;
 
-mod network_version;
-pub use network_version::NetworkVersion;
-
 mod permissions;
 pub use permissions::{CommandPermission, Permissions, RemainingCommandPermission};
 

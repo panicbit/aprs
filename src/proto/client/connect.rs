@@ -1,7 +1,8 @@
 use uuid::Uuid;
 
 use crate::game::SlotName;
-use crate::proto::client::{Deserialize, NetworkVersion};
+use crate::proto::client::Deserialize;
+use crate::proto::common::NetworkVersion;
 use crate::proto::u128_uuid;
 
 #[derive(Deserialize, Clone, Debug)]

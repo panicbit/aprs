@@ -3,17 +3,21 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::{fs, ops};
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use bitflags::bitflags;
 use byteorder::ReadBytesExt;
 use flate2::read::ZlibDecoder;
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_tuple::Deserialize_tuple;
+use serde_with::FromInto;
+use serde_with::{DeserializeAs, serde_as};
 use sha1::{Digest, Sha1};
 
 mod multidata;
 pub use multidata::MultiData;
+
+use crate::proto::common::NetworkVersion;
 
 #[derive(Debug)]
 pub struct Game {
@@ -225,10 +229,13 @@ pub struct TeamAndSlot {
     pub slot: SlotId,
 }
 
+#[serde_as]
 #[derive(Deserialize, Debug)]
 pub struct MinimumVersions {
-    pub server: PickledVersion,
-    pub clients: BTreeMap<SlotId, PickledVersion>,
+    #[serde_as(as = "FromInto<PickledVersion>")]
+    pub server: NetworkVersion,
+    #[serde_as(as = "BTreeMap<_, FromInto<PickledVersion>>")]
+    pub clients: BTreeMap<SlotId, NetworkVersion>,
 }
 
 #[derive(Deserialize, Debug, Copy, Clone)]
@@ -237,7 +244,24 @@ pub struct MinimumVersions {
 pub struct PickledVersion {
     pub major: u32,
     pub minor: u32,
+    /// This field only exists in the pickled data.
     pub patch: u32,
+}
+
+impl From<PickledVersion> for NetworkVersion {
+    fn from(val: PickledVersion) -> Self {
+        let PickledVersion {
+            major,
+            minor,
+            patch,
+        } = val;
+
+        NetworkVersion {
+            major,
+            minor,
+            build: patch,
+        }
+    }
 }
 
 #[derive(Serialize, Debug, Clone)]

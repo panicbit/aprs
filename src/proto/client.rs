@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use smallvec::SmallVec;
 
 use crate::proto::common::{Close, Ping, Pong};
@@ -40,13 +41,6 @@ impl From<Close> for Message {
     fn from(value: Close) -> Self {
         Message::Close(value)
     }
-}
-
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub struct NetworkVersion {
-    pub major: u32,
-    pub minor: u32,
-    pub build: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

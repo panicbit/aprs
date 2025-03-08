@@ -1,7 +1,8 @@
 use fnv::FnvHashMap;
 use serde::Serialize;
 
-use crate::proto::server::{GameName, NetworkPlayer, NetworkVersion, Permissions, Time};
+use crate::proto::common::NetworkVersion;
+use crate::proto::server::{GameName, NetworkPlayer, Permissions, Time};
 
 #[derive(Serialize, Clone)]
 pub struct RoomInfo {
