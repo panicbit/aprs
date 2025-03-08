@@ -11,12 +11,25 @@ mod u128_uuid {
     where
         D: Deserializer<'de>,
     {
-        let uuid = Number::deserialize(de)?;
-        let uuid = uuid
-            .as_u128()
-            .ok_or_else(|| de::Error::custom("invalid u128 for uuid"))?;
-        let uuid = Uuid::from_u128(uuid);
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum WeirdUuid {
+            Uuid(Uuid),
+            /// The python does not send a hex string uuid, but a number
+            Number(Number),
+        }
 
-        Ok(uuid)
+        let uuid = WeirdUuid::deserialize(de)?;
+
+        match uuid {
+            WeirdUuid::Uuid(uuid) => Ok(uuid),
+            WeirdUuid::Number(number) => {
+                let uuid = number
+                    .as_u128()
+                    .ok_or_else(|| de::Error::custom("invalid u128 for uuid"))?;
+
+                Ok(Uuid::from_u128(uuid))
+            }
+        }
     }
 }

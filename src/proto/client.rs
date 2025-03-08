@@ -21,8 +21,8 @@ pub enum Message {
     Pong(Pong),
     #[serde(skip)]
     Close(Close),
-    // #[serde(untagged)]
-    // Unknown(Value),
+    #[serde(untagged)]
+    Unknown(Value),
 }
 
 impl From<Ping> for Message {
