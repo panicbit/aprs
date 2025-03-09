@@ -31,3 +31,7 @@ tokio-tungstenite = "0.26.2"
 uuid = { version = "1.15.1", features = ["serde"] }
 zip = "2.2.3"
 serde_with = "3.12.0"
+dumpster = "1.1.0"
+parking_lot = "0.12.3"
+itertools = "0.14.0"
+num = "0.4.3"

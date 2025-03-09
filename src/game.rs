@@ -11,7 +11,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_tuple::Deserialize_tuple;
 use serde_with::FromInto;
-use serde_with::{DeserializeAs, serde_as};
+use serde_with::serde_as;
 use sha1::{Digest, Sha1};
 
 mod multidata;
@@ -47,15 +47,23 @@ impl Game {
             "unsupported format version `{format_version}`"
         );
 
-        let multi_data = ZlibDecoder::new(multi_data);
+        let mut multi_data = ZlibDecoder::new(multi_data);
 
-        // std::io::copy(&mut multi_data, &mut File::create("test.pickled").unwrap()).unwrap();
+        crate::pickle::unpickle(&mut multi_data)?;
 
+        panic!("TEST END");
+
+        // std::io::copy(
+        //     &mut multi_data,
+        //     &mut std::fs::File::create("test.pickled").unwrap(),
+        // )
+        // .unwrap();
         // panic!("STOP HERE");
 
         let decode_options = serde_pickle::DeOptions::new()
-            .keep_restore_state()
-            .replace_recursive_structures();
+            // .keep_restore_state()
+            // .replace_recursive_structures()
+            ;
 
         let de = &mut serde_pickle::Deserializer::new(multi_data, decode_options);
         let multi_data = serde_path_to_error::deserialize::<_, MultiData>(de)
