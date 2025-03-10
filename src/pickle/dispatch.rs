@@ -60,8 +60,8 @@ where
             op::TUPLE1 => bail!("unhandled op: TUPLE1"),
             op::TUPLE2 => bail!("unhandled op: TUPLE2"),
             op::TUPLE3 => bail!("unhandled op: TUPLE3"),
-            op::NEWTRUE => bail!("unhandled op: NEWTRUE"),
-            op::NEWFALSE => bail!("unhandled op: NEWFALSE"),
+            op::NEWTRUE => self.load_newtrue(),
+            op::NEWFALSE => self.load_newfalse(),
             op::LONG1 => self.load_long1(),
             op::LONG4 => bail!("unhandled op: LONG4"),
             // Protocol 3 (Python 3.x)

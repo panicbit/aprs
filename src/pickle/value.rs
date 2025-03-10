@@ -27,6 +27,7 @@ pub enum Value {
     List(Gc<List>),
     BinStr(Gc<BinStr>),
     Number(Gc<Number>),
+    Bool(Gc<bool>),
 }
 
 impl Value {
@@ -36,6 +37,7 @@ impl Value {
             Value::List(gc) => gc.into(),
             Value::BinStr(gc) => gc.into(),
             Value::Number(gc) => gc.into(),
+            Value::Bool(gc) => gc.into(),
         }
     }
 
@@ -55,6 +57,7 @@ impl Value {
             Value::Dict(_) => bail!("can't extend Dict"),
             Value::BinStr(_) => bail!("can't extend BinStr"),
             Value::Number(_) => bail!("can't extend Number"),
+            Value::Bool(_) => bail!("can't extend Bool"),
         }
     }
 
@@ -64,6 +67,7 @@ impl Value {
             Value::List(_) => bail!("List is not a Dict"),
             Value::BinStr(_) => bail!("BinStr is not a Dict"),
             Value::Number(_) => bail!("Byte is not a Dict"),
+            Value::Bool(_) => bail!("Bool is not a Dict"),
         }
     }
 
@@ -73,6 +77,7 @@ impl Value {
             Value::List(_) => bail!("List is unhashable"),
             Value::BinStr(gc) => gc.as_ref().hash(state),
             Value::Number(gc) => gc.as_ref().hash(state),
+            Value::Bool(gc) => gc.as_ref().hash(state),
         }
 
         Ok(())
@@ -84,6 +89,7 @@ impl Value {
             Value::List(_) => false,
             Value::BinStr(_) => true,
             Value::Number(_) => true,
+            Value::Bool(_) => true,
         }
     }
 }
@@ -101,6 +107,7 @@ impl fmt::Debug for Value {
             Value::List(value) => f.debug_tuple("List").field(&**value).finish(),
             Value::BinStr(value) => f.debug_tuple("BinStr").field(&**value).finish(),
             Value::Number(value) => f.debug_tuple("Number").field(&**value).finish(),
+            Value::Bool(value) => f.debug_tuple("Bool").field(&**value).finish(),
         }
     }
 }
@@ -118,6 +125,9 @@ impl PartialEq for Value {
             (Value::BinStr(_), _) => false,
             (_, Value::BinStr(_)) => false,
             (Value::Number(v1), Value::Number(v2)) => v1 == v2,
+            (Value::Bool(v1), Value::Bool(v2)) => v1 == v2,
+            (Value::Number(v1), Value::Bool(v2)) => v1.as_ref() == &Number::from(*v2.as_ref()),
+            (Value::Bool(v1), Value::Number(v2)) => v2.as_ref() == &Number::from(*v1.as_ref()),
         }
     }
 }

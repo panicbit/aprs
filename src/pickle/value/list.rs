@@ -40,6 +40,7 @@ impl List {
             Value::Dict(_) => bail!("can't extend List with Dict"),
             Value::BinStr(_) => bail!("can't extend List with BinStr"),
             Value::Number(_) => bail!("can't extend List with Number"),
+            Value::Bool(_) => bail!("can't extend List with Bool"),
         }
     }
 

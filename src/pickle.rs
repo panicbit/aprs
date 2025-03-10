@@ -121,6 +121,8 @@ struct Unpickler<R> {
     meta_stack: Vec<Gc<List>>,
     memo: Gc<Dict>,
     number_cache: NumberCache,
+    r#true: Value,
+    r#false: Value,
 }
 
 impl<R> Unpickler<R>
@@ -136,6 +138,8 @@ where
             // TODO: memo probably needs to be an IndexMap
             memo: Dict::new(),
             number_cache: NumberCache::new(),
+            r#true: Value::Bool(Gc::new(true)),
+            r#false: Value::Bool(Gc::new(false)),
         }
     }
 
@@ -244,6 +248,18 @@ where
         }
 
         self.proto = proto;
+
+        Ok(())
+    }
+
+    pub fn load_newtrue(&mut self) -> Result<()> {
+        self.push(self.r#true.clone());
+
+        Ok(())
+    }
+
+    pub fn load_newfalse(&mut self) -> Result<()> {
+        self.push(self.r#false.clone());
 
         Ok(())
     }

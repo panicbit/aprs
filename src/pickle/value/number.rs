@@ -56,6 +56,12 @@ impl Number {
     }
 }
 
+impl From<bool> for Number {
+    fn from(value: bool) -> Self {
+        Number::from(value as u8)
+    }
+}
+
 impl From<u8> for Number {
     fn from(n: u8) -> Self {
         Self(Inner::from(i64::from(n)))
