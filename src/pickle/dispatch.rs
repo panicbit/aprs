@@ -54,7 +54,7 @@ where
             op::BINFLOAT => bail!("unhandled op: BINFLOAT"),
             // Protocol 2
             op::PROTO => self.load_proto(),
-            op::NEWOBJ => bail!("unhandled op: NEWOBJ"),
+            op::NEWOBJ => self.load_newobj(),
             op::EXT1 => bail!("unhandled op: EXT1"),
             op::EXT2 => bail!("unhandled op: EXT2"),
             op::EXT4 => bail!("unhandled op: EXT4"),

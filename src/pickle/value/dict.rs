@@ -16,7 +16,10 @@ impl Dict {
         Self(RwLock::new(IndexMap::new()))
     }
 
-    pub fn insert(&self, key: Value, value: Value) -> Result<()> {
+    pub fn insert(&self, key: impl Into<Value>, value: impl Into<Value>) -> Result<()> {
+        let key = key.into();
+        let value = value.into();
+
         if !key.is_hashable() {
             bail!("key is not hashable");
         }

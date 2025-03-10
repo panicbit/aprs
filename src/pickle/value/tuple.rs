@@ -126,3 +126,78 @@ where
         Ok((v1,))
     }
 }
+
+impl<V1, V2> TryFrom<&'_ Tuple> for (V1, V2)
+where
+    V1: TryFrom<Value>,
+    V2: TryFrom<Value>,
+    Error: From<V1::Error> + From<V2::Error>,
+{
+    type Error = Error;
+
+    fn try_from(tuple: &Tuple) -> Result<Self> {
+        if tuple.len() != 2 {
+            bail!("expected tuple of length 2");
+        }
+
+        let v1 = tuple.get(0).context("BUG: tuple too short")?;
+        let v1 = V1::try_from(v1)?;
+        let v2 = tuple.get(1).context("BUG: tuple too short")?;
+        let v2 = V2::try_from(v2)?;
+
+        Ok((v1, v2))
+    }
+}
+
+impl<V1, V2, V3> TryFrom<&'_ Tuple> for (V1, V2, V3)
+where
+    V1: TryFrom<Value>,
+    V2: TryFrom<Value>,
+    V3: TryFrom<Value>,
+    Error: From<V1::Error> + From<V2::Error> + From<V3::Error>,
+{
+    type Error = Error;
+
+    fn try_from(tuple: &Tuple) -> Result<Self> {
+        if tuple.len() != 3 {
+            bail!("expected tuple of length 3");
+        }
+
+        let v1 = tuple.get(0).context("BUG: tuple too short")?;
+        let v1 = V1::try_from(v1)?;
+        let v2 = tuple.get(1).context("BUG: tuple too short")?;
+        let v2 = V2::try_from(v2)?;
+        let v3 = tuple.get(2).context("BUG: tuple too short")?;
+        let v3 = V3::try_from(v3)?;
+
+        Ok((v1, v2, v3))
+    }
+}
+
+impl<V1, V2, V3, V4> TryFrom<&'_ Tuple> for (V1, V2, V3, V4)
+where
+    V1: TryFrom<Value>,
+    V2: TryFrom<Value>,
+    V3: TryFrom<Value>,
+    V4: TryFrom<Value>,
+    Error: From<V1::Error> + From<V2::Error> + From<V3::Error> + From<V4::Error>,
+{
+    type Error = Error;
+
+    fn try_from(tuple: &Tuple) -> Result<Self> {
+        if tuple.len() != 4 {
+            bail!("expected tuple of length 3");
+        }
+
+        let v1 = tuple.get(0).context("BUG: tuple too short")?;
+        let v1 = V1::try_from(v1)?;
+        let v2 = tuple.get(1).context("BUG: tuple too short")?;
+        let v2 = V2::try_from(v2)?;
+        let v3 = tuple.get(2).context("BUG: tuple too short")?;
+        let v3 = V3::try_from(v3)?;
+        let v4 = tuple.get(3).context("BUG: tuple too short")?;
+        let v4 = V4::try_from(v4)?;
+
+        Ok((v1, v2, v3, v4))
+    }
+}

@@ -22,15 +22,25 @@ pub fn unpickle<R: Read>(reader: &mut R) -> Result<()> {
         eprintln!("Trying to locate {module}.{name}");
 
         Ok(match (module, name) {
-            ("NetUtils", "NetworkSlot") => {
-                Value::callable(|args| {
-                    bail!("NNetworkSlot constructor is unimplemented") //
-                })
-            }
+            ("NetUtils", "NetworkSlot") => Value::callable(|args| {
+                let (name, game, r#type, group_members) =
+                    <(Gc<Str>, Gc<Str>, Gc<Number>, Value)>::try_from(args)?;
+
+                let dict = Dict::new();
+
+                dict.insert("__class", "NetworkSlot")?;
+                dict.insert("name", name)?;
+                dict.insert("game", game)?;
+                dict.insert("type", r#type)?;
+                dict.insert("group_members", group_members)?;
+
+                Ok(dict.into())
+            }),
             ("NetUtils", "SlotType") => {
                 Value::callable(|args| {
                     // TODO: create iterator-like type for tuple that allows conversion
                     // e.g. ".next_number()" or `.next::<Number>()`
+                    // Or how about a class trait + a derive?
                     let (slot_type,) = <(Gc<Number>,)>::try_from(args)?;
 
                     Ok(Value::Number(slot_type))
@@ -214,8 +224,6 @@ where
     }
 
     pub fn load_reduce(&mut self) -> Result<()> {
-        eprintln!("stack: {:#?}", self.stack.as_ref());
-
         let args = self
             .pop()
             .context("tied to load reduce args with empty stack")?;
@@ -293,6 +301,34 @@ where
         let tuple = Value::tuple(items);
 
         self.push(tuple);
+
+        Ok(())
+    }
+
+    pub fn load_newobj(&mut self) -> Result<()> {
+        let args = self.pop().context("empty stack")?;
+        let class = self.pop().context("empty stack")?;
+
+        eprintln!("Args: {args:?}");
+        eprintln!("Class: {class:?}");
+        // TODO: This should call `__new__` on the `class`. Might need a class type.3
+        let class = class.as_callable()?;
+        let value = class.call(args)?;
+
+        {
+            eprintln!("{{");
+            for (key, value) in value.as_dict().unwrap().iter() {
+                let key = key.as_str().unwrap();
+                let key = key.as_str();
+
+                eprintln!("    {key}: {value:?},");
+            }
+            eprintln!("}}");
+        }
+
+        self.push(value);
+
+        todo!();
 
         Ok(())
     }

@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 use std::{fmt, ops};
 
-use anyhow::{Result, bail};
+use anyhow::{Error, Result, bail};
 use dumpster::Trace;
 use dumpster::sync::Gc;
 
@@ -179,6 +179,12 @@ impl Value {
     }
 }
 
+impl From<&str> for Value {
+    fn from(value: &str) -> Self {
+        Self::str(value)
+    }
+}
+
 impl From<Dict> for Value {
     fn from(value: Dict) -> Self {
         Value::Dict(Gc::new(value))
@@ -188,6 +194,18 @@ impl From<Dict> for Value {
 impl From<Gc<List>> for Value {
     fn from(value: Gc<List>) -> Self {
         Value::List(value)
+    }
+}
+
+impl From<Gc<Str>> for Value {
+    fn from(value: Gc<Str>) -> Self {
+        Value::Str(value)
+    }
+}
+
+impl From<Gc<Number>> for Value {
+    fn from(value: Gc<Number>) -> Self {
+        Value::Number(value)
     }
 }
 
@@ -249,6 +267,14 @@ impl From<String> for Str {
 impl From<&'_ str> for Str {
     fn from(value: &'_ str) -> Self {
         Self(String::from(value))
+    }
+}
+
+impl TryFrom<Value> for Gc<Str> {
+    type Error = Error;
+
+    fn try_from(value: Value) -> Result<Self> {
+        value.as_str()
     }
 }
 
