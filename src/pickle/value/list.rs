@@ -41,10 +41,11 @@ impl List {
         match values {
             Value::List(values) => self.append_list(&values),
             Value::Dict(_) => bail!("can't extend List with Dict"),
-            Value::BinStr(_) => bail!("can't extend List with BinStr"),
+            Value::Str(_) => bail!("can't extend List with BinStr"),
             Value::Number(_) => bail!("can't extend List with Number"),
             Value::Bool(_) => bail!("can't extend List with Bool"),
-            Value::Tuple(gc) => bail!("can't extend List with Tuple"),
+            Value::Tuple(_) => bail!("can't extend List with Tuple"),
+            Value::Callable(_) => bail!("can't extend List with Callable"),
         }
     }
 
@@ -102,6 +103,24 @@ impl Iterator for Iter<'_> {
         self.index += 1;
 
         Some(value)
+    }
+}
+
+impl<V> FromIterator<V> for List
+where
+    V: Into<Value>,
+{
+    fn from_iter<I: IntoIterator<Item = V>>(iter: I) -> Self {
+        // TODO: consider iterator size_hint
+        let list = List::new();
+
+        for value in iter {
+            let value = value.into();
+
+            list.push(value);
+        }
+
+        list
     }
 }
 

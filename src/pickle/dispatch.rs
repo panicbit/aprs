@@ -2,11 +2,12 @@ use std::io::Read;
 
 use anyhow::{Result, bail};
 
-use super::op;
+use super::{Value, op};
 
-impl<R> super::Unpickler<R>
+impl<R, FindClass> super::Unpickler<R, FindClass>
 where
     R: Read,
+    FindClass: FnMut(&str, &str) -> Result<Value>,
 {
     pub fn dispatch(&mut self, op: u8) -> Result<()> {
         match op {
@@ -24,7 +25,7 @@ where
             op::NONE => bail!("unhandled op: NONE"),
             op::PERSID => bail!("unhandled op: PERSID"),
             op::BINPERSID => bail!("unhandled op: BINPERSID"),
-            op::REDUCE => bail!("unhandled op: REDUCE"),
+            op::REDUCE => self.load_reduce(),
             op::STRING => bail!("unhandled op: STRING"),
             op::BINSTRING => bail!("unhandled op: BINSTRING"),
             op::SHORT_BINSTRING => bail!("unhandled op: SHORT_BINSTRING"),

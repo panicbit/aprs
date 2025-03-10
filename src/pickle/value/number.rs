@@ -1,5 +1,9 @@
+use anyhow::{Error, Result};
 use dumpster::Trace;
+use dumpster::sync::Gc;
 use num::{BigInt, FromPrimitive, Zero};
+
+use super::Value;
 
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub struct Number(Inner);
@@ -123,6 +127,14 @@ impl From<BigInt> for Number {
 impl From<f64> for Number {
     fn from(n: f64) -> Self {
         Self(Inner::from(n))
+    }
+}
+
+impl TryFrom<Value> for Gc<Number> {
+    type Error = Error;
+
+    fn try_from(value: Value) -> Result<Self> {
+        value.as_number()
     }
 }
 

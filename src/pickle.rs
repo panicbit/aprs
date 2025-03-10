@@ -9,7 +9,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use dumpster::sync::Gc;
 use itertools::Itertools;
 
-use crate::pickle::value::{BinStr, Dict, List, Number, NumberCache, Tuple, Value};
+use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Value};
 
 mod dispatch;
 mod op;
@@ -18,7 +18,28 @@ mod value;
 const HIGHEST_PROTOCOL: u8 = 5;
 
 pub fn unpickle<R: Read>(reader: &mut R) -> Result<()> {
-    Unpickler::new(reader).load()?;
+    Unpickler::new(reader, |module, name| {
+        eprintln!("Trying to locate {module}.{name}");
+
+        Ok(match (module, name) {
+            ("NetUtils", "NetworkSlot") => {
+                Value::callable(|args| {
+                    bail!("NNetworkSlot constructor is unimplemented") //
+                })
+            }
+            ("NetUtils", "SlotType") => {
+                Value::callable(|args| {
+                    // TODO: create iterator-like type for tuple that allows conversion
+                    // e.g. ".next_number()" or `.next::<Number>()`
+                    let (slot_type,) = <(Gc<Number>,)>::try_from(args)?;
+
+                    Ok(Value::Number(slot_type))
+                })
+            }
+            _ => bail!("could not find {module}.{name}"),
+        })
+    })
+    .load()?;
 
     Ok(())
 }
@@ -114,7 +135,7 @@ where
     }
 }
 
-struct Unpickler<R> {
+struct Unpickler<R, FindClass> {
     unframer: Unframer<R>,
     proto: u8,
     stack: Gc<List>,
@@ -123,23 +144,26 @@ struct Unpickler<R> {
     number_cache: NumberCache,
     r#true: Value,
     r#false: Value,
+    find_class: FindClass,
 }
 
-impl<R> Unpickler<R>
+impl<R, FindClass> Unpickler<R, FindClass>
 where
     R: Read,
+    FindClass: FnMut(&str, &str) -> Result<Value>,
 {
-    fn new(reader: R) -> Self {
+    fn new(reader: R, find_class: FindClass) -> Self {
         Self {
             unframer: Unframer::new(reader),
             proto: 0,
             stack: Gc::new(List::new()),
             meta_stack: Vec::new(),
             // TODO: memo probably needs to be an IndexMap
-            memo: Dict::new(),
+            memo: Gc::new(Dict::new()),
             number_cache: NumberCache::new(),
             r#true: Value::Bool(Gc::new(true)),
             r#false: Value::Bool(Gc::new(false)),
+            find_class,
         }
     }
 
@@ -185,6 +209,24 @@ where
         let stack = mem::replace(&mut self.stack, Gc::new(List::new()));
 
         self.meta_stack.push(stack);
+
+        Ok(())
+    }
+
+    pub fn load_reduce(&mut self) -> Result<()> {
+        eprintln!("stack: {:#?}", self.stack.as_ref());
+
+        let args = self
+            .pop()
+            .context("tied to load reduce args with empty stack")?;
+        let callable = self
+            .pop()
+            .context("tried to load reduce with too small stack")?
+            .as_callable()
+            .context("tried to reduce with a non-callable")?
+            .clone();
+
+        callable.call(args)?;
 
         Ok(())
     }
@@ -345,9 +387,11 @@ where
         let len = self.read_byte()?;
         let len = usize::from(len);
         let value = self.read_vec(len)?;
-        let value = BinStr(value);
+        // TODO: this might be too strict, python uses `surrogatepass` error handler
+        let value = String::from_utf8(value).context("invalid BinUnicode")?;
+        let value = Str::from(value);
         let value = Gc::new(value);
-        let value = Value::BinStr(value);
+        let value = Value::Str(value);
 
         self.stack.push(value);
 
@@ -355,13 +399,23 @@ where
     }
 
     pub fn load_stack_global(&mut self) -> Result<()> {
-        let name = self.pop();
-        let module = self.pop();
+        let name = self
+            .pop()
+            .context("stack global pop from empty stack")?
+            .as_str()
+            .context("stack global name is not a str")?;
+        let module = self
+            .pop()
+            .context("stack global pop from too small stack")?
+            .as_str()
+            .context("stack global module is not a str")?;
 
         // TODO: ensure name and type are strings
         // TODO: create single string type that also covers "binunicode"
         // TODO: custom global loading
-        self.push(Value::empty_dict());
+
+        let value = (self.find_class)(&module, &name).context("find class failed")?;
+        self.push(value);
 
         Ok(())
     }
@@ -381,7 +435,7 @@ where
     }
 }
 
-impl<R> Deref for Unpickler<R>
+impl<R, FindClass> Deref for Unpickler<R, FindClass>
 where
     R: Read,
 {
@@ -392,7 +446,7 @@ where
     }
 }
 
-impl<R> DerefMut for Unpickler<R>
+impl<R, FindClass> DerefMut for Unpickler<R, FindClass>
 where
     R: Read,
 {

@@ -3,7 +3,6 @@ use std::{cmp, fmt};
 
 use anyhow::{Result, bail};
 use dumpster::Trace;
-use dumpster::sync::Gc;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 
@@ -13,8 +12,8 @@ use super::Value;
 pub struct Dict(RwLock<IndexMap<Element, Element>>);
 
 impl Dict {
-    pub fn new() -> Gc<Self> {
-        Gc::new(Self(RwLock::new(IndexMap::new())))
+    pub fn new() -> Self {
+        Self(RwLock::new(IndexMap::new()))
     }
 
     pub fn insert(&self, key: Value, value: Value) -> Result<()> {
