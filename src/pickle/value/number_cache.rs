@@ -30,6 +30,14 @@ impl NumberCache {
             .clone()
     }
 
+    pub fn get_u16(&mut self, value: u16) -> Value {
+        if let Ok(value) = i16::try_from(value) {
+            return self.get_i16(value);
+        }
+
+        Value::Number(Gc::new(Number::from(value)))
+    }
+
     pub fn get_i32(&mut self, value: i32) -> Value {
         if let Ok(value) = i16::try_from(value) {
             return self.get_i16(value);

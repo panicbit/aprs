@@ -98,6 +98,16 @@ where
         Ok(buf[0])
     }
 
+    fn read_u16(&mut self) -> Result<u16> {
+        let mut buf = [0; 2];
+
+        self.read_exact(&mut buf)?;
+
+        let value = u16::from_le_bytes(buf);
+
+        Ok(value)
+    }
+
     fn read_i32(&mut self) -> Result<i32> {
         let mut buf = [0; 4];
 
@@ -259,6 +269,21 @@ where
         Ok(())
     }
 
+    pub fn load_binint2(&mut self) -> Result<()> {
+        let value = self.read_u16()?;
+        let value = self.number_cache.get_u16(value);
+
+        self.stack.push(value);
+
+        Ok(())
+    }
+
+    pub fn load_none(&mut self) -> Result<()> {
+        self.stack.push(Value::none());
+
+        Ok(())
+    }
+
     pub fn load_empty_dict(&mut self) -> Result<()> {
         let value = Value::empty_dict();
 
@@ -308,27 +333,11 @@ where
     pub fn load_newobj(&mut self) -> Result<()> {
         let args = self.pop().context("empty stack")?;
         let class = self.pop().context("empty stack")?;
-
-        eprintln!("Args: {args:?}");
-        eprintln!("Class: {class:?}");
         // TODO: This should call `__new__` on the `class`. Might need a class type.3
         let class = class.as_callable()?;
         let value = class.call(args)?;
 
-        {
-            eprintln!("{{");
-            for (key, value) in value.as_dict().unwrap().iter() {
-                let key = key.as_str().unwrap();
-                let key = key.as_str();
-
-                eprintln!("    {key}: {value:?},");
-            }
-            eprintln!("}}");
-        }
-
         self.push(value);
-
-        todo!();
 
         Ok(())
     }
