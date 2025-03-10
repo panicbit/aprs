@@ -2,13 +2,21 @@ use std::hash::{Hash, Hasher};
 
 use anyhow::{Context, Error, Result, bail};
 use dumpster::Trace;
+use dumpster::sync::Gc;
 
 use crate::pickle::value::{List, Value};
 
+// TODO: replace List with Vec. Tuples are immutable, so the underlying lock is not needed.
+
 #[derive(Trace, Debug, PartialEq)]
+
 pub struct Tuple(List);
 
 impl Tuple {
+    pub fn empty() -> Self {
+        Self(List::new())
+    }
+
     pub fn is_hashable(&self) -> bool {
         self.0.iter().all(|value| value.is_hashable())
     }
@@ -19,6 +27,24 @@ impl Tuple {
 
     pub fn get(&self, index: usize) -> Option<Value> {
         self.0.get(index)
+    }
+}
+
+impl From<&List> for Tuple {
+    fn from(list: &List) -> Self {
+        list.iter().collect::<Tuple>()
+    }
+}
+
+impl From<Gc<List>> for Tuple {
+    fn from(list: Gc<List>) -> Self {
+        list.iter().collect::<Tuple>()
+    }
+}
+
+impl From<List> for Tuple {
+    fn from(list: List) -> Self {
+        list.iter().collect::<Tuple>()
     }
 }
 

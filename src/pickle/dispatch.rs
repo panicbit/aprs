@@ -48,8 +48,8 @@ where
             op::BINPUT => bail!("unhandled op: BINPUT"),
             op::LONG_BINPUT => bail!("unhandled op: LONG_BINPUT"),
             op::SETITEM => bail!("unhandled op: SETITEM"),
-            op::TUPLE => bail!("unhandled op: TUPLE"),
-            op::EMPTY_TUPLE => bail!("unhandled op: EMPTY_TUPLE"),
+            op::TUPLE => self.load_tuple(),
+            op::EMPTY_TUPLE => self.empty_tuple(),
             op::SETITEMS => self.load_setitems(),
             op::BINFLOAT => bail!("unhandled op: BINFLOAT"),
             // Protocol 2

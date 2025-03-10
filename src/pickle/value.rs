@@ -161,6 +161,10 @@ impl Value {
         Self::Tuple(Gc::new(value.into()))
     }
 
+    pub fn empty_tuple() -> Self {
+        Self::Tuple(Gc::new(Tuple::empty()))
+    }
+
     pub fn str(s: impl Into<String>) -> Self {
         let s = s.into();
 

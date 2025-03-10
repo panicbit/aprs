@@ -9,7 +9,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use dumpster::sync::Gc;
 use itertools::Itertools;
 
-use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Value};
+use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Tuple, Value};
 
 mod dispatch;
 mod op;
@@ -226,7 +226,9 @@ where
             .context("tried to reduce with a non-callable")?
             .clone();
 
-        callable.call(args)?;
+        let value = callable.call(args)?;
+
+        self.stack.push(value);
 
         Ok(())
     }
@@ -282,6 +284,21 @@ where
 
     pub fn load_empty_list(&mut self) -> Result<()> {
         self.stack.push(Value::empty_list());
+
+        Ok(())
+    }
+
+    pub fn load_tuple(&mut self) -> Result<()> {
+        let items = self.pop_mark()?;
+        let tuple = Value::tuple(items);
+
+        self.push(tuple);
+
+        Ok(())
+    }
+
+    pub fn empty_tuple(&mut self) -> Result<()> {
+        self.stack.push(Value::empty_tuple());
 
         Ok(())
     }
