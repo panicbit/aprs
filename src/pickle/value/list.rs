@@ -1,4 +1,4 @@
-use std::{fmt, ops};
+use std::fmt;
 
 use anyhow::{Result, bail};
 use dumpster::Trace;
@@ -34,14 +34,12 @@ impl List {
         self.0.read().get(index).cloned()
     }
 
-    pub fn append(&self, values: Value) -> Result<()> {
+    pub fn extend(&self, values: Value) -> Result<()> {
         match values {
             Value::List(values) => self.append_list(&values),
-            Value::Dict(_) => bail!("can't append Dict to List"),
-            Value::BinStr(_) => bail!("can't append BinStr to List"),
-            Value::Byte(_) => bail!("can't append Byte to List"),
-            Value::Int(_) => bail!("can't append Int to List"),
-            Value::BigInt(_) => bail!("can't append BigInt to List"),
+            Value::Dict(_) => bail!("can't extend List with Dict"),
+            Value::BinStr(_) => bail!("can't extend List with BinStr"),
+            Value::Number(_) => bail!("can't extend List with Number"),
         }
     }
 

@@ -9,7 +9,7 @@ use anyhow::{Context, Result, bail};
 use dumpster::sync::Gc;
 use itertools::Itertools;
 
-use crate::pickle::value::{BinStr, Dict, List, NumberCache, Value};
+use crate::pickle::value::{BinStr, Dict, List, Number, NumberCache, Value};
 
 mod dispatch;
 mod op;
@@ -139,6 +139,10 @@ where
         }
     }
 
+    fn push(&mut self, value: Value) {
+        self.stack.push(value);
+    }
+
     fn pop_mark(&mut self) -> Result<Gc<List>> {
         let stack = self.pop_meta()?;
         let stack = mem::replace(&mut self.stack, stack);
@@ -207,7 +211,7 @@ where
         let items = self.pop_mark()?;
         let list_obj = self.last()?;
 
-        list_obj.append(items)?;
+        list_obj.extend(items)?;
 
         Ok(())
     }
@@ -240,6 +244,18 @@ where
         }
 
         self.proto = proto;
+
+        Ok(())
+    }
+
+    pub fn load_long1(&mut self) -> Result<()> {
+        let len = self.read_byte()?;
+        let len = usize::from(len);
+        let bytes = self.read_vec(len)?;
+        let n = Number::from_signed_bytes_le(&bytes);
+        let n = Value::Number(Gc::new(n));
+
+        self.push(n);
 
         Ok(())
     }

@@ -18,14 +18,15 @@ pub use big_int::BigInt;
 mod number_cache;
 pub use number_cache::NumberCache;
 
+mod number;
+pub use number::Number;
+
 #[derive(Trace, Clone)]
 pub enum Value {
     Dict(Gc<Dict>),
     List(Gc<List>),
     BinStr(Gc<BinStr>),
-    Byte(Gc<u8>),
-    Int(Gc<i32>),
-    BigInt(Gc<BigInt>),
+    Number(Gc<Number>),
 }
 
 impl Value {
@@ -34,9 +35,7 @@ impl Value {
             Value::Dict(gc) => gc.into(),
             Value::List(gc) => gc.into(),
             Value::BinStr(gc) => gc.into(),
-            Value::Byte(gc) => gc.into(),
-            Value::Int(gc) => gc.into(),
-            Value::BigInt(gc) => gc.into(),
+            Value::Number(gc) => gc.into(),
         }
     }
 
@@ -48,16 +47,14 @@ impl Value {
         Value::List(List::new())
     }
 
-    pub fn append(&self, value: impl Into<Value>) -> Result<()> {
+    pub fn extend(&self, value: impl Into<Value>) -> Result<()> {
         let value = value.into();
 
         match self {
-            Value::List(list) => list.append(value),
-            Value::Dict(_) => bail!("can't append to Dict"),
-            Value::BinStr(_) => bail!("can't append to BinStr"),
-            Value::Byte(_) => bail!("can't append to Byte"),
-            Value::Int(_) => bail!("can't append to Int"),
-            Value::BigInt(_) => bail!("can't append to BigInt"),
+            Value::List(list) => list.extend(value),
+            Value::Dict(_) => bail!("can't extend Dict"),
+            Value::BinStr(_) => bail!("can't extend BinStr"),
+            Value::Number(_) => bail!("can't extend Number"),
         }
     }
 
@@ -66,9 +63,7 @@ impl Value {
             Value::Dict(value) => Ok(value.clone()),
             Value::List(_) => bail!("List is not a Dict"),
             Value::BinStr(_) => bail!("BinStr is not a Dict"),
-            Value::Byte(_) => bail!("Byte is not a Dict"),
-            Value::Int(_) => bail!("Int is not a Dict"),
-            Value::BigInt(_) => bail!("BigInt is not a Dict"),
+            Value::Number(_) => bail!("Byte is not a Dict"),
         }
     }
 
@@ -77,9 +72,7 @@ impl Value {
             Value::Dict(_) => bail!("Dict is unhashable"),
             Value::List(_) => bail!("List is unhashable"),
             Value::BinStr(gc) => gc.as_ref().hash(state),
-            Value::Byte(gc) => gc.as_ref().hash(state),
-            Value::Int(gc) => gc.as_ref().hash(state),
-            Value::BigInt(gc) => gc.as_ref().hash(state),
+            Value::Number(gc) => gc.as_ref().hash(state),
         }
 
         Ok(())
@@ -90,9 +83,7 @@ impl Value {
             Value::Dict(_) => false,
             Value::List(_) => false,
             Value::BinStr(_) => true,
-            Value::Byte(_) => true,
-            Value::Int(_) => true,
-            Value::BigInt(_) => true,
+            Value::Number(_) => true,
         }
     }
 }
@@ -109,9 +100,7 @@ impl fmt::Debug for Value {
             Value::Dict(_) => todo!("implement Debug for Dict"),
             Value::List(value) => f.debug_tuple("List").field(&**value).finish(),
             Value::BinStr(value) => f.debug_tuple("BinStr").field(&**value).finish(),
-            Value::Byte(value) => f.debug_tuple("Byte").field(&**value).finish(),
-            Value::Int(value) => f.debug_tuple("Int").field(&**value).finish(),
-            Value::BigInt(value) => f.debug_tuple("BigInt").field(&**value).finish(),
+            Value::Number(value) => f.debug_tuple("Number").field(&**value).finish(),
         }
     }
 }
@@ -128,15 +117,7 @@ impl PartialEq for Value {
             (Value::BinStr(v1), Value::BinStr(v2)) => v1 == v2,
             (Value::BinStr(_), _) => false,
             (_, Value::BinStr(_)) => false,
-            (Value::Byte(v1), Value::Byte(v2)) => v1 == v2,
-            (Value::Byte(v1), Value::Int(v2)) => i32::from(*v1.as_ref()) == *v2.as_ref(),
-            (Value::Byte(v1), Value::BigInt(v2)) => BigInt::from(*v1.as_ref()) == *v2.as_ref(),
-            (Value::Int(v1), Value::Byte(v2)) => *v1.as_ref() == i32::from(*v2.as_ref()),
-            (Value::Int(v1), Value::Int(v2)) => v1 == v2,
-            (Value::Int(v1), Value::BigInt(v2)) => BigInt::from(*v1.as_ref()) == *v2.as_ref(),
-            (Value::BigInt(v1), Value::Byte(v2)) => *v1.as_ref() == BigInt::from(*v2.as_ref()),
-            (Value::BigInt(v1), Value::Int(v2)) => *v1.as_ref() == BigInt::from(*v2.as_ref()),
-            (Value::BigInt(v1), Value::BigInt(v2)) => v1 == v2,
+            (Value::Number(v1), Value::Number(v2)) => v1 == v2,
         }
     }
 }

@@ -62,7 +62,7 @@ where
             op::TUPLE3 => bail!("unhandled op: TUPLE3"),
             op::NEWTRUE => bail!("unhandled op: NEWTRUE"),
             op::NEWFALSE => bail!("unhandled op: NEWFALSE"),
-            op::LONG1 => bail!("unhandled op: LONG1"),
+            op::LONG1 => self.load_long1(),
             op::LONG4 => bail!("unhandled op: LONG4"),
             // Protocol 3 (Python 3.x)
             op::BINBYTES => bail!("unhandled op: BINBYTES"),
