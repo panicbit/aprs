@@ -1,7 +1,7 @@
 use dumpster::sync::Gc;
 use fnv::FnvHashMap;
 
-use crate::pickle::value::{BigInt, Number};
+use crate::pickle::value::Number;
 
 use super::Value;
 

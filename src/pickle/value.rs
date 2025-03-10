@@ -12,9 +12,6 @@ pub use list::List;
 mod dict;
 pub use dict::Dict;
 
-mod big_int;
-pub use big_int::BigInt;
-
 mod number_cache;
 pub use number_cache::NumberCache;
 
