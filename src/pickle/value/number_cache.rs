@@ -46,6 +46,14 @@ impl NumberCache {
         Value::Number(Gc::new(Number::from(value)))
     }
 
+    pub fn get_u32(&mut self, value: u32) -> Value {
+        if let Ok(value) = u16::try_from(value) {
+            return self.get_u16(value);
+        }
+
+        Value::Number(Gc::new(Number::from(value)))
+    }
+
     pub fn get_usize(&mut self, value: usize) -> Value {
         if let Ok(value) = i32::try_from(value) {
             return self.get_i32(value);

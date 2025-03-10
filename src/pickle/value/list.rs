@@ -40,14 +40,7 @@ impl List {
     pub fn extend(&self, values: Value) -> Result<()> {
         match values {
             Value::List(values) => self.append_list(&values),
-            Value::Dict(_) => bail!("can't extend List with Dict"),
-            Value::Str(_) => bail!("can't extend List with BinStr"),
-            Value::Number(_) => bail!("can't extend List with Number"),
-            Value::Bool(_) => bail!("can't extend List with Bool"),
-            Value::Tuple(_) => bail!("can't extend List with Tuple"),
-            Value::Callable(_) => bail!("can't extend List with Callable"),
-            Value::None(_) => bail!("can't extend List with None"),
-            Value::Set(_) => bail!("can't extend List with Set"),
+            _ => bail!("can't extend List with {}", values.type_name()),
         }
     }
 

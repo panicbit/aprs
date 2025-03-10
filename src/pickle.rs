@@ -108,6 +108,16 @@ where
         Ok(value)
     }
 
+    fn read_u32(&mut self) -> Result<u32> {
+        let mut buf = [0; 4];
+
+        self.read_exact(&mut buf)?;
+
+        let value = u32::from_le_bytes(buf);
+
+        Ok(value)
+    }
+
     fn read_i32(&mut self) -> Result<i32> {
         let mut buf = [0; 4];
 
@@ -165,6 +175,7 @@ struct Unpickler<R, FindClass> {
     r#true: Value,
     r#false: Value,
     find_class: FindClass,
+    result: Option<Value>,
 }
 
 impl<R, FindClass> Unpickler<R, FindClass>
@@ -184,6 +195,7 @@ where
             r#true: Value::Bool(Gc::new(true)),
             r#false: Value::Bool(Gc::new(false)),
             find_class,
+            result: None,
         }
     }
 
@@ -217,11 +229,15 @@ where
         Ok(value)
     }
 
-    pub fn load(mut self) -> Result<()> {
+    pub fn load(mut self) -> Result<Value> {
         loop {
             let op = self.read_byte()?;
 
             self.dispatch(op)?;
+
+            if let Some(value) = self.result {
+                return Ok(value);
+            }
         }
     }
 
@@ -229,6 +245,14 @@ where
         let stack = mem::replace(&mut self.stack, Gc::new(List::new()));
 
         self.meta_stack.push(stack);
+
+        Ok(())
+    }
+
+    pub fn load_stop(&mut self) -> Result<()> {
+        let value = self.pop().context("empty stack")?;
+
+        self.result = Some(value);
 
         Ok(())
     }
@@ -284,6 +308,17 @@ where
         Ok(())
     }
 
+    pub fn load_append(&mut self) -> Result<()> {
+        let value = self.pop().context("stack is empty")?;
+        let list = self.last().context("stack too small")?;
+        let list = list.as_list()?;
+
+        // TODO: use `.append` or `.extend` attributes of `list_obj`
+        list.push(value);
+
+        Ok(())
+    }
+
     pub fn load_empty_dict(&mut self) -> Result<()> {
         let value = Value::empty_dict();
 
@@ -296,6 +331,7 @@ where
         let items = self.pop_mark()?;
         let list_obj = self.last()?;
 
+        // TODO: use `.append` or `.extend` attributes of `list_obj`
         list_obj.extend(items)?;
 
         Ok(())
@@ -315,8 +351,33 @@ where
         Ok(())
     }
 
+    pub fn load_long_binget(&mut self) -> Result<()> {
+        let index = self.read_u32()?;
+        let index = self.number_cache.get_u32(index);
+
+        let value = self
+            .memo
+            .get(index.clone())
+            .with_context(|| anyhow!("Memo value not found at index {index:?}"))?;
+
+        self.push(value);
+
+        Ok(())
+    }
+
     pub fn load_empty_list(&mut self) -> Result<()> {
         self.stack.push(Value::empty_list());
+
+        Ok(())
+    }
+
+    pub fn load_setitem(&mut self) -> Result<()> {
+        let value = self.pop().context("empty stack")?;
+        let key = self.pop().context("empty stack")?;
+        let dict = self.last().context("empty stack")?;
+        let dict = dict.as_dict()?;
+
+        dict.insert(key, value)?;
 
         Ok(())
     }
@@ -462,6 +523,19 @@ where
 
     pub fn load_empty_set(&mut self) -> Result<()> {
         self.push(Value::empty_set());
+
+        Ok(())
+    }
+
+    pub fn load_additems(&mut self) -> Result<()> {
+        let items = self.pop_mark()?;
+        let set_obj = self.stack.last().context("empty stack")?;
+        let set_obj = set_obj.as_set()?;
+
+        // TODO: try to use `.add` method if not a set (e.g. class or dict)
+        for item in items.as_ref() {
+            set_obj.insert(item)?;
+        }
 
         Ok(())
     }

@@ -65,19 +65,26 @@ impl Value {
         Value::List(Gc::new(List::new()))
     }
 
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Value::Dict(_) => "Dict",
+            Value::List(_) => "List",
+            Value::Str(_) => "Str",
+            Value::Number(_) => "Number",
+            Value::Bool(_) => "Bool",
+            Value::Tuple(_) => "Tuple",
+            Value::Callable(_) => "Callable",
+            Value::None(_) => "None",
+            Value::Set(_) => "Set",
+        }
+    }
+
     pub fn extend(&self, value: impl Into<Value>) -> Result<()> {
         let value = value.into();
 
         match self {
             Value::List(list) => list.extend(value),
-            Value::Dict(_) => bail!("can't extend Dict"),
-            Value::Str(_) => bail!("can't extend Str"),
-            Value::Number(_) => bail!("can't extend Number"),
-            Value::Bool(_) => bail!("can't extend Bool"),
-            Value::Tuple(_) => bail!("cant extend Tuple"),
-            Value::Callable(_) => bail!("can't extend Callable"),
-            Value::None(_) => bail!("can't extend None"),
-            Value::Set(_) => bail!("can't extend Set"),
+            _ => bail!("can't extend {}", self.type_name()),
         }
     }
 
@@ -86,70 +93,49 @@ impl Value {
     pub fn as_dict(&self) -> Result<Gc<Dict>> {
         match self {
             Value::Dict(value) => Ok(value.clone()),
-            Value::List(_) => bail!("List is not a Dict"),
-            Value::Str(_) => bail!("Str is not a Dict"),
-            Value::Number(_) => bail!("Number is not a Dict"),
-            Value::Bool(_) => bail!("Bool is not a Dict"),
-            Value::Tuple(_) => bail!("Tuple is not a Dict"),
-            Value::Callable(_) => bail!("Callable is not a Dict"),
-            Value::None(_) => bail!("None is not a Dict"),
-            Value::Set(_) => bail!("Set is not a Dict"),
+            _ => bail!("{} is not a Dict", self.type_name()),
+        }
+    }
+
+    pub fn as_list(&self) -> Result<&List> {
+        match self {
+            Value::List(value) => Ok(value),
+            _ => bail!("{} is not a List", self.type_name()),
         }
     }
 
     pub fn as_str(&self) -> Result<Gc<Str>> {
         match self {
-            Value::Dict(_) => bail!("Dict is not a Str"),
-            Value::List(_) => bail!("List is not a Str"),
             Value::Str(value) => Ok(value.clone()),
-            Value::Number(_) => bail!("Number is not a Str"),
-            Value::Bool(_) => bail!("Bool is not a Str"),
-            Value::Tuple(_) => bail!("Tuple is not a Str"),
-            Value::Callable(_) => bail!("Callable is not a Str"),
-            Value::None(_) => bail!("None is not a Str"),
-            Value::Set(_) => bail!("Set is not a Str"),
+            _ => bail!("{} is not a Str", self.type_name()),
         }
     }
 
     pub fn as_number(&self) -> Result<Gc<Number>> {
         match self {
-            Value::Dict(_) => bail!("Dict is not a Tuple"),
-            Value::List(_) => bail!("List is not a Tuple"),
-            Value::Str(_) => bail!("Str is not a Tuple"),
             Value::Number(value) => Ok(value.clone()),
-            Value::Bool(_) => bail!("Bool is not a Tuple"),
-            Value::Tuple(_) => bail!("Tuple is not a Number"),
-            Value::Callable(_) => bail!("Callable is not a Tuple"),
-            Value::None(_) => bail!("None is not Tuple"),
-            Value::Set(_) => bail!("Set is not a Tuple"),
+            _ => bail!("{} is not a Number", self.type_name()),
         }
     }
 
     pub fn as_tuple(&self) -> Result<Gc<Tuple>> {
         match self {
-            Value::Dict(_) => bail!("Dict is not a Tuple"),
-            Value::List(_) => bail!("List is not a Tuple"),
-            Value::Str(_) => bail!("Str is not a Tuple"),
-            Value::Number(_) => bail!("Number is not a Tuple"),
-            Value::Bool(_) => bail!("Bool is not a Tuple"),
             Value::Tuple(value) => Ok(value.clone()),
-            Value::Callable(_) => bail!("Callable is not a Tuple"),
-            Value::None(_) => bail!("None is not a Tuple"),
-            Value::Set(_) => bail!("Set is not a Tuple"),
+            _ => bail!("{} is not a Tuple", self.type_name()),
         }
     }
 
     pub fn as_callable(&self) -> Result<&Callable> {
         match self {
-            Value::Dict(_) => bail!("Dict is not a Callable"),
-            Value::List(_) => bail!("List is not a Callable"),
-            Value::Str(_) => bail!("Str is not a Callable"),
-            Value::Number(_) => bail!("Number is not a Callable"),
-            Value::Bool(_) => bail!("Bool is not a Callable"),
-            Value::Tuple(_) => bail!("Tuple is not a Callable"),
             Value::Callable(callable) => Ok(callable),
-            Value::None(_) => bail!("None is not a Callable"),
-            Value::Set(_) => bail!("Set is not a Callable"),
+            _ => bail!("{} is not a Callable", self.type_name()),
+        }
+    }
+
+    pub fn as_set(&self) -> Result<&Set> {
+        match self {
+            Value::Set(set) => Ok(set),
+            _ => bail!("{} is not a Set", self.type_name()),
         }
     }
 
