@@ -9,7 +9,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use dumpster::sync::Gc;
 use itertools::Itertools;
 
-use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Tuple, Value};
+use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Value};
 
 mod dispatch;
 mod op;
@@ -456,6 +456,12 @@ where
         let value = Value::Str(value);
 
         self.stack.push(value);
+
+        Ok(())
+    }
+
+    pub fn load_empty_set(&mut self) -> Result<()> {
+        self.push(Value::empty_set());
 
         Ok(())
     }

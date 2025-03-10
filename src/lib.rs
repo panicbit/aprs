@@ -1,6 +1,12 @@
 #![allow(clippy::let_and_return)]
 
+use fnv::FnvBuildHasher;
+use indexmap::{IndexMap, IndexSet};
+
 pub mod game;
 pub mod pickle;
 pub mod proto;
 pub mod server;
+
+type FnvIndexMap<K, V> = IndexMap<K, V, FnvBuildHasher>;
+type FnvIndexSet<K> = IndexSet<K, FnvBuildHasher>;

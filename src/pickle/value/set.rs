@@ -5,27 +5,26 @@ use anyhow::{Result, bail};
 use dumpster::Trace;
 use parking_lot::RwLock;
 
-use crate::FnvIndexMap;
+use crate::FnvIndexSet;
 
 use super::Value;
 
 #[derive(Default)]
-pub struct Dict(RwLock<FnvIndexMap<Element, Element>>);
+pub struct Set(RwLock<FnvIndexSet<Element>>);
 
-impl Dict {
+impl Set {
     pub fn new() -> Self {
-        Self(RwLock::new(FnvIndexMap::default()))
+        Self(RwLock::new(FnvIndexSet::default()))
     }
 
-    pub fn insert(&self, key: impl Into<Value>, value: impl Into<Value>) -> Result<()> {
+    pub fn insert(&self, key: impl Into<Value>) -> Result<()> {
         let key = key.into();
-        let value = value.into();
 
         if !key.is_hashable() {
             bail!("key is not hashable");
         }
 
-        self.0.write().insert(Element(key), Element(value));
+        self.0.write().insert(Element(key));
 
         Ok(())
     }
@@ -42,33 +41,29 @@ impl Dict {
             .cloned()
     }
 
+    pub fn contains(&self, key: Value) -> bool {
+        self.0.read().contains(&Element(key))
+    }
+
     pub fn iter(&self) -> Iter<'_> {
         self.into_iter()
     }
-
-    pub fn values(&self) -> Values<'_> {
-        Values {
-            dict: self,
-            index: 0,
-            max_len: self.len(),
-        }
-    }
 }
 
-impl PartialEq for Dict {
+impl PartialEq for Set {
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
             return false;
         }
 
-        for (key, value) in self {
-            if other.get(key) != Some(value) {
+        for key in self {
+            if !other.contains(key) {
                 return false;
             }
         }
 
-        for (key, value) in other {
-            if self.get(key) != Some(value) {
+        for key in other {
+            if !self.contains(key) {
                 return false;
             }
         }
@@ -77,25 +72,24 @@ impl PartialEq for Dict {
     }
 }
 
-unsafe impl Trace for Dict {
+unsafe impl Trace for Set {
     fn accept<V: dumpster::Visitor>(&self, visitor: &mut V) -> Result<(), ()> {
-        for (key, value) in self {
+        for key in self {
             key.accept(visitor)?;
-            value.accept(visitor)?;
         }
 
         Ok(())
     }
 }
 
-impl fmt::Debug for Dict {
+impl fmt::Debug for Set {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_map().entries(self).finish()
+        f.debug_set().entries(self).finish()
     }
 }
 
-impl<'a> IntoIterator for &'a Dict {
-    type Item = (Value, Value);
+impl<'a> IntoIterator for &'a Set {
+    type Item = Value;
     type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -108,50 +102,24 @@ impl<'a> IntoIterator for &'a Dict {
 }
 
 pub struct Iter<'a> {
-    dict: &'a Dict,
+    dict: &'a Set,
     index: usize,
     max_len: usize,
 }
 
 impl Iterator for Iter<'_> {
-    type Item = (Value, Value);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let vec = self.dict.0.read();
-
-        // This prevents appending a dict to itself from ending up in an endless loop
-        if self.index >= self.max_len {
-            return None;
-        }
-
-        let (Element(key), Element(value)) = vec.get_index(self.index)?;
-        let value = (key.clone(), value.clone());
-
-        self.index += 1;
-
-        Some(value)
-    }
-}
-
-pub struct Values<'a> {
-    dict: &'a Dict,
-    index: usize,
-    max_len: usize,
-}
-
-impl Iterator for Values<'_> {
     type Item = Value;
 
     fn next(&mut self) -> Option<Self::Item> {
         let vec = self.dict.0.read();
 
-        // This prevents appending a dict to itself from ending up in an endless loop
+        // This prevents appending a set to itself from ending up in an endless loop
         if self.index >= self.max_len {
             return None;
         }
 
-        let (_, value) = vec.get_index(self.index)?;
-        let value = value.0.clone();
+        let Element(value) = vec.get_index(self.index)?;
+        let value = value.clone();
 
         self.index += 1;
 

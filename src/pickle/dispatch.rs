@@ -72,7 +72,7 @@ where
             op::SHORT_BINUNICODE => self.load_short_binunicode(),
             op::BINUNICODE8 => bail!("unhandled op: BINUNICODE8"),
             op::BINBYTES8 => bail!("unhandled op: BINBYTES8"),
-            op::EMPTY_SET => bail!("unhandled op: EMPTY_SET"),
+            op::EMPTY_SET => self.load_empty_set(),
             op::ADDITEMS => bail!("unhandled op: ADDITEMS"),
             op::FROZENSET => bail!("unhandled op: FROZENSET"),
             op::NEWOBJ_EX => bail!("unhandled op: NEWOBJ_EX"),

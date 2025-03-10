@@ -26,6 +26,9 @@ pub use callable::Callable;
 mod none;
 pub use none::None;
 
+mod set;
+pub use set::Set;
+
 #[derive(Trace, Clone)]
 pub enum Value {
     Dict(Gc<Dict>),
@@ -36,6 +39,7 @@ pub enum Value {
     Tuple(Gc<Tuple>),
     Callable(Callable),
     None(None),
+    Set(Gc<Set>),
 }
 
 impl Value {
@@ -49,6 +53,7 @@ impl Value {
             Value::Tuple(gc) => gc.into(),
             Value::Callable(callable) => callable.id(),
             Value::None(gc) => gc.id(),
+            Value::Set(gc) => gc.into(),
         }
     }
 
@@ -72,6 +77,7 @@ impl Value {
             Value::Tuple(_) => bail!("cant extend Tuple"),
             Value::Callable(_) => bail!("can't extend Callable"),
             Value::None(_) => bail!("can't extend None"),
+            Value::Set(_) => bail!("can't extend Set"),
         }
     }
 
@@ -87,6 +93,7 @@ impl Value {
             Value::Tuple(_) => bail!("Tuple is not a Dict"),
             Value::Callable(_) => bail!("Callable is not a Dict"),
             Value::None(_) => bail!("None is not a Dict"),
+            Value::Set(_) => bail!("Set is not a Dict"),
         }
     }
 
@@ -100,6 +107,7 @@ impl Value {
             Value::Tuple(_) => bail!("Tuple is not a Str"),
             Value::Callable(_) => bail!("Callable is not a Str"),
             Value::None(_) => bail!("None is not a Str"),
+            Value::Set(_) => bail!("Set is not a Str"),
         }
     }
 
@@ -113,6 +121,7 @@ impl Value {
             Value::Tuple(_) => bail!("Tuple is not a Number"),
             Value::Callable(_) => bail!("Callable is not a Tuple"),
             Value::None(_) => bail!("None is not Tuple"),
+            Value::Set(_) => bail!("Set is not a Tuple"),
         }
     }
 
@@ -126,6 +135,7 @@ impl Value {
             Value::Tuple(value) => Ok(value.clone()),
             Value::Callable(_) => bail!("Callable is not a Tuple"),
             Value::None(_) => bail!("None is not a Tuple"),
+            Value::Set(_) => bail!("Set is not a Tuple"),
         }
     }
 
@@ -139,6 +149,7 @@ impl Value {
             Value::Tuple(_) => bail!("Tuple is not a Callable"),
             Value::Callable(callable) => Ok(callable),
             Value::None(_) => bail!("None is not a Callable"),
+            Value::Set(_) => bail!("Set is not a Callable"),
         }
     }
 
@@ -152,6 +163,7 @@ impl Value {
             Value::Tuple(gc) => gc.as_ref().hash(state),
             Value::Callable(_callable) => bail!("Callable is unhashable"),
             Value::None(none) => none.hash(state),
+            Value::Set(_) => bail!("Set is unhashable"),
         }
 
         Ok(())
@@ -167,6 +179,7 @@ impl Value {
             Value::Tuple(value) => value.is_hashable(),
             Value::Callable(_callable) => false,
             Value::None(_) => true,
+            Value::Set(_) => false,
         }
     }
 
@@ -193,6 +206,10 @@ impl Value {
 
     pub fn none() -> Self {
         Self::None(None::new())
+    }
+
+    pub fn empty_set() -> Self {
+        Self::Set(Gc::new(Set::new()))
     }
 }
 
@@ -237,6 +254,7 @@ impl fmt::Debug for Value {
             Value::Tuple(gc) => f.debug_tuple("Tuple").field(gc.as_ref()).finish(),
             Value::Callable(callable) => f.debug_tuple("Callable").field(&callable).finish(),
             Value::None(none) => f.debug_tuple("None").field(none).finish(),
+            Value::Set(gc) => f.debug_tuple("Set").field(gc.as_ref()).finish(),
         }
     }
 }
@@ -266,6 +284,9 @@ impl PartialEq for Value {
             (Value::None(_), Value::None(_)) => true,
             (Value::None(_), _) => false,
             (_, Value::None(_)) => false,
+            (Value::Set(v1), Value::Set(v2)) => v1 == v2,
+            (Value::Set(_), _) => false,
+            (_, Value::Set(_)) => false,
         }
     }
 }

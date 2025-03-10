@@ -7,7 +7,7 @@ use anyhow::{Context, Result, ensure};
 use bitflags::bitflags;
 use byteorder::ReadBytesExt;
 use flate2::read::ZlibDecoder;
-use indexmap::IndexMap;
+use fnv::FnvHashMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_tuple::Deserialize_tuple;
 use serde_with::FromInto;
@@ -17,6 +17,7 @@ use sha1::{Digest, Sha1};
 mod multidata;
 pub use multidata::MultiData;
 
+use crate::FnvIndexMap;
 use crate::proto::common::NetworkVersion;
 
 #[derive(Debug)]
@@ -215,10 +216,10 @@ impl ops::DerefMut for HashedGameData {
 // field order is significant for checksum calculation
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GameData {
-    pub item_name_groups: IndexMap<String, Vec<String>>,
-    pub item_name_to_id: IndexMap<String, ItemId>,
-    pub location_name_groups: IndexMap<String, Vec<String>>,
-    pub location_name_to_id: IndexMap<String, LocationId>,
+    pub item_name_groups: FnvIndexMap<String, Vec<String>>,
+    pub item_name_to_id: FnvIndexMap<String, ItemId>,
+    pub location_name_groups: FnvIndexMap<String, Vec<String>>,
+    pub location_name_to_id: FnvIndexMap<String, LocationId>,
 }
 
 impl GameData {

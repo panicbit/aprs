@@ -47,6 +47,7 @@ impl List {
             Value::Tuple(_) => bail!("can't extend List with Tuple"),
             Value::Callable(_) => bail!("can't extend List with Callable"),
             Value::None(_) => bail!("can't extend List with None"),
+            Value::Set(_) => bail!("can't extend List with Set"),
         }
     }
 
