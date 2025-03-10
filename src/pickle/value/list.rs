@@ -2,7 +2,6 @@ use std::fmt;
 
 use anyhow::{Result, bail};
 use dumpster::Trace;
-use dumpster::sync::Gc;
 use parking_lot::RwLock;
 
 use super::Value;
@@ -10,8 +9,8 @@ use super::Value;
 pub struct List(RwLock<Vec<Value>>);
 
 impl List {
-    pub fn new() -> Gc<Self> {
-        Gc::new(Self(RwLock::new(Vec::new())))
+    pub fn new() -> Self {
+        Self(RwLock::new(Vec::new()))
     }
 
     pub fn iter(&self) -> Iter {
@@ -30,6 +29,10 @@ impl List {
         self.0.write().push(value);
     }
 
+    pub fn pop(&self) -> Option<Value> {
+        self.0.write().pop()
+    }
+
     pub fn get(&self, index: usize) -> Option<Value> {
         self.0.read().get(index).cloned()
     }
@@ -41,6 +44,7 @@ impl List {
             Value::BinStr(_) => bail!("can't extend List with BinStr"),
             Value::Number(_) => bail!("can't extend List with Number"),
             Value::Bool(_) => bail!("can't extend List with Bool"),
+            Value::Tuple(gc) => bail!("can't extend List with Tuple"),
         }
     }
 

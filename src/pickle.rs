@@ -5,11 +5,11 @@ use std::io::{Cursor, Read};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use dumpster::sync::Gc;
 use itertools::Itertools;
 
-use crate::pickle::value::{BinStr, Dict, List, Number, NumberCache, Value};
+use crate::pickle::value::{BinStr, Dict, List, Number, NumberCache, Tuple, Value};
 
 mod dispatch;
 mod op;
@@ -133,7 +133,7 @@ where
         Self {
             unframer: Unframer::new(reader),
             proto: 0,
-            stack: List::new(),
+            stack: Gc::new(List::new()),
             meta_stack: Vec::new(),
             // TODO: memo probably needs to be an IndexMap
             memo: Dict::new(),
@@ -145,6 +145,10 @@ where
 
     fn push(&mut self, value: Value) {
         self.stack.push(value);
+    }
+
+    fn pop(&mut self) -> Option<Value> {
+        self.stack.pop()
     }
 
     fn pop_mark(&mut self) -> Result<Gc<List>> {
@@ -178,7 +182,7 @@ where
     }
 
     pub fn load_mark(&mut self) -> Result<()> {
-        let stack = mem::replace(&mut self.stack, List::new());
+        let stack = mem::replace(&mut self.stack, Gc::new(List::new()));
 
         self.meta_stack.push(stack);
 
@@ -220,6 +224,20 @@ where
         Ok(())
     }
 
+    pub fn load_binget(&mut self) -> Result<()> {
+        let index = self.read_byte()?;
+        let index = self.number_cache.get_u8(index);
+
+        let value = self
+            .memo
+            .get(index.clone())
+            .with_context(|| anyhow!("Memo value not found at index {index:?}"))?;
+
+        self.push(value);
+
+        Ok(())
+    }
+
     pub fn load_empty_list(&mut self) -> Result<()> {
         self.stack.push(Value::empty_list());
 
@@ -248,6 +266,53 @@ where
         }
 
         self.proto = proto;
+
+        Ok(())
+    }
+
+    pub fn load_tuple1(&mut self) -> Result<()> {
+        let v1 = self
+            .pop()
+            .context("tried to construct 1-tuple from empty stack")?;
+
+        let tuple = Value::tuple((v1,));
+
+        self.push(tuple);
+
+        Ok(())
+    }
+
+    pub fn load_tuple2(&mut self) -> Result<()> {
+        let v2 = self
+            .pop()
+            .context("tried to construct 2-tuple from empty stack")?;
+        let v1 = self
+            .last()
+            .context("tried to construct 2-tuple from too small stack")?;
+
+        let tuple = Value::tuple((v1, v2));
+
+        self.push(tuple);
+
+        Ok(())
+    }
+
+    pub fn load_tuple3(&mut self) -> Result<()> {
+        let v3 = self
+            .pop()
+            .context("tried to construct 3-tuple from empty stack")?;
+        let v2 = self
+            .pop()
+            .context("tried to construct 3-tuple from too small stack")?;
+        let v1 = self
+            .last()
+            .context("tried to construct 3-tuple from too small stack")?;
+
+        self.push(v2.clone());
+
+        let tuple = Value::tuple((v1, v2, v3));
+
+        self.push(tuple);
 
         Ok(())
     }
@@ -285,6 +350,18 @@ where
         let value = Value::BinStr(value);
 
         self.stack.push(value);
+
+        Ok(())
+    }
+
+    pub fn load_stack_global(&mut self) -> Result<()> {
+        let name = self.pop();
+        let module = self.pop();
+
+        // TODO: ensure name and type are strings
+        // TODO: create single string type that also covers "binunicode"
+        // TODO: custom global loading
+        self.push(Value::empty_dict());
 
         Ok(())
     }

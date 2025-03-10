@@ -18,6 +18,9 @@ pub use number_cache::NumberCache;
 mod number;
 pub use number::Number;
 
+mod tuple;
+pub use tuple::Tuple;
+
 #[derive(Trace, Clone)]
 pub enum Value {
     Dict(Gc<Dict>),
@@ -25,6 +28,7 @@ pub enum Value {
     BinStr(Gc<BinStr>),
     Number(Gc<Number>),
     Bool(Gc<bool>),
+    Tuple(Gc<Tuple>),
 }
 
 impl Value {
@@ -35,6 +39,7 @@ impl Value {
             Value::BinStr(gc) => gc.into(),
             Value::Number(gc) => gc.into(),
             Value::Bool(gc) => gc.into(),
+            Value::Tuple(gc) => gc.into(),
         }
     }
 
@@ -43,7 +48,7 @@ impl Value {
     }
 
     pub fn empty_list() -> Self {
-        Value::List(List::new())
+        Value::List(Gc::new(List::new()))
     }
 
     pub fn extend(&self, value: impl Into<Value>) -> Result<()> {
@@ -55,6 +60,7 @@ impl Value {
             Value::BinStr(_) => bail!("can't extend BinStr"),
             Value::Number(_) => bail!("can't extend Number"),
             Value::Bool(_) => bail!("can't extend Bool"),
+            Value::Tuple(_) => bail!("cant extend Tuple"),
         }
     }
 
@@ -65,6 +71,7 @@ impl Value {
             Value::BinStr(_) => bail!("BinStr is not a Dict"),
             Value::Number(_) => bail!("Byte is not a Dict"),
             Value::Bool(_) => bail!("Bool is not a Dict"),
+            Value::Tuple(_) => bail!("Tuple is not a Dict"),
         }
     }
 
@@ -75,6 +82,7 @@ impl Value {
             Value::BinStr(gc) => gc.as_ref().hash(state),
             Value::Number(gc) => gc.as_ref().hash(state),
             Value::Bool(gc) => gc.as_ref().hash(state),
+            Value::Tuple(gc) => gc.as_ref().hash(state),
         }
 
         Ok(())
@@ -87,7 +95,12 @@ impl Value {
             Value::BinStr(_) => true,
             Value::Number(_) => true,
             Value::Bool(_) => true,
+            Value::Tuple(value) => value.is_hashable(),
         }
+    }
+
+    pub fn tuple(value: impl Into<Tuple>) -> Self {
+        Self::Tuple(Gc::new(value.into()))
     }
 }
 
@@ -100,11 +113,12 @@ impl From<Gc<List>> for Value {
 impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Dict(_) => todo!("implement Debug for Dict"),
-            Value::List(value) => f.debug_tuple("List").field(&**value).finish(),
-            Value::BinStr(value) => f.debug_tuple("BinStr").field(&**value).finish(),
-            Value::Number(value) => f.debug_tuple("Number").field(&**value).finish(),
-            Value::Bool(value) => f.debug_tuple("Bool").field(&**value).finish(),
+            Value::Dict(gc) => f.debug_tuple("Map").field(gc.as_ref()).finish(),
+            Value::List(gc) => f.debug_tuple("List").field(gc.as_ref()).finish(),
+            Value::BinStr(gc) => f.debug_tuple("BinStr").field(gc.as_ref()).finish(),
+            Value::Number(gc) => f.debug_tuple("Number").field(gc.as_ref()).finish(),
+            Value::Bool(gc) => f.debug_tuple("Bool").field(gc.as_ref()).finish(),
+            Value::Tuple(gc) => f.debug_tuple("Tuple").field(gc.as_ref()).finish(),
         }
     }
 }
@@ -125,6 +139,9 @@ impl PartialEq for Value {
             (Value::Bool(v1), Value::Bool(v2)) => v1 == v2,
             (Value::Number(v1), Value::Bool(v2)) => v1.as_ref() == &Number::from(*v2.as_ref()),
             (Value::Bool(v1), Value::Number(v2)) => v2.as_ref() == &Number::from(*v1.as_ref()),
+            (Value::Tuple(v1), Value::Tuple(v2)) => v1 == v2,
+            (Value::Tuple(gc), _) => false,
+            (_, Value::Tuple(_)) => false,
         }
     }
 }

@@ -1,5 +1,5 @@
-use std::cmp;
 use std::hash::{Hash, Hasher};
+use std::{cmp, fmt};
 
 use anyhow::{Result, bail};
 use dumpster::Trace;
@@ -81,6 +81,12 @@ unsafe impl Trace for Dict {
         }
 
         Ok(())
+    }
+}
+
+impl fmt::Debug for Dict {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self).finish()
     }
 }
 
