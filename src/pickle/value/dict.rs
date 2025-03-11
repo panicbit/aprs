@@ -3,18 +3,24 @@ use std::{cmp, fmt};
 
 use anyhow::{Result, bail};
 use dumpster::Trace;
-use parking_lot::RwLock;
 
 use crate::FnvIndexMap;
+use crate::pickle::value::Id;
+use crate::pickle::value::rw_gc::RwGc;
+use crate::pickle::value::traced::Traced;
 
 use super::Value;
 
-#[derive(Default)]
-pub struct Dict(RwLock<FnvIndexMap<Element, Element>>);
+#[derive(Clone, Trace)]
+pub struct Dict(RwGc<Traced<FnvIndexMap<Element, Element>>>);
 
 impl Dict {
     pub fn new() -> Self {
-        Self(RwLock::new(FnvIndexMap::default()))
+        Self(RwGc::new(Traced(FnvIndexMap::default())))
+    }
+
+    pub fn id(&self) -> Id {
+        self.0.id()
     }
 
     pub fn insert(&self, key: impl Into<Value>, value: impl Into<Value>) -> Result<()> {
@@ -77,14 +83,9 @@ impl PartialEq for Dict {
     }
 }
 
-unsafe impl Trace for Dict {
-    fn accept<V: dumpster::Visitor>(&self, visitor: &mut V) -> Result<(), ()> {
-        for (key, value) in self {
-            key.accept(visitor)?;
-            value.accept(visitor)?;
-        }
-
-        Ok(())
+impl Default for Dict {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -159,6 +160,7 @@ impl Iterator for Values<'_> {
     }
 }
 
+#[derive(Trace)]
 struct Element(Value);
 
 impl Hash for Element {

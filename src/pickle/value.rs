@@ -1,7 +1,7 @@
+use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::{fmt, ops};
 
-use anyhow::{Error, Result, bail};
+use anyhow::{Result, bail};
 use dumpster::Trace;
 use dumpster::sync::Gc;
 
@@ -29,40 +29,59 @@ pub use none::None;
 mod set;
 pub use set::Set;
 
+mod str;
+pub use str::Str;
+
+mod bool;
+pub use bool::Bool;
+
+mod rw_gc;
+mod traced;
+
 #[derive(Trace, Clone)]
 pub enum Value {
-    Dict(Gc<Dict>),
-    List(Gc<List>),
-    Str(Gc<Str>),
-    Number(Gc<Number>),
-    Bool(Gc<bool>),
-    Tuple(Gc<Tuple>),
+    Dict(Dict),
+    List(List),
+    Str(Str),
+    Number(Number),
+    Bool(Bool),
+    Tuple(Tuple),
     Callable(Callable),
     None(None),
-    Set(Gc<Set>),
+    Set(Set),
 }
 
 impl Value {
     pub fn id(&self) -> Id {
         match self {
-            Value::Dict(gc) => gc.into(),
-            Value::List(gc) => gc.into(),
-            Value::Str(gc) => gc.into(),
-            Value::Number(gc) => gc.into(),
-            Value::Bool(gc) => gc.into(),
-            Value::Tuple(gc) => gc.into(),
+            Value::Dict(dict) => dict.id(),
+            Value::List(list) => list.id(),
+            Value::Str(str) => str.id(),
+            Value::Number(number) => number.id(),
+            Value::Bool(bool) => bool.id(),
+            Value::Tuple(tuple) => tuple.id(),
             Value::Callable(callable) => callable.id(),
-            Value::None(gc) => gc.id(),
-            Value::Set(gc) => gc.into(),
+            Value::None(none) => none.id(),
+            Value::Set(set) => set.id(),
         }
     }
 
     pub fn empty_dict() -> Self {
-        Value::Dict(Gc::new(Dict::default()))
+        Value::Dict(Dict::default())
     }
 
     pub fn empty_list() -> Self {
-        Value::List(Gc::new(List::new()))
+        Value::List(List::new())
+    }
+
+    #[expect(non_snake_case)]
+    pub fn False() -> Self {
+        Self::Bool(Bool::False())
+    }
+
+    #[expect(non_snake_case)]
+    pub fn True() -> Self {
+        Self::Bool(Bool::True())
     }
 
     pub fn type_name(&self) -> &'static str {
@@ -90,44 +109,44 @@ impl Value {
 
     // TODO: move conversions TryFrom impls
 
-    pub fn as_dict(&self) -> Result<Gc<Dict>> {
+    pub fn as_dict(&self) -> Result<Dict> {
         match self {
-            Value::Dict(value) => Ok(value.clone()),
+            Value::Dict(dict) => Ok(dict.clone()),
             _ => bail!("{} is not a Dict", self.type_name()),
         }
     }
 
-    pub fn as_list(&self) -> Result<&List> {
+    pub fn as_list(&self) -> Result<List> {
         match self {
-            Value::List(value) => Ok(value),
+            Value::List(list) => Ok(list.clone()),
             _ => bail!("{} is not a List", self.type_name()),
         }
     }
 
-    pub fn as_str(&self) -> Result<Gc<Str>> {
+    pub fn as_str(&self) -> Result<Str> {
         match self {
-            Value::Str(value) => Ok(value.clone()),
+            Value::Str(str) => Ok(str.clone()),
             _ => bail!("{} is not a Str", self.type_name()),
         }
     }
 
-    pub fn as_number(&self) -> Result<Gc<Number>> {
+    pub fn as_number(&self) -> Result<Number> {
         match self {
-            Value::Number(value) => Ok(value.clone()),
+            Value::Number(number) => Ok(number.clone()),
             _ => bail!("{} is not a Number", self.type_name()),
         }
     }
 
-    pub fn as_tuple(&self) -> Result<Gc<Tuple>> {
+    pub fn as_tuple(&self) -> Result<Tuple> {
         match self {
-            Value::Tuple(value) => Ok(value.clone()),
+            Value::Tuple(tuple) => Ok(tuple.clone()),
             _ => bail!("{} is not a Tuple", self.type_name()),
         }
     }
 
-    pub fn as_callable(&self) -> Result<&Callable> {
+    pub fn as_callable(&self) -> Result<Callable> {
         match self {
-            Value::Callable(callable) => Ok(callable),
+            Value::Callable(callable) => Ok(callable.clone()),
             _ => bail!("{} is not a Callable", self.type_name()),
         }
     }
@@ -143,10 +162,10 @@ impl Value {
         match self {
             Value::Dict(_) => bail!("Dict is unhashable"),
             Value::List(_) => bail!("List is unhashable"),
-            Value::Str(gc) => gc.as_ref().hash(state),
-            Value::Number(gc) => gc.as_ref().hash(state),
-            Value::Bool(gc) => gc.as_ref().hash(state),
-            Value::Tuple(gc) => gc.as_ref().hash(state),
+            Value::Str(str) => str.hash(state),
+            Value::Number(number) => number.hash(state),
+            Value::Bool(bool) => bool.hash(state),
+            Value::Tuple(tuple) => tuple.hash(state),
             Value::Callable(_callable) => bail!("Callable is unhashable"),
             Value::None(none) => none.hash(state),
             Value::Set(_) => bail!("Set is unhashable"),
@@ -170,17 +189,15 @@ impl Value {
     }
 
     pub fn tuple(value: impl Into<Tuple>) -> Self {
-        Self::Tuple(Gc::new(value.into()))
+        Self::Tuple(value.into())
     }
 
     pub fn empty_tuple() -> Self {
-        Self::Tuple(Gc::new(Tuple::empty()))
+        Self::Tuple(Tuple::empty())
     }
 
     pub fn str(s: impl Into<String>) -> Self {
-        let s = s.into();
-
-        Self::Str(Gc::new(Str(s)))
+        Self::Str(Str::from(s.into()))
     }
 
     pub fn callable<F>(f: F) -> Self
@@ -195,52 +212,52 @@ impl Value {
     }
 
     pub fn empty_set() -> Self {
-        Self::Set(Gc::new(Set::new()))
+        Self::Set(Set::new())
     }
 }
 
 impl From<&str> for Value {
-    fn from(value: &str) -> Self {
-        Self::str(value)
+    fn from(str: &str) -> Self {
+        Self::str(str)
     }
 }
 
 impl From<Dict> for Value {
-    fn from(value: Dict) -> Self {
-        Value::Dict(Gc::new(value))
+    fn from(dict: Dict) -> Self {
+        Value::Dict(dict)
     }
 }
 
-impl From<Gc<List>> for Value {
-    fn from(value: Gc<List>) -> Self {
-        Value::List(value)
+impl From<List> for Value {
+    fn from(list: List) -> Self {
+        Value::List(list)
     }
 }
 
-impl From<Gc<Str>> for Value {
-    fn from(value: Gc<Str>) -> Self {
-        Value::Str(value)
+impl From<Str> for Value {
+    fn from(str: Str) -> Self {
+        Value::Str(str)
     }
 }
 
-impl From<Gc<Number>> for Value {
-    fn from(value: Gc<Number>) -> Self {
-        Value::Number(value)
+impl From<Number> for Value {
+    fn from(number: Number) -> Self {
+        Value::Number(number)
     }
 }
 
 impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Dict(gc) => f.debug_tuple("Map").field(gc.as_ref()).finish(),
-            Value::List(gc) => f.debug_tuple("List").field(gc.as_ref()).finish(),
-            Value::Str(gc) => f.debug_tuple("Str").field(gc.as_ref()).finish(),
-            Value::Number(gc) => f.debug_tuple("Number").field(gc.as_ref()).finish(),
-            Value::Bool(gc) => f.debug_tuple("Bool").field(gc.as_ref()).finish(),
-            Value::Tuple(gc) => f.debug_tuple("Tuple").field(gc.as_ref()).finish(),
+            Value::Dict(dict) => f.debug_tuple("Dict").field(dict).finish(),
+            Value::List(list) => f.debug_tuple("List").field(list).finish(),
+            Value::Str(str) => f.debug_tuple("Str").field(str).finish(),
+            Value::Number(number) => f.debug_tuple("Number").field(number).finish(),
+            Value::Bool(bool) => f.debug_tuple("Bool").field(bool).finish(),
+            Value::Tuple(tuple) => f.debug_tuple("Tuple").field(tuple).finish(),
             Value::Callable(callable) => f.debug_tuple("Callable").field(&callable).finish(),
             Value::None(none) => f.debug_tuple("None").field(none).finish(),
-            Value::Set(gc) => f.debug_tuple("Set").field(gc.as_ref()).finish(),
+            Value::Set(set) => f.debug_tuple("Set").field(set).finish(),
         }
     }
 }
@@ -259,8 +276,8 @@ impl PartialEq for Value {
             (_, Value::Str(_)) => false,
             (Value::Number(v1), Value::Number(v2)) => v1 == v2,
             (Value::Bool(v1), Value::Bool(v2)) => v1 == v2,
-            (Value::Number(v1), Value::Bool(v2)) => v1.as_ref() == &Number::from(*v2.as_ref()),
-            (Value::Bool(v1), Value::Number(v2)) => v2.as_ref() == &Number::from(*v1.as_ref()),
+            (Value::Number(v1), Value::Bool(v2)) => v1 == &Number::from(**v2),
+            (Value::Bool(v1), Value::Number(v2)) => v2 == &Number::from(**v1),
             (Value::Tuple(v1), Value::Tuple(v2)) => v1 == v2,
             (Value::Tuple(_), _) => false,
             (_, Value::Tuple(_)) => false,
@@ -274,43 +291,6 @@ impl PartialEq for Value {
             (Value::Set(_), _) => false,
             (_, Value::Set(_)) => false,
         }
-    }
-}
-
-#[derive(Trace, Default, PartialEq, Hash)]
-pub struct Str(String);
-
-impl Str {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl From<String> for Str {
-    fn from(value: String) -> Self {
-        Self(value)
-    }
-}
-
-impl From<&'_ str> for Str {
-    fn from(value: &'_ str) -> Self {
-        Self(String::from(value))
-    }
-}
-
-impl TryFrom<Value> for Gc<Str> {
-    type Error = Error;
-
-    fn try_from(value: Value) -> Result<Self> {
-        value.as_str()
-    }
-}
-
-impl ops::Deref for Str {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 
@@ -335,11 +315,5 @@ impl<T: Trace + Send + Sync> From<Gc<T>> for Id {
 impl<T: ?Sized> From<*const T> for Id {
     fn from(ptr: *const T) -> Self {
         Self(ptr.cast::<()>())
-    }
-}
-
-impl fmt::Debug for Str {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
     }
 }

@@ -1,4 +1,3 @@
-use dumpster::sync::Gc;
 use fnv::FnvHashMap;
 
 use crate::pickle::value::Number;
@@ -19,14 +18,14 @@ impl NumberCache {
     pub fn get_u8(&mut self, value: u8) -> Value {
         self.values
             .entry(value.into())
-            .or_insert_with(|| Value::Number(Gc::new(value.into())))
+            .or_insert_with(|| Value::Number(value.into()))
             .clone()
     }
 
     pub fn get_i16(&mut self, value: i16) -> Value {
         self.values
             .entry(value)
-            .or_insert_with(|| Value::Number(Gc::new(value.into())))
+            .or_insert_with(|| Value::Number(value.into()))
             .clone()
     }
 
@@ -35,7 +34,7 @@ impl NumberCache {
             return self.get_i16(value);
         }
 
-        Value::Number(Gc::new(Number::from(value)))
+        Value::Number(Number::from(value))
     }
 
     pub fn get_i32(&mut self, value: i32) -> Value {
@@ -43,7 +42,7 @@ impl NumberCache {
             return self.get_i16(value);
         }
 
-        Value::Number(Gc::new(Number::from(value)))
+        Value::Number(Number::from(value))
     }
 
     pub fn get_u32(&mut self, value: u32) -> Value {
@@ -51,7 +50,7 @@ impl NumberCache {
             return self.get_u16(value);
         }
 
-        Value::Number(Gc::new(Number::from(value)))
+        Value::Number(Number::from(value))
     }
 
     pub fn get_usize(&mut self, value: usize) -> Value {
@@ -59,6 +58,6 @@ impl NumberCache {
             return self.get_i32(value);
         }
 
-        Value::Number(Gc::new(Number::from(value)))
+        Value::Number(Number::from(value))
     }
 }

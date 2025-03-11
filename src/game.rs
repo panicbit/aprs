@@ -7,7 +7,6 @@ use anyhow::{Context, Result, ensure};
 use bitflags::bitflags;
 use byteorder::ReadBytesExt;
 use flate2::read::ZlibDecoder;
-use fnv::FnvHashMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_tuple::Deserialize_tuple;
 use serde_with::FromInto;
@@ -50,7 +49,8 @@ impl Game {
 
         let mut multi_data = ZlibDecoder::new(multi_data);
 
-        crate::pickle::unpickle(&mut multi_data)?;
+        let value = crate::pickle::unpickle(&mut multi_data)?;
+        // println!("{value:#?}");
 
         panic!("TEST END");
 

@@ -2,17 +2,20 @@ use std::hash::{Hash, Hasher};
 
 use anyhow::{Context, Error, Result, bail};
 use dumpster::Trace;
-use dumpster::sync::Gc;
 
-use crate::pickle::value::{List, Value};
+use crate::pickle::value::{Id, List, Value};
 
 // TODO: replace List with Vec. Tuples are immutable, so the underlying lock is not needed.
 
-#[derive(Trace, Debug, PartialEq)]
+#[derive(Trace, Debug, PartialEq, Clone)]
 
 pub struct Tuple(List);
 
 impl Tuple {
+    pub fn id(&self) -> Id {
+        self.0.id()
+    }
+
     pub fn empty() -> Self {
         Self(List::new())
     }
@@ -32,12 +35,6 @@ impl Tuple {
 
 impl From<&List> for Tuple {
     fn from(list: &List) -> Self {
-        list.iter().collect::<Tuple>()
-    }
-}
-
-impl From<Gc<List>> for Tuple {
-    fn from(list: Gc<List>) -> Self {
         list.iter().collect::<Tuple>()
     }
 }

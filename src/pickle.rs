@@ -6,7 +6,6 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use anyhow::{Context, Result, anyhow, bail};
-use dumpster::sync::Gc;
 use itertools::Itertools;
 
 use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Value};
@@ -17,14 +16,14 @@ mod value;
 
 const HIGHEST_PROTOCOL: u8 = 5;
 
-pub fn unpickle<R: Read>(reader: &mut R) -> Result<()> {
+pub fn unpickle<R: Read>(reader: &mut R) -> Result<Value> {
     Unpickler::new(reader, |module, name| {
         eprintln!("Trying to locate {module}.{name}");
 
         Ok(match (module, name) {
             ("NetUtils", "NetworkSlot") => Value::callable(|args| {
                 let (name, game, r#type, group_members) =
-                    <(Gc<Str>, Gc<Str>, Gc<Number>, Value)>::try_from(args)?;
+                    <(Str, Str, Number, Value)>::try_from(args)?;
 
                 let dict = Dict::new();
 
@@ -41,7 +40,7 @@ pub fn unpickle<R: Read>(reader: &mut R) -> Result<()> {
                     // TODO: create iterator-like type for tuple that allows conversion
                     // e.g. ".next_number()" or `.next::<Number>()`
                     // Or how about a class trait + a derive?
-                    let (slot_type,) = <(Gc<Number>,)>::try_from(args)?;
+                    let (slot_type,) = <(Number,)>::try_from(args)?;
 
                     Ok(Value::Number(slot_type))
                 })
@@ -49,9 +48,7 @@ pub fn unpickle<R: Read>(reader: &mut R) -> Result<()> {
             _ => bail!("could not find {module}.{name}"),
         })
     })
-    .load()?;
-
-    Ok(())
+    .load()
 }
 
 struct Unframer<R> {
@@ -168,12 +165,10 @@ where
 struct Unpickler<R, FindClass> {
     unframer: Unframer<R>,
     proto: u8,
-    stack: Gc<List>,
-    meta_stack: Vec<Gc<List>>,
-    memo: Gc<Dict>,
+    stack: List,
+    meta_stack: Vec<List>,
+    memo: Dict,
     number_cache: NumberCache,
-    r#true: Value,
-    r#false: Value,
     find_class: FindClass,
     result: Option<Value>,
 }
@@ -187,13 +182,11 @@ where
         Self {
             unframer: Unframer::new(reader),
             proto: 0,
-            stack: Gc::new(List::new()),
+            stack: List::new(),
             meta_stack: Vec::new(),
             // TODO: memo probably needs to be an IndexMap
-            memo: Gc::new(Dict::new()),
+            memo: Dict::new(),
             number_cache: NumberCache::new(),
-            r#true: Value::Bool(Gc::new(true)),
-            r#false: Value::Bool(Gc::new(false)),
             find_class,
             result: None,
         }
@@ -207,14 +200,14 @@ where
         self.stack.pop()
     }
 
-    fn pop_mark(&mut self) -> Result<Gc<List>> {
+    fn pop_mark(&mut self) -> Result<List> {
         let stack = self.pop_meta()?;
         let stack = mem::replace(&mut self.stack, stack);
 
         Ok(stack)
     }
 
-    fn pop_meta(&mut self) -> Result<Gc<List>> {
+    fn pop_meta(&mut self) -> Result<List> {
         self.meta_stack
             .pop()
             .context("tried to pop meta with empty meta stack")
@@ -242,7 +235,7 @@ where
     }
 
     pub fn load_mark(&mut self) -> Result<()> {
-        let stack = mem::replace(&mut self.stack, Gc::new(List::new()));
+        let stack = mem::replace(&mut self.stack, List::new());
 
         self.meta_stack.push(stack);
 
@@ -483,13 +476,13 @@ where
     }
 
     pub fn load_newtrue(&mut self) -> Result<()> {
-        self.push(self.r#true.clone());
+        self.push(Value::True());
 
         Ok(())
     }
 
     pub fn load_newfalse(&mut self) -> Result<()> {
-        self.push(self.r#false.clone());
+        self.push(Value::False());
 
         Ok(())
     }
@@ -499,7 +492,7 @@ where
         let len = usize::from(len);
         let bytes = self.read_vec(len)?;
         let n = Number::from_signed_bytes_le(&bytes);
-        let n = Value::Number(Gc::new(n));
+        let n = Value::Number(n);
 
         self.push(n);
 
@@ -513,7 +506,6 @@ where
         // TODO: this might be too strict, python uses `surrogatepass` error handler
         let value = String::from_utf8(value).context("invalid BinUnicode")?;
         let value = Str::from(value);
-        let value = Gc::new(value);
         let value = Value::Str(value);
 
         self.stack.push(value);
@@ -533,7 +525,7 @@ where
         let set_obj = set_obj.as_set()?;
 
         // TODO: try to use `.add` method if not a set (e.g. class or dict)
-        for item in items.as_ref() {
+        for item in items {
             set_obj.insert(item)?;
         }
 

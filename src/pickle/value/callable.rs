@@ -11,7 +11,7 @@ use super::Value;
 /// Do not store GC references in a Callable or they will leak.
 /// It's currently not possible to implement the `Trace` properly for it.
 #[derive(Clone)]
-#[allow(clippy::type_complexity)]
+#[expect(clippy::type_complexity)]
 pub struct Callable(Arc<dyn Fn(&Tuple) -> Result<Value> + Send + Sync>);
 
 impl Callable {

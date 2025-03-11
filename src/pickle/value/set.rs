@@ -3,18 +3,24 @@ use std::{cmp, fmt};
 
 use anyhow::{Result, bail};
 use dumpster::Trace;
-use parking_lot::RwLock;
 
 use crate::FnvIndexSet;
+use crate::pickle::value::Id;
+use crate::pickle::value::rw_gc::RwGc;
+use crate::pickle::value::traced::Traced;
 
 use super::Value;
 
-#[derive(Default)]
-pub struct Set(RwLock<FnvIndexSet<Element>>);
+#[derive(Trace, Clone)]
+pub struct Set(RwGc<Traced<FnvIndexSet<Element>>>);
 
 impl Set {
     pub fn new() -> Self {
-        Self(RwLock::new(FnvIndexSet::default()))
+        Self(RwGc::new(Traced(FnvIndexSet::default())))
+    }
+
+    pub fn id(&self) -> Id {
+        self.0.id()
     }
 
     pub fn insert(&self, key: impl Into<Value>) -> Result<()> {
@@ -50,6 +56,12 @@ impl Set {
     }
 }
 
+impl Default for Set {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PartialEq for Set {
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
@@ -69,16 +81,6 @@ impl PartialEq for Set {
         }
 
         true
-    }
-}
-
-unsafe impl Trace for Set {
-    fn accept<V: dumpster::Visitor>(&self, visitor: &mut V) -> Result<(), ()> {
-        for key in self {
-            key.accept(visitor)?;
-        }
-
-        Ok(())
     }
 }
 
@@ -127,6 +129,7 @@ impl Iterator for Iter<'_> {
     }
 }
 
+#[derive(Trace)]
 struct Element(Value);
 
 impl Hash for Element {

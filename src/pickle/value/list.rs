@@ -2,15 +2,22 @@ use std::fmt;
 
 use anyhow::{Result, bail};
 use dumpster::Trace;
-use parking_lot::RwLock;
+
+use crate::pickle::value::Id;
+use crate::pickle::value::rw_gc::RwGc;
 
 use super::Value;
 
-pub struct List(RwLock<Vec<Value>>);
+#[derive(Clone, Trace)]
+pub struct List(RwGc<Vec<Value>>);
 
 impl List {
     pub fn new() -> Self {
-        Self(RwLock::new(Vec::new()))
+        Self(RwGc::new(Vec::new()))
+    }
+
+    pub fn id(&self) -> Id {
+        self.0.id()
     }
 
     pub fn iter(&self) -> Iter {
@@ -53,36 +60,47 @@ impl List {
     }
 }
 
-unsafe impl Trace for List {
-    fn accept<V: dumpster::Visitor>(&self, visitor: &mut V) -> Result<(), ()> {
-        for value in self {
-            value.accept(visitor)?;
-        }
-
-        Ok(())
+impl Default for List {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-impl<'a> IntoIterator for &'a List {
+impl IntoIterator for &List {
     type Item = Value;
-    type IntoIter = Iter<'a>;
+    type IntoIter = Iter;
 
     fn into_iter(self) -> Self::IntoIter {
-        Iter {
-            list: self,
-            index: 0,
-            max_len: self.len(),
-        }
+        Iter::new(self.clone())
     }
 }
 
-pub struct Iter<'a> {
-    list: &'a List,
+impl IntoIterator for List {
+    type Item = Value;
+    type IntoIter = Iter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Iter::new(self)
+    }
+}
+
+pub struct Iter {
+    list: List,
     index: usize,
     max_len: usize,
 }
 
-impl Iterator for Iter<'_> {
+impl Iter {
+    fn new(list: List) -> Self {
+        Iter {
+            max_len: list.len(),
+            list,
+            index: 0,
+        }
+    }
+}
+
+impl Iterator for Iter {
     type Item = Value;
 
     fn next(&mut self) -> Option<Self::Item> {
