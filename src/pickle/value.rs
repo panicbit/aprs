@@ -107,7 +107,7 @@ impl Value {
         }
     }
 
-    // TODO: move conversions TryFrom impls
+    // TODO: move conversions to TryFrom impls
 
     pub fn as_dict(&self) -> Result<Dict> {
         match self {
