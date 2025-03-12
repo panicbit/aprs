@@ -248,6 +248,12 @@ impl From<Number> for Value {
     }
 }
 
+impl From<i32> for Value {
+    fn from(value: i32) -> Self {
+        Value::from(Number::from(value))
+    }
+}
+
 impl From<f64> for Value {
     fn from(value: f64) -> Self {
         Value::from(Number::from(value))

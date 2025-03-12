@@ -4,7 +4,7 @@ use anyhow::Result;
 use bstr::ByteSlice;
 use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
-use serde_json::{Map, Value as JsonValue};
+use serde_json::{Map, Number, Value as JsonValue};
 use serde_value::Value;
 use serde_with::{FromInto, serde_as};
 
@@ -35,6 +35,7 @@ pub struct MultiData {
     pub rest: BTreeMap<String, Value>,
 }
 
+// TODO: replace this with a wrapper
 fn deserialize_pickle_slot_data<'de, D>(de: D) -> Result<BTreeMap<SlotId, JsonValue>, D::Error>
 where
     D: Deserializer<'de>,
@@ -64,10 +65,12 @@ fn pickle_to_json(value: Value) -> JsonValue {
         Value::U16(n) => JsonValue::from(n),
         Value::U32(n) => JsonValue::from(n),
         Value::U64(n) => JsonValue::from(n),
+        Value::U128(n) => JsonValue::from(Number::from_u128(n)),
         Value::I8(n) => JsonValue::from(n),
         Value::I16(n) => JsonValue::from(n),
         Value::I32(n) => JsonValue::from(n),
         Value::F32(n) => JsonValue::from(n),
+        Value::I128(n) => JsonValue::from(Number::from_i128(n)),
         Value::Char(c) => JsonValue::String(c.to_string()),
         Value::Unit => "()".into(),
         Value::Option(value) => value
@@ -89,18 +92,20 @@ fn pickle_key_to_string(key: Value) -> String {
         Value::U16(value) => value.to_string(),
         Value::U32(value) => value.to_string(),
         Value::U64(value) => value.to_string(),
+        Value::U128(value) => value.to_string(),
         Value::I8(value) => value.to_string(),
         Value::I16(value) => value.to_string(),
         Value::I32(value) => value.to_string(),
         Value::I64(value) => value.to_string(),
+        Value::I128(value) => value.to_string(),
         Value::F32(value) => value.to_string(),
         Value::F64(value) => value.to_string(),
         Value::Char(value) => value.to_string(),
         Value::String(value) => value.to_string(),
-        Value::Unit => "None".to_string(),
+        Value::Unit => "null".to_string(),
         Value::Option(value) => value
             .map(|value| pickle_key_to_string(*value))
-            .unwrap_or_else(|| "None".into()),
+            .unwrap_or_else(|| "null".into()),
         Value::Newtype(value) => pickle_key_to_string(*value),
         Value::Seq(values) => {
             let values = values.into_iter().map(pickle_key_to_string).join(", ");

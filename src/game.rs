@@ -49,8 +49,9 @@ impl Game {
 
         let mut multi_data = ZlibDecoder::new(multi_data);
 
-        let value = pickle::unpickle(&mut multi_data)?;
-        let multi_data = serde_path_to_error::deserialize::<_, MultiData>(value)
+        let multi_data = pickle::unpickle(&mut multi_data)?;
+
+        let multi_data = serde_path_to_error::deserialize::<_, MultiData>(multi_data)
             .with_context(|| format!("failed to deserialize `{multi_data_filename}`"))?;
 
         Ok(Game { multi_data })

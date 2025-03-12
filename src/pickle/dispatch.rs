@@ -30,7 +30,7 @@ where
             op::BINSTRING => bail!("unhandled op: BINSTRING"),
             op::SHORT_BINSTRING => bail!("unhandled op: SHORT_BINSTRING"),
             op::UNICODE => bail!("unhandled op: UNICODE"),
-            op::BINUNICODE => bail!("unhandled op: BINUNICODE"),
+            op::BINUNICODE => self.load_binunicode(),
             op::APPEND => self.load_append(),
             op::BUILD => bail!("unhandled op: BUILD"),
             op::GLOBAL => bail!("unhandled op: GLOBAL"),

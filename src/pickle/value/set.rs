@@ -27,7 +27,7 @@ impl Set {
         let key = key.into();
 
         if !key.is_hashable() {
-            bail!("key is not hashable");
+            bail!("key is not hashable: {key:?}");
         }
 
         self.0.write().insert(Element(key));

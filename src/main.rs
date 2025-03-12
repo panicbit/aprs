@@ -15,9 +15,8 @@ mod cli;
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let mut game = Game::load(cli.multiworld_path)?;
 
-    println!("{:#?}", game.multi_data.version);
+    let game = Game::load(cli.multiworld_path)?;
 
     let game_to_location_id_to_name = game
         .multi_data
@@ -68,7 +67,10 @@ fn main() -> Result<()> {
         }
     }
 
-    eprintln!("{:#?}", game.multi_data.slot_data);
+    // eprintln!("{:#?}", game.multi_data.slot_data);
+
+    let data = serde_json::to_string_pretty(&game.multi_data.slot_data)?;
+    std::fs::write("test.json", data)?;
 
     let config = Config::default();
     let server = Server::new(config, game.multi_data);

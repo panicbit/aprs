@@ -22,6 +22,12 @@ impl None {
     }
 }
 
+impl Default for None {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Hash for None {
     fn hash<H: Hasher>(&self, state: &mut H) {
         #[allow(clippy::unit_hash)]

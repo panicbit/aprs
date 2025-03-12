@@ -9,7 +9,8 @@ use anyhow::{Context, Result, anyhow, bail};
 use itertools::Itertools;
 use serde::Deserialize;
 
-use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Value};
+use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Tuple, Value};
+use crate::proto::server::print_json::HintStatus;
 
 mod dispatch;
 mod op;
@@ -55,6 +56,23 @@ pub fn unpickle<R: Read>(reader: &mut R) -> Result<Value> {
                     Ok(Value::Number(slot_type))
                 })
             }
+            ("NetUtils", "Hint") => Value::callable(|args| {
+                let mut args = args.iter().fuse();
+                let value = Tuple::from_iter([
+                    args.next().unwrap_or_else(Value::none),
+                    args.next().unwrap_or_else(Value::none),
+                    args.next().unwrap_or_else(Value::none),
+                    args.next().unwrap_or_else(Value::none),
+                    args.next().unwrap_or_else(Value::none),
+                    // TODO: move defaults to serde struct and remove custom class handling
+                    args.next().unwrap_or_else(|| Value::str("")),
+                    args.next().unwrap_or_else(|| Value::from(0)),
+                    args.next()
+                        .unwrap_or_else(|| Value::from(HintStatus::Unspecified as i32)),
+                ]);
+
+                Ok(Value::tuple(value))
+            }),
             _ => bail!("could not find {module}.{name}"),
         })
     })
@@ -217,7 +235,7 @@ where
     }
 
     fn push(&mut self, value: Value) {
-        self.stack.push(value.into());
+        self.stack.push(value);
     }
 
     fn pop(&mut self) -> Option<Value> {
@@ -320,6 +338,18 @@ where
 
     pub fn load_none(&mut self) -> Result<()> {
         self.stack.push(Value::none());
+
+        Ok(())
+    }
+
+    pub fn load_binunicode(&mut self) -> Result<()> {
+        let len = self.read_u32()?;
+        let len = usize::try_from(len)?;
+        let value = self.read_vec(len)?;
+        let value = String::from_utf8(value)?;
+        let value = Value::str(value);
+
+        self.push(value);
 
         Ok(())
     }
