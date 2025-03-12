@@ -28,7 +28,6 @@ impl Dict {
         let value = value.into();
 
         if !key.is_hashable() {
-            panic!("NO");
             bail!("key is not hashable: {key:#?}");
         }
 

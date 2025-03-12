@@ -68,6 +68,8 @@ fn main() -> Result<()> {
         }
     }
 
+    eprintln!("{:#?}", game.multi_data.slot_data);
+
     let config = Config::default();
     let server = Server::new(config, game.multi_data);
 

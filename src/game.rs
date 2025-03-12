@@ -7,9 +7,7 @@ use anyhow::{Context, Result, ensure};
 use bitflags::bitflags;
 use byteorder::ReadBytesExt;
 use flate2::read::ZlibDecoder;
-use serde::de::IntoDeserializer;
-use serde::de::value::{StrDeserializer, StringDeserializer};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_tuple::Deserialize_tuple;
 use serde_with::FromInto;
 use serde_with::serde_as;
@@ -52,34 +50,8 @@ impl Game {
         let mut multi_data = ZlibDecoder::new(multi_data);
 
         let value = pickle::unpickle(&mut multi_data)?;
-        // let value = pickle::from_value::<MultiData>(value)?;
-        println!(
-            "{:#?}",
-            value.as_dict()?.get("connect_names").unwrap().as_dict()?
-        );
-        let value = serde_path_to_error::deserialize::<_, MultiData>(value)
+        let multi_data = serde_path_to_error::deserialize::<_, MultiData>(value)
             .with_context(|| format!("failed to deserialize `{multi_data_filename}`"))?;
-        println!("{value:#?}");
-
-        panic!("TEST END");
-
-        // std::io::copy(
-        //     &mut multi_data,
-        //     &mut std::fs::File::create("test.pickled").unwrap(),
-        // )
-        // .unwrap();
-        // panic!("STOP HERE");
-
-        let decode_options = serde_pickle::DeOptions::new()
-            // .keep_restore_state()
-            // .replace_recursive_structures()
-            ;
-
-        let de = &mut serde_pickle::Deserializer::new(multi_data, decode_options);
-        let multi_data = serde_path_to_error::deserialize::<_, MultiData>(de)
-            .with_context(|| format!("failed to deserialize `{multi_data_filename}`"))?;
-
-        // println!("{multi_data:#?}");
 
         Ok(Game { multi_data })
     }
@@ -150,7 +122,7 @@ pub struct ServerOptions {
     pub remaining_mode: RemainingMode,
     pub collect_mode: CollectMode,
     #[serde(flatten)]
-    pub rest: BTreeMap<String, serde_pickle::Value>,
+    pub rest: BTreeMap<String, serde_json::Value>,
 }
 
 #[derive(Deserialize_tuple, Debug)]
