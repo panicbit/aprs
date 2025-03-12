@@ -51,7 +51,7 @@ where
             op::TUPLE => self.load_tuple(),
             op::EMPTY_TUPLE => self.empty_tuple(),
             op::SETITEMS => self.load_setitems(),
-            op::BINFLOAT => bail!("unhandled op: BINFLOAT"),
+            op::BINFLOAT => self.load_binfloat(),
             // Protocol 2
             op::PROTO => self.load_proto(),
             op::NEWOBJ => self.load_newobj(),

@@ -78,6 +78,10 @@ where
     }
 
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+        if self.current_frame_is_finished() {
+            self.current_frame = None;
+        }
+
         if let Some(current_frame) = &mut self.current_frame {
             current_frame
                 .read_exact(buf)
@@ -145,6 +149,16 @@ where
         Ok(value)
     }
 
+    fn read_f64(&mut self) -> Result<f64> {
+        let mut buf = [0; 8];
+
+        self.read_exact(&mut buf)?;
+
+        let value = f64::from_be_bytes(buf);
+
+        Ok(value)
+    }
+
     fn current_frame_is_finished(&self) -> bool {
         let Some(current_frame) = &self.current_frame else {
             return true;
@@ -203,7 +217,7 @@ where
     }
 
     fn push(&mut self, value: Value) {
-        self.stack.push(value);
+        self.stack.push(value.into());
     }
 
     fn pop(&mut self) -> Option<Value> {
@@ -234,7 +248,7 @@ where
 
     pub fn load(mut self) -> Result<Value> {
         loop {
-            let op = self.read_byte()?;
+            let op = self.read_byte().context("read op")?;
 
             self.dispatch(op)?;
 
@@ -421,6 +435,15 @@ where
         for (key, value) in items.iter().tuples() {
             dict.insert(key, value).context("load_setitems")?;
         }
+
+        Ok(())
+    }
+
+    pub fn load_binfloat(&mut self) -> Result<()> {
+        let value = self.read_f64()?;
+        let value = Value::from(value);
+
+        self.push(value);
 
         Ok(())
     }
