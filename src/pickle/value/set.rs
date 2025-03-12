@@ -51,7 +51,7 @@ impl Set {
         self.0.read().contains(&Element(key))
     }
 
-    pub fn iter(&self) -> Iter<'_> {
+    pub fn iter(&self) -> Iter {
         self.into_iter()
     }
 }
@@ -90,30 +90,45 @@ impl fmt::Debug for Set {
     }
 }
 
-impl<'a> IntoIterator for &'a Set {
+impl IntoIterator for Set {
     type Item = Value;
-    type IntoIter = Iter<'a>;
+    type IntoIter = Iter;
 
     fn into_iter(self) -> Self::IntoIter {
-        Iter {
-            dict: self,
-            index: 0,
-            max_len: self.len(),
-        }
+        Iter::new(self)
     }
 }
 
-pub struct Iter<'a> {
-    dict: &'a Set,
+impl IntoIterator for &Set {
+    type Item = Value;
+    type IntoIter = Iter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Iter::new(self.clone())
+    }
+}
+
+pub struct Iter {
+    set: Set,
     index: usize,
     max_len: usize,
 }
 
-impl Iterator for Iter<'_> {
+impl Iter {
+    fn new(set: Set) -> Self {
+        Self {
+            max_len: set.len(),
+            set,
+            index: 0,
+        }
+    }
+}
+
+impl Iterator for Iter {
     type Item = Value;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let vec = self.dict.0.read();
+        let vec = self.set.0.read();
 
         // This prevents appending a set to itself from ending up in an endless loop
         if self.index >= self.max_len {
@@ -126,6 +141,10 @@ impl Iterator for Iter<'_> {
         self.index += 1;
 
         Some(value)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.max_len - self.index.max(self.max_len)))
     }
 }
 

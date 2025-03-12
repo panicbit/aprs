@@ -252,6 +252,11 @@ impl std::hash::Hash for N {
 
 impl fmt::Debug for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.as_ref().fmt(f)
+        match self.inner() {
+            N::I64(n) => n.fmt(f),
+            N::I128(n) => n.fmt(f),
+            N::BigInt(n) => n.fmt(f),
+            N::F64(n) => n.fmt(f),
+        }
     }
 }

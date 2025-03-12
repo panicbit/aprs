@@ -28,7 +28,8 @@ impl Dict {
         let value = value.into();
 
         if !key.is_hashable() {
-            bail!("key is not hashable");
+            panic!("NO");
+            bail!("key is not hashable: {key:#?}");
         }
 
         self.0.write().insert(Element(key), Element(value));
@@ -40,15 +41,15 @@ impl Dict {
         self.0.read().len()
     }
 
-    pub fn get(&self, key: Value) -> Option<Value> {
+    pub fn get(&self, key: impl Into<Value>) -> Option<Value> {
         self.0
             .read()
-            .get(&Element(key))
+            .get(&Element(key.into()))
             .map(|Element(value)| value)
             .cloned()
     }
 
-    pub fn iter(&self) -> Iter<'_> {
+    pub fn iter(&self) -> Iter {
         self.into_iter()
     }
 
@@ -95,26 +96,41 @@ impl fmt::Debug for Dict {
     }
 }
 
-impl<'a> IntoIterator for &'a Dict {
+impl IntoIterator for Dict {
     type Item = (Value, Value);
-    type IntoIter = Iter<'a>;
+    type IntoIter = Iter;
 
     fn into_iter(self) -> Self::IntoIter {
-        Iter {
-            dict: self,
-            index: 0,
-            max_len: self.len(),
-        }
+        Iter::new(self)
     }
 }
 
-pub struct Iter<'a> {
-    dict: &'a Dict,
+impl IntoIterator for &Dict {
+    type Item = (Value, Value);
+    type IntoIter = Iter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Iter::new(self.clone())
+    }
+}
+
+pub struct Iter {
+    dict: Dict,
     index: usize,
     max_len: usize,
 }
 
-impl Iterator for Iter<'_> {
+impl Iter {
+    fn new(dict: Dict) -> Self {
+        Iter {
+            max_len: dict.len(),
+            dict,
+            index: 0,
+        }
+    }
+}
+
+impl Iterator for Iter {
     type Item = (Value, Value);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -131,6 +147,10 @@ impl Iterator for Iter<'_> {
         self.index += 1;
 
         Some(value)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.max_len - self.index.max(self.max_len)))
     }
 }
 

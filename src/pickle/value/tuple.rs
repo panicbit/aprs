@@ -1,13 +1,14 @@
+use std::fmt;
 use std::hash::{Hash, Hasher};
 
 use anyhow::{Context, Error, Result, bail};
 use dumpster::Trace;
 
-use crate::pickle::value::{Id, List, Value};
+use crate::pickle::value::{Id, List, Value, list};
 
 // TODO: replace List with Vec. Tuples are immutable, so the underlying lock is not needed.
 
-#[derive(Trace, Debug, PartialEq, Clone)]
+#[derive(Trace, PartialEq, Clone)]
 
 pub struct Tuple(List);
 
@@ -30,6 +31,10 @@ impl Tuple {
 
     pub fn get(&self, index: usize) -> Option<Value> {
         self.0.get(index)
+    }
+
+    pub fn iter(&self) -> Iter {
+        self.into_iter()
     }
 }
 
@@ -196,5 +201,59 @@ where
         let v4 = V4::try_from(v4)?;
 
         Ok((v1, v2, v3, v4))
+    }
+}
+
+impl IntoIterator for Tuple {
+    type Item = Value;
+    type IntoIter = Iter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Iter::new(self)
+    }
+}
+
+impl IntoIterator for &Tuple {
+    type Item = Value;
+    type IntoIter = Iter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Iter::new(self.clone())
+    }
+}
+
+pub struct Iter {
+    inner: list::Iter,
+}
+
+impl Iter {
+    fn new(tuple: Tuple) -> Self {
+        Self {
+            inner: tuple.0.iter(),
+        }
+    }
+}
+
+impl Iterator for Iter {
+    type Item = Value;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl fmt::Debug for Tuple {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut tuple = f.debug_tuple("");
+
+        for value in self {
+            tuple.field(&value);
+        }
+
+        tuple.finish()
     }
 }

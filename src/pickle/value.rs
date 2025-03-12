@@ -35,6 +35,8 @@ pub use str::Str;
 mod bool;
 pub use bool::Bool;
 
+mod deserializer;
+
 mod rw_gc;
 mod traced;
 
@@ -251,10 +253,10 @@ impl fmt::Debug for Value {
         match self {
             Value::Dict(dict) => f.debug_tuple("Dict").field(dict).finish(),
             Value::List(list) => f.debug_tuple("List").field(list).finish(),
-            Value::Str(str) => f.debug_tuple("Str").field(str).finish(),
-            Value::Number(number) => f.debug_tuple("Number").field(number).finish(),
+            Value::Str(str) => str.fmt(f),
+            Value::Number(number) => number.fmt(f),
             Value::Bool(bool) => f.debug_tuple("Bool").field(bool).finish(),
-            Value::Tuple(tuple) => f.debug_tuple("Tuple").field(tuple).finish(),
+            Value::Tuple(tuple) => tuple.fmt(f),
             Value::Callable(callable) => f.debug_tuple("Callable").field(&callable).finish(),
             Value::None(none) => f.debug_tuple("None").field(none).finish(),
             Value::Set(set) => f.debug_tuple("Set").field(set).finish(),

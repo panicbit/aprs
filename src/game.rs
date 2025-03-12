@@ -7,6 +7,8 @@ use anyhow::{Context, Result, ensure};
 use bitflags::bitflags;
 use byteorder::ReadBytesExt;
 use flate2::read::ZlibDecoder;
+use serde::de::IntoDeserializer;
+use serde::de::value::{StrDeserializer, StringDeserializer};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_tuple::Deserialize_tuple;
 use serde_with::FromInto;
@@ -16,8 +18,8 @@ use sha1::{Digest, Sha1};
 mod multidata;
 pub use multidata::MultiData;
 
-use crate::FnvIndexMap;
 use crate::proto::common::NetworkVersion;
+use crate::{FnvIndexMap, pickle};
 
 #[derive(Debug)]
 pub struct Game {
@@ -49,8 +51,15 @@ impl Game {
 
         let mut multi_data = ZlibDecoder::new(multi_data);
 
-        let value = crate::pickle::unpickle(&mut multi_data)?;
-        // println!("{value:#?}");
+        let value = pickle::unpickle(&mut multi_data)?;
+        // let value = pickle::from_value::<MultiData>(value)?;
+        println!(
+            "{:#?}",
+            value.as_dict()?.get("connect_names").unwrap().as_dict()?
+        );
+        let value = serde_path_to_error::deserialize::<_, MultiData>(value)
+            .with_context(|| format!("failed to deserialize `{multi_data_filename}`"))?;
+        println!("{value:#?}");
 
         panic!("TEST END");
 
@@ -127,6 +136,7 @@ pub struct ItemId(pub i64);
 pub struct LocationId(pub i64);
 
 #[derive(Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[serde(transparent)]
 pub struct SeedName(pub String);
 
 #[derive(Deserialize, Debug, Default)]
@@ -232,7 +242,7 @@ impl GameData {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize_tuple, Debug)]
 pub struct TeamAndSlot {
     pub team: TeamId,
     pub slot: SlotId,
@@ -273,8 +283,7 @@ impl From<PickledVersion> for NetworkVersion {
     }
 }
 
-#[derive(Serialize, Debug, Clone)]
-#[serde(tag = "class")]
+#[derive(Deserialize, Debug, Clone)]
 pub struct NetworkSlot {
     pub name: String,
     pub game: String,
@@ -284,23 +293,42 @@ pub struct NetworkSlot {
     pub group_members: serde_json::Value,
 }
 
-impl<'de> Deserialize<'de> for NetworkSlot {
-    fn deserialize<D>(de: D) -> Result<Self, D::Error>
+impl Serialize for NetworkSlot {
+    fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
     where
-        D: Deserializer<'de>,
+        S: serde::Serializer,
     {
-        let (name, game, (r#type,), group_members) = <_>::deserialize(de)?;
-
-        Ok(Self {
+        let NetworkSlot {
             name,
             game,
             r#type,
             group_members,
-        })
+        } = &self;
+
+        // The python client expects a "class" field in the json serialization
+        #[derive(Serialize)]
+        #[serde(tag = "class")]
+        struct PythonNetworkSlot<'a> {
+            pub name: &'a str,
+            pub game: &'a str,
+            pub r#type: &'a SlotType,
+            // TODO: implement for completeness some day maybe
+            // https://github.com/ArchipelagoMW/Archipelago/blob/e00467c2a299623f630d5a3e68f35bc56ccaa8aa/NetUtils.py#L86
+            pub group_members: &'a serde_json::Value,
+        }
+
+        PythonNetworkSlot {
+            name,
+            game,
+            r#type,
+            group_members,
+        }
+        .serialize(ser)
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[serde(transparent)]
 pub struct SlotType(u32);
 
 bitflags! {
@@ -334,6 +362,30 @@ pub enum ReleaseMode {
     AutoEnabled,
     Goal,
 }
+
+// impl<'de> Deserialize<'de> for ReleaseMode {
+//     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         // let s = String::deserialize(deserializer)?;
+//         #[derive(Deserialize, Default, Debug)]
+//         #[serde(rename_all = "kebab-case")]
+//         pub enum Blah {
+//             Disabled,
+//             Enabled,
+//             #[default]
+//             Auto,
+//             AutoEnabled,
+//             Goal,
+//         }
+
+//         let v = Blah::deserialize(deserializer)?;
+
+//         eprintln!("res = {v:?}");
+//         todo!()
+//     }
+// }
 
 #[derive(Deserialize, Default, Debug)]
 #[serde(rename_all = "kebab-case")]

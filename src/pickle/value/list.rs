@@ -66,21 +66,21 @@ impl Default for List {
     }
 }
 
-impl IntoIterator for &List {
-    type Item = Value;
-    type IntoIter = Iter;
-
-    fn into_iter(self) -> Self::IntoIter {
-        Iter::new(self.clone())
-    }
-}
-
 impl IntoIterator for List {
     type Item = Value;
     type IntoIter = Iter;
 
     fn into_iter(self) -> Self::IntoIter {
         Iter::new(self)
+    }
+}
+
+impl IntoIterator for &List {
+    type Item = Value;
+    type IntoIter = Iter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Iter::new(self.clone())
     }
 }
 
@@ -116,6 +116,10 @@ impl Iterator for Iter {
         self.index += 1;
 
         Some(value)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.max_len - self.index.max(self.max_len)))
     }
 }
 

@@ -7,6 +7,7 @@ use std::ops::{Deref, DerefMut};
 
 use anyhow::{Context, Result, anyhow, bail};
 use itertools::Itertools;
+use serde::Deserialize;
 
 use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Value};
 
@@ -15,6 +16,15 @@ mod op;
 mod value;
 
 const HIGHEST_PROTOCOL: u8 = 5;
+
+pub fn from_value<D>(value: Value) -> Result<D>
+where
+    D: for<'de> Deserialize<'de>,
+{
+    let value = D::deserialize(value)?;
+
+    Ok(value)
+}
 
 pub fn unpickle<R: Read>(reader: &mut R) -> Result<Value> {
     Unpickler::new(reader, |module, name| {
@@ -201,8 +211,8 @@ where
     }
 
     fn pop_mark(&mut self) -> Result<List> {
-        let stack = self.pop_meta()?;
-        let stack = mem::replace(&mut self.stack, stack);
+        let meta = self.pop_meta()?;
+        let stack = mem::replace(&mut self.stack, meta);
 
         Ok(stack)
     }
@@ -258,8 +268,7 @@ where
             .pop()
             .context("tried to load reduce with too small stack")?
             .as_callable()
-            .context("tried to reduce with a non-callable")?
-            .clone();
+            .context("tried to reduce with a non-callable")?;
 
         let value = callable.call(args)?;
 
@@ -445,7 +454,7 @@ where
             .pop()
             .context("tried to construct 2-tuple from empty stack")?;
         let v1 = self
-            .last()
+            .pop()
             .context("tried to construct 2-tuple from too small stack")?;
 
         let tuple = Value::tuple((v1, v2));
@@ -463,10 +472,8 @@ where
             .pop()
             .context("tried to construct 3-tuple from too small stack")?;
         let v1 = self
-            .last()
+            .pop()
             .context("tried to construct 3-tuple from too small stack")?;
-
-        self.push(v2.clone());
 
         let tuple = Value::tuple((v1, v2, v3));
 

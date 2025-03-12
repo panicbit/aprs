@@ -25,6 +25,12 @@ impl Str {
     }
 }
 
+impl Default for Str {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Hash for Str {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.hash(state);
@@ -61,6 +67,6 @@ impl Deref for Str {
 
 impl fmt::Debug for Str {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.as_ref().fmt(f)
+        self.as_str().fmt(f)
     }
 }
