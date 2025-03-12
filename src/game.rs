@@ -1,4 +1,5 @@
 use core::fmt;
+use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::{fs, ops};
@@ -83,6 +84,12 @@ impl ops::Deref for SlotName {
 impl ops::DerefMut for SlotName {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl Borrow<str> for SlotName {
+    fn borrow(&self) -> &str {
+        self.as_str()
     }
 }
 
@@ -280,7 +287,7 @@ impl Serialize for NetworkSlot {
 
         // The python client expects a "class" field in the json serialization
         #[derive(Serialize)]
-        #[serde(tag = "class")]
+        #[serde(tag = "class", rename = "NetworkSlot")]
         struct PythonNetworkSlot<'a> {
             pub name: &'a str,
             pub game: &'a str,

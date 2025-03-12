@@ -1,22 +1,24 @@
 use std::net::SocketAddr;
 use std::pin::pin;
+use std::sync::Arc;
 
 use tokio::net::TcpStream;
 use tokio::select;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio_tungstenite::WebSocketStream;
 
-use crate::game::SlotName;
+use crate::game::{SlotId, SlotName};
 use crate::proto::server::MessageSink;
 use crate::proto::server::{Message as ServerMessage, MessageStream};
 use crate::server::event::Event;
 
 #[derive(Clone)]
 pub struct Client {
-    server_message_tx: Sender<ServerMessage>,
+    server_message_tx: Sender<Arc<ServerMessage>>,
     pub address: SocketAddr,
     pub is_connected: bool,
     pub slot_name: SlotName,
+    pub slot_id: SlotId,
 }
 
 impl Client {
@@ -34,10 +36,11 @@ impl Client {
             address,
             is_connected: false,
             slot_name: SlotName::empty(),
+            slot_id: SlotId(-1),
         }
     }
 
-    pub async fn send(&self, message: impl Into<ServerMessage>) {
+    pub async fn send(&self, message: impl Into<Arc<ServerMessage>>) {
         // TODO: handle overload situation, probably using timeout
         self.server_message_tx.send(message.into()).await.ok();
     }
@@ -47,7 +50,7 @@ async fn client_loop(
     stream: WebSocketStream<TcpStream>,
     address: SocketAddr,
     event_tx: Sender<Event>,
-    mut server_message_rx: Receiver<ServerMessage>,
+    mut server_message_rx: Receiver<Arc<ServerMessage>>,
 ) {
     let mut stream = pin!(stream);
     let stream = &mut *stream;

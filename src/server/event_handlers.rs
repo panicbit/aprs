@@ -1,16 +1,19 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use anyhow::{Context, Result, bail};
+use fnv::FnvHashMap;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::game::TeamAndSlot;
-use crate::proto::client::{Connect, Message as ClientMessage, Messages as ClientMessages, Say};
-use crate::proto::common::{Ping, Pong};
+use crate::proto::client::{
+    Connect, Get, LocationScouts, Message as ClientMessage, Messages as ClientMessages, Say
+};
+use crate::proto::common::{Close, Ping, Pong};
 use crate::proto::server::{
-    CommandPermission, Connected, ConnectionRefused, Permissions, PrintJson,
-    RemainingCommandPermission, RoomInfo, Time,
+    CommandPermission, Connected, ConnectionRefused, LocationInfo, Message, NetworkItem, Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo, Time
 };
 use crate::server::client::Client;
 use crate::server::event::Event;
@@ -89,48 +92,64 @@ impl super::Server {
         };
 
         for message in messages {
-            // TODO: bail early on error
-            self.on_client_message(&client, message).await;
+            if let Err(err) = self.on_client_message(&client, message).await {
+                eprintln!("||| {err:?}");
+                client.lock().await.send(Close).await;
+                self.clients.remove(&address);
+            }
         }
     }
 
-    pub async fn on_client_message(&mut self, client: &Mutex<Client>, message: ClientMessage) {
+    pub async fn on_client_message(
+        &mut self,
+        client: &Mutex<Client>,
+        message: ClientMessage,
+    ) -> Result<()> {
         match message {
             ClientMessage::Ping(ping) => {
                 client.lock().await.send(Pong(ping.0)).await;
-                return;
+                return Ok(());
             }
             ClientMessage::Pong(_) => {
-                return;
+                return Ok(());
             }
             ClientMessage::Close(_) => {
                 self.on_close(client).await;
-                return;
+                return Ok(());
             }
             _ => {}
         }
 
         if !client.lock().await.is_connected {
             match message {
-                ClientMessage::Connect(connect) => self.on_connect(client, connect).await,
+                ClientMessage::Connect(connect) => self.on_connect(client, connect).await?,
                 _ => {
-                    eprintln!("Client sent non-connect message before being connected: {message:?}")
+                    bail!("Client sent non-connect message before being connected: {message:?}")
                 }
             }
 
-            return;
+            return Ok(());
         }
 
         match message {
-            ClientMessage::Say(say) => self.on_say(client, say).await,
             ClientMessage::Connect(_) => {
-                eprintln!("Client already connected, but send another connect mesage; ignoring")
+                bail!("Client already connected, but sent another connect message")
             }
-            _ => eprintln!("{}: {message:#?}", client.lock().await.address),
+            ClientMessage::Say(say) => self.on_say(client, say).await,
+            ClientMessage::Get(get) => self.on_get(client, get).await,
+            ClientMessage::LocationScouts(location_scouts) => {
+                self.on_location_scouts(client, location_scouts).await
+            }
+            ClientMessage::Unknown(value) => eprintln!("Unknown client message: {value:?}"),
+            ClientMessage::Ping(_) => bail!("unreachable: Ping"),
+            ClientMessage::Pong(_) => bail!("unreachable: Pong"),
+            ClientMessage::Close(_) => bail!("unreachable: Close"),
         }
+
+        Ok(())
     }
 
-    pub async fn on_connect(&self, client: &Mutex<Client>, connect: Connect) {
+    pub async fn on_connect(&self, client: &Mutex<Client>, connect: Connect) -> Result<()> {
         // TODO: implement checks:
         // - items handling
         // - version (skip if tags are appropriate)
@@ -143,7 +162,7 @@ impl super::Server {
                     .await
                     .send(ConnectionRefused::invalid_password())
                     .await;
-                return;
+                return Ok(());
             }
         }
 
@@ -154,7 +173,7 @@ impl super::Server {
                 .await
                 .send(ConnectionRefused::invalid_slot())
                 .await;
-            return;
+            return Ok(());
         };
         let TeamAndSlot { slot, team } = *team_and_slot;
         let Some(slot_info) = self.multi_data.slot_info.get(&slot) else {
@@ -164,7 +183,7 @@ impl super::Server {
                 .await
                 .send(ConnectionRefused::invalid_slot())
                 .await;
-            return;
+            return Ok(());
         };
 
         let skip_game_and_version_validation = connect
@@ -179,21 +198,23 @@ impl super::Server {
                 .await
                 .send(ConnectionRefused::invalid_game())
                 .await;
-            return;
+            return Ok(());
         }
 
         let mut client = client.lock().await;
+
+        let slot_state = self
+            .state
+            .get_slot_state(slot)
+            .context("BUG: missing slot state for slot {slot}")?;
 
         client
             .send(Connected {
                 team,
                 slot,
-                // TODO: send list of NetworkPlayers
-                players: vec![],
-                // TODO: send list of missing locations
-                missing_locations: vec![],
-                // TODO: send list of checked locations
-                checked_locations: vec![],
+                players: self.network_players(),
+                missing_locations: slot_state.missing_locations().clone(),
+                checked_locations: slot_state.checked_locations().clone(),
                 slot_data: self
                     .multi_data
                     .slot_data
@@ -208,19 +229,65 @@ impl super::Server {
             .await;
 
         client.slot_name = connect.name;
+        client.slot_id = slot;
         client.is_connected = true;
+
+        Ok(())
     }
 
     pub async fn on_say(&mut self, client: &Mutex<Client>, say: Say) {
         let name = client.lock().await.slot_name.clone();
+        let message = PrintJson::chat_message(format!("{name}: {}", say.text));
 
-        for client in self.clients.values() {
-            client
-                .lock()
-                .await
-                .send(PrintJson::chat_message(format!("{name}: {}", say.text)))
-                .await;
+        self.broadcast(message).await;
+    }
+
+    pub async fn on_get(&mut self, client: &Mutex<Client>, get: Get) {
+        let Get { keys } = get;
+
+        let mut retrieved = FnvHashMap::default();
+
+        for key in keys {
+            if let Some(value) = self.get_key(&key) {
+                retrieved.insert(key, value);
+            }
         }
+        
+        client.lock().await.send(Retrieved { keys: retrieved }).await;
+    }
+
+    pub async fn on_location_scouts(
+        &mut self,
+        client: &Mutex<Client>,
+        location_scouts: LocationScouts,
+    ) {
+        // TODO: handle `create_as_hint`
+        let LocationScouts { locations, create_as_hint } = location_scouts;
+        let slot = client.lock().await.slot_id;
+
+        let locations = locations.into_iter()
+            .filter_map(|location_id| {
+                let location_info = self.multi_data.location_info(slot, location_id); 
+
+                if location_info.is_none() {
+                    eprintln!("Client for slot {slot:?} asked for location that does not exist: {location_id:?}")
+                }
+
+                Some((location_id, location_info?))
+            })
+            .map(|(location_id, location_info)| {
+                NetworkItem {
+                    item: location_info.item,
+                    location: location_id,
+                    player: slot,
+                    flags: location_info.flags,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        client.lock().await.send(LocationInfo {
+            locations,
+        }).await;
     }
 
     pub async fn on_close(&mut self, client: &Mutex<Client>) {

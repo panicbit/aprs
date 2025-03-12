@@ -1,6 +1,8 @@
 use serde::Serialize;
 use serde_repr::Serialize_repr;
 
+use crate::proto::server::NetworkItem;
+
 #[derive(Serialize, Clone, Debug)]
 pub struct PrintJson {
     pub data: Vec<JsonMessagePart>,
@@ -82,14 +84,6 @@ pub enum Type {
     Release,
     Collect,
     Countdown,
-}
-
-#[derive(Serialize, Clone, Debug)]
-pub struct NetworkItem {
-    pub item: u32,
-    pub location: u32,
-    pub player: u32,
-    pub flags: u32,
 }
 
 #[derive(Serialize_repr, Clone, Debug)]

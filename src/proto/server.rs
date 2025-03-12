@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde::Serialize;
 
 use crate::proto::common::{Close, Ping, Pong};
@@ -38,6 +40,12 @@ pub use connected::Connected;
 mod network_player;
 pub use network_player::NetworkPlayer;
 
+mod network_item;
+pub use network_item::NetworkItem;
+
+mod location_info;
+pub use location_info::LocationInfo;
+
 pub type GameName = String;
 
 #[derive(Serialize)]
@@ -47,6 +55,7 @@ pub enum Message {
     ConnectionRefused(ConnectionRefused),
     Connected(Connected),
     Retrieved(Retrieved),
+    LocationInfo(LocationInfo),
     #[serde(rename = "PrintJSON")]
     PrintJson(PrintJson),
     Bounced(Bounced),
@@ -58,56 +67,62 @@ pub enum Message {
     Close(Close),
 }
 
-impl From<RoomInfo> for Message {
+impl From<RoomInfo> for Arc<Message> {
     fn from(value: RoomInfo) -> Self {
-        Message::RoomInfo(value)
+        Arc::new(Message::RoomInfo(value))
     }
 }
 
-impl From<ConnectionRefused> for Message {
+impl From<ConnectionRefused> for Arc<Message> {
     fn from(value: ConnectionRefused) -> Self {
-        Message::ConnectionRefused(value)
+        Arc::new(Message::ConnectionRefused(value))
     }
 }
 
-impl From<Connected> for Message {
+impl From<Connected> for Arc<Message> {
     fn from(value: Connected) -> Self {
-        Message::Connected(value)
+        Arc::new(Message::Connected(value))
     }
 }
 
-impl From<Retrieved> for Message {
+impl From<Retrieved> for Arc<Message> {
     fn from(value: Retrieved) -> Self {
-        Message::Retrieved(value)
+        Arc::new(Message::Retrieved(value))
     }
 }
 
-impl From<PrintJson> for Message {
+impl From<PrintJson> for Arc<Message> {
     fn from(value: PrintJson) -> Self {
-        Message::PrintJson(value)
+        Arc::new(Message::PrintJson(value))
     }
 }
 
-impl From<Ping> for Message {
+impl From<Ping> for Arc<Message> {
     fn from(value: Ping) -> Self {
-        Message::Ping(value)
+        Arc::new(Message::Ping(value))
     }
 }
 
-impl From<Pong> for Message {
+impl From<Pong> for Arc<Message> {
     fn from(value: Pong) -> Self {
-        Message::Pong(value)
+        Arc::new(Message::Pong(value))
     }
 }
 
-impl From<Close> for Message {
+impl From<Close> for Arc<Message> {
     fn from(value: Close) -> Self {
-        Message::Close(value)
+        Arc::new(Message::Close(value))
     }
 }
 
-impl From<Bounced> for Message {
+impl From<Bounced> for Arc<Message> {
     fn from(value: Bounced) -> Self {
-        Message::Bounced(value)
+        Arc::new(Message::Bounced(value))
+    }
+}
+
+impl From<LocationInfo> for Arc<Message> {
+    fn from(value: LocationInfo) -> Self {
+        Arc::new(Message::LocationInfo(value))
     }
 }

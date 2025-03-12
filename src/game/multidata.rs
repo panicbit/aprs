@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use anyhow::Result;
 use bstr::ByteSlice;
@@ -9,8 +10,8 @@ use serde_value::Value;
 use serde_with::{FromInto, serde_as};
 
 use crate::game::{
-    HashedGameData, LocationId, LocationInfo, MinimumVersions, NetworkSlot, PickledVersion,
-    SeedName, ServerOptions, SlotId, SlotName, TeamAndSlot,
+    GameData, HashedGameData, LocationId, LocationInfo, MinimumVersions, NetworkSlot,
+    PickledVersion, SeedName, ServerOptions, SlotId, SlotName, TeamAndSlot,
 };
 use crate::proto::common::NetworkVersion;
 
@@ -18,9 +19,9 @@ use crate::proto::common::NetworkVersion;
 #[derive(Deserialize, Debug)]
 // #[serde(deny_unknown_fields)]
 pub struct MultiData {
-    pub slot_info: BTreeMap<SlotId, NetworkSlot>,
+    pub slot_info: Arc<BTreeMap<SlotId, NetworkSlot>>,
     #[serde(deserialize_with = "deserialize_pickle_slot_data")]
-    pub slot_data: BTreeMap<SlotId, JsonValue>,
+    pub slot_data: Arc<BTreeMap<SlotId, Arc<JsonValue>>>,
     pub connect_names: BTreeMap<SlotName, TeamAndSlot>,
     pub seed_name: SeedName,
     pub minimum_versions: MinimumVersions,
@@ -28,25 +29,60 @@ pub struct MultiData {
     #[serde_as(as = "FromInto<PickledVersion>")]
     pub version: NetworkVersion,
     #[serde(rename = "datapackage")]
-    pub data_package: BTreeMap<String, HashedGameData>,
+    pub data_package: Arc<BTreeMap<String, HashedGameData>>,
     pub locations: BTreeMap<SlotId, BTreeMap<LocationId, LocationInfo>>,
     pub spheres: Vec<BTreeMap<SlotId, Vec<LocationId>>>,
     #[serde(flatten)]
     pub rest: BTreeMap<String, Value>,
 }
 
+impl MultiData {
+    pub fn get_slot_id(&self, name: &str) -> Option<SlotId> {
+        Some(self.connect_names.get(name)?.slot)
+    }
+
+    pub fn get_slot_info(&self, slot: SlotId) -> Option<&NetworkSlot> {
+        self.slot_info.get(&slot)
+    }
+
+    pub fn get_locations(&self, slot: SlotId) -> Option<&BTreeMap<LocationId, LocationInfo>> {
+        self.locations.get(&slot)
+    }
+
+    pub fn get_game_data(&self, game: &str) -> Option<&GameData> {
+        Some(&self.data_package.get(game)?.game_data)
+    }
+
+    pub fn location_info(&self, slot: SlotId, location_id: LocationId) -> Option<&LocationInfo> {
+        self.locations.get(&slot)?.get(&location_id)
+    }
+
+    pub fn slot_ids(&self) -> impl Iterator<Item = SlotId> {
+        self.slot_info.keys().copied()
+    }
+
+    pub fn location_ids(&self, slot: SlotId) -> impl Iterator<Item = LocationId> {
+        self.get_locations(slot)
+            .into_iter()
+            .flat_map(|map| map.keys())
+            .copied()
+    }
+}
+
 // TODO: replace this with a wrapper
-fn deserialize_pickle_slot_data<'de, D>(de: D) -> Result<BTreeMap<SlotId, JsonValue>, D::Error>
+fn deserialize_pickle_slot_data<'de, D>(
+    de: D,
+) -> Result<Arc<BTreeMap<SlotId, Arc<JsonValue>>>, D::Error>
 where
     D: Deserializer<'de>,
 {
     let slot_data = <BTreeMap<SlotId, Value>>::deserialize(de)?;
     let slot_data = slot_data
         .into_iter()
-        .map(|(slot_id, slot_data)| (slot_id, pickle_to_json(slot_data)))
+        .map(|(slot_id, slot_data)| (slot_id, Arc::new(pickle_to_json(slot_data))))
         .collect::<BTreeMap<_, _>>();
 
-    Ok(slot_data)
+    Ok(Arc::new(slot_data))
 }
 
 fn pickle_to_json(value: Value) -> JsonValue {

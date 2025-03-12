@@ -7,6 +7,9 @@ use crate::proto::common::{Close, Ping, Pong};
 mod connect;
 pub use connect::Connect;
 
+mod location_scouts;
+pub use location_scouts::LocationScouts;
+
 pub type Messages = SmallVec<[Message; 1]>;
 
 #[derive(Deserialize, Debug)]
@@ -15,6 +18,7 @@ pub enum Message {
     Connect(Connect),
     Get(Get),
     Say(Say),
+    LocationScouts(LocationScouts),
     #[serde(skip)]
     Ping(Ping),
     #[serde(skip)]
