@@ -3,13 +3,14 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
 use fnv::FnvHashMap;
+use serde_json::Value;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::game::TeamAndSlot;
 use crate::proto::client::{
-    Connect, Get, LocationScouts, Message as ClientMessage, Messages as ClientMessages, Say
+    Connect, Get, LocationScouts, Message as ClientMessage, Messages as ClientMessages, Say, Set, SetOperation
 };
 use crate::proto::common::{Close, Ping, Pong};
 use crate::proto::server::{
@@ -137,6 +138,7 @@ impl super::Server {
             }
             ClientMessage::Say(say) => self.on_say(client, say).await,
             ClientMessage::Get(get) => self.on_get(client, get).await,
+            ClientMessage::Set(set) => self.on_set(client, set).await,
             ClientMessage::LocationScouts(location_scouts) => {
                 self.on_location_scouts(client, location_scouts).await
             }
@@ -254,6 +256,50 @@ impl super::Server {
         }
         
         client.lock().await.send(Retrieved { keys: retrieved }).await;
+    }
+
+    async fn on_set(&self, client: &Mutex<Client>, set: Set) {
+        // TODO: handle Set packet
+        eprintln!("TODO: handle Set packet");
+        // let Set { key, default, want_reply, operations } = set;
+        
+        // let original = self.state.data_storage_get(&key).unwrap_or(default);
+        // let mut current = original.clone();
+
+        // fn handle_op(current: Value, operation: SetOperation) -> Result<Value> {
+        //     let n = |value: Value| value.as_number().cloned().context("invalid number");
+
+        //     Ok(match operation {
+        //         SetOperation::Default => current,
+        //         SetOperation::Replace(value) => value,
+        //         SetOperation::Add(value) => n(current)? + n(value)?,
+        //         SetOperation::Mul(value) => todo!(),
+        //         SetOperation::Pow(value) => todo!(),
+        //         SetOperation::Mod(value) => todo!(),
+        //         SetOperation::Floor => todo!(),
+        //         SetOperation::Ceil => todo!(),
+        //         SetOperation::Max(value) => todo!(),
+        //         SetOperation::Min(value) => todo!(),
+        //         SetOperation::And(value) => todo!(),
+        //         SetOperation::Or(value) => todo!(),
+        //         SetOperation::Xor(value) => todo!(),
+        //         SetOperation::LeftShift(value) => todo!(),
+        //         SetOperation::RightShift(value) => todo!(),
+        //         SetOperation::Remove(value) => todo!(),
+        //         SetOperation::Pop(value) => todo!(),
+        //         SetOperation::Update(value) => todo!(),
+        //     })
+        // }
+
+        // for operation in operations {
+        //     current = match handle_op(current, operation) {
+        //         Ok(value) => value,
+        //         Err(err) => {
+        //             eprintln!("op err: {err:?}");
+        //             return;
+        //         },
+        //     }
+        // }
     }
 
     pub async fn on_location_scouts(

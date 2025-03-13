@@ -10,6 +10,9 @@ pub use connect::Connect;
 mod location_scouts;
 pub use location_scouts::LocationScouts;
 
+mod set;
+pub use set::{Set, SetOperation};
+
 pub type Messages = SmallVec<[Message; 1]>;
 
 #[derive(Deserialize, Debug)]
@@ -17,6 +20,7 @@ pub type Messages = SmallVec<[Message; 1]>;
 pub enum Message {
     Connect(Connect),
     Get(Get),
+    Set(Set),
     Say(Say),
     LocationScouts(LocationScouts),
     #[serde(skip)]
