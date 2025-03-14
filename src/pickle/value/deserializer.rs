@@ -1,18 +1,16 @@
-use anyhow::anyhow;
-use core::fmt;
 use serde::de::value::{MapDeserializer, SeqDeserializer, StrDeserializer};
 use serde::de::{IntoDeserializer, Visitor};
-use serde::{Deserializer, de, forward_to_deserialize_any};
-use std::error::Error as StdError;
+use serde::{Deserializer, forward_to_deserialize_any};
 
 use crate::pickle::value::number::N;
+use crate::pickle::value::serde_error::SerdeError;
 
 use super::Value;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, SerdeError>;
 
 impl<'de> Deserializer<'de> for Value {
-    type Error = Error;
+    type Error = SerdeError;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
     where
@@ -122,44 +120,10 @@ impl<'de> Deserializer<'de> for Value {
     }
 }
 
-impl IntoDeserializer<'_, Error> for Value {
+impl IntoDeserializer<'_, SerdeError> for Value {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {
         self
-    }
-}
-
-pub struct Error(anyhow::Error);
-
-impl Error {
-    pub fn msg(msg: impl fmt::Display) -> Error {
-        Self(anyhow!("{msg}"))
-    }
-}
-
-impl StdError for Error {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        self.0.source()
-    }
-}
-
-impl de::Error for Error {
-    fn custom<T>(msg: T) -> Self
-    where
-        T: fmt::Display,
-    {
-        Self(anyhow!("{msg}"))
-    }
-}
-impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
     }
 }

@@ -56,3 +56,12 @@ impl fmt::Debug for Bool {
         f.debug_tuple("Bool").field(self.0.as_ref()).finish()
     }
 }
+
+impl From<bool> for Bool {
+    fn from(value: bool) -> Self {
+        match value {
+            true => Bool::r#true(),
+            false => Bool::r#false(),
+        }
+    }
+}

@@ -1,10 +1,9 @@
-use std::sync::Arc;
-
 use fnv::FnvHashMap;
 use serde::Serialize;
-use serde_json::Value;
+
+use crate::pickle::Value;
 
 #[derive(Serialize, Clone, Debug)]
 pub struct Retrieved {
-    pub keys: FnvHashMap<String, Arc<Value>>,
+    pub keys: FnvHashMap<String, Value>,
 }

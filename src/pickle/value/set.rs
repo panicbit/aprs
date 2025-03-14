@@ -144,7 +144,7 @@ impl Iterator for Iter {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(self.max_len - self.index.max(self.max_len)))
+        (0, Some(self.max_len - self.index.min(self.max_len)))
     }
 }
 

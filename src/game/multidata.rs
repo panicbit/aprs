@@ -1,18 +1,14 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use anyhow::Result;
-use bstr::ByteSlice;
-use itertools::Itertools;
-use serde::{Deserialize, Deserializer};
-use serde_json::{Map, Number, Value as JsonValue};
-use serde_value::Value;
+use serde::Deserialize;
 use serde_with::{FromInto, serde_as};
 
 use crate::game::{
     GameData, HashedGameData, LocationId, LocationInfo, MinimumVersions, NetworkSlot,
     PickledVersion, SeedName, ServerOptions, SlotId, SlotName, TeamAndSlot,
 };
+use crate::pickle::Value;
 use crate::proto::common::NetworkVersion;
 
 #[serde_as]
@@ -20,8 +16,7 @@ use crate::proto::common::NetworkVersion;
 // #[serde(deny_unknown_fields)]
 pub struct MultiData {
     pub slot_info: Arc<BTreeMap<SlotId, NetworkSlot>>,
-    #[serde(deserialize_with = "deserialize_pickle_slot_data")]
-    pub slot_data: Arc<BTreeMap<SlotId, Arc<JsonValue>>>,
+    pub slot_data: Arc<BTreeMap<SlotId, Value>>,
     pub connect_names: BTreeMap<SlotName, TeamAndSlot>,
     pub seed_name: SeedName,
     pub minimum_versions: MinimumVersions,
@@ -70,97 +65,97 @@ impl MultiData {
 }
 
 // TODO: replace this with a wrapper
-fn deserialize_pickle_slot_data<'de, D>(
-    de: D,
-) -> Result<Arc<BTreeMap<SlotId, Arc<JsonValue>>>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let slot_data = <BTreeMap<SlotId, Value>>::deserialize(de)?;
-    let slot_data = slot_data
-        .into_iter()
-        .map(|(slot_id, slot_data)| (slot_id, Arc::new(pickle_to_json(slot_data))))
-        .collect::<BTreeMap<_, _>>();
+// fn deserialize_pickle_slot_data<'de, D>(de: D) -> Result<Arc<BTreeMap<SlotId, Value>>, D::Error>
+// where
+//     D: Deserializer<'de>,
+// {
+//     let slot_data = <BTreeMap<SlotId, Value>>::deserialize(de)?;
+//     let slot_data = slot_data
+//         .into_iter()
+//         .map(|(slot_id, slot_data)| (slot_id, slot_data))
+//         // .map(|(slot_id, slot_data)| (slot_id, Arc::new(pickle_to_json(slot_data))))
+//         .collect::<BTreeMap<_, _>>();
 
-    Ok(Arc::new(slot_data))
-}
+//     Ok(Arc::new(slot_data))
+// }
 
-fn pickle_to_json(value: Value) -> JsonValue {
-    match value {
-        Value::Bool(value) => value.into(),
-        Value::I64(value) => value.into(),
-        Value::F64(value) => value.into(),
-        Value::Bytes(value) => value.into(),
-        Value::String(value) => value.into(),
-        Value::Seq(values) => values
-            .into_iter()
-            .map(pickle_to_json)
-            .collect::<Vec<_>>()
-            .into(),
-        Value::U8(n) => JsonValue::from(n),
-        Value::U16(n) => JsonValue::from(n),
-        Value::U32(n) => JsonValue::from(n),
-        Value::U64(n) => JsonValue::from(n),
-        Value::U128(n) => JsonValue::from(Number::from_u128(n)),
-        Value::I8(n) => JsonValue::from(n),
-        Value::I16(n) => JsonValue::from(n),
-        Value::I32(n) => JsonValue::from(n),
-        Value::F32(n) => JsonValue::from(n),
-        Value::I128(n) => JsonValue::from(Number::from_i128(n)),
-        Value::Char(c) => JsonValue::String(c.to_string()),
-        Value::Unit => "()".into(),
-        Value::Option(value) => value
-            .map(|value| pickle_to_json(*value))
-            .unwrap_or(JsonValue::Null),
-        Value::Newtype(value) => pickle_to_json(*value),
-        Value::Map(values) => values
-            .into_iter()
-            .map(|(key, value)| (pickle_key_to_string(key), pickle_to_json(value)))
-            .collect::<Map<_, _>>()
-            .into(),
-    }
-}
+// TODO: remove this
+// fn pickle_to_json(value: Value) -> JsonValue {
+//     match value {
+//         Value::Bool(value) => value.into(),
+//         Value::I64(value) => value.into(),
+//         Value::F64(value) => value.into(),
+//         Value::Bytes(value) => value.into(),
+//         Value::String(value) => value.into(),
+//         Value::Seq(values) => values
+//             .into_iter()
+//             .map(pickle_to_json)
+//             .collect::<Vec<_>>()
+//             .into(),
+//         Value::U8(n) => JsonValue::from(n),
+//         Value::U16(n) => JsonValue::from(n),
+//         Value::U32(n) => JsonValue::from(n),
+//         Value::U64(n) => JsonValue::from(n),
+//         Value::U128(n) => JsonValue::from(Number::from_u128(n)),
+//         Value::I8(n) => JsonValue::from(n),
+//         Value::I16(n) => JsonValue::from(n),
+//         Value::I32(n) => JsonValue::from(n),
+//         Value::F32(n) => JsonValue::from(n),
+//         Value::I128(n) => JsonValue::from(Number::from_i128(n)),
+//         Value::Char(c) => JsonValue::String(c.to_string()),
+//         Value::Unit => "()".into(),
+//         Value::Option(value) => value
+//             .map(|value| pickle_to_json(*value))
+//             .unwrap_or(JsonValue::Null),
+//         Value::Newtype(value) => pickle_to_json(*value),
+//         Value::Map(values) => values
+//             .into_iter()
+//             .map(|(key, value)| (pickle_key_to_string(key), pickle_to_json(value)))
+//             .collect::<Map<_, _>>()
+//             .into(),
+//     }
+// }
 
-fn pickle_key_to_string(key: Value) -> String {
-    match key {
-        Value::Bool(value) => value.to_string(),
-        Value::U8(value) => value.to_string(),
-        Value::U16(value) => value.to_string(),
-        Value::U32(value) => value.to_string(),
-        Value::U64(value) => value.to_string(),
-        Value::U128(value) => value.to_string(),
-        Value::I8(value) => value.to_string(),
-        Value::I16(value) => value.to_string(),
-        Value::I32(value) => value.to_string(),
-        Value::I64(value) => value.to_string(),
-        Value::I128(value) => value.to_string(),
-        Value::F32(value) => value.to_string(),
-        Value::F64(value) => value.to_string(),
-        Value::Char(value) => value.to_string(),
-        Value::String(value) => value.to_string(),
-        Value::Unit => "null".to_string(),
-        Value::Option(value) => value
-            .map(|value| pickle_key_to_string(*value))
-            .unwrap_or_else(|| "null".into()),
-        Value::Newtype(value) => pickle_key_to_string(*value),
-        Value::Seq(values) => {
-            let values = values.into_iter().map(pickle_key_to_string).join(", ");
+// fn pickle_key_to_string(key: Value) -> String {
+//     match key {
+//         Value::Bool(value) => value.to_string(),
+//         Value::U8(value) => value.to_string(),
+//         Value::U16(value) => value.to_string(),
+//         Value::U32(value) => value.to_string(),
+//         Value::U64(value) => value.to_string(),
+//         Value::U128(value) => value.to_string(),
+//         Value::I8(value) => value.to_string(),
+//         Value::I16(value) => value.to_string(),
+//         Value::I32(value) => value.to_string(),
+//         Value::I64(value) => value.to_string(),
+//         Value::I128(value) => value.to_string(),
+//         Value::F32(value) => value.to_string(),
+//         Value::F64(value) => value.to_string(),
+//         Value::Char(value) => value.to_string(),
+//         Value::String(value) => value.to_string(),
+//         Value::Unit => "null".to_string(),
+//         Value::Option(value) => value
+//             .map(|value| pickle_key_to_string(*value))
+//             .unwrap_or_else(|| "null".into()),
+//         Value::Newtype(value) => pickle_key_to_string(*value),
+//         Value::Seq(values) => {
+//             let values = values.into_iter().map(pickle_key_to_string).join(", ");
 
-            format!("({values})")
-        }
-        Value::Map(values) => {
-            let values = values
-                .into_iter()
-                .map(|(key, value)| {
-                    let key = pickle_key_to_string(key);
-                    let value = pickle_key_to_string(value);
+//             format!("({values})")
+//         }
+//         Value::Map(values) => {
+//             let values = values
+//                 .into_iter()
+//                 .map(|(key, value)| {
+//                     let key = pickle_key_to_string(key);
+//                     let value = pickle_key_to_string(value);
 
-                    format!("{key}: {value}")
-                })
-                .join(", ");
+//                     format!("{key}: {value}")
+//                 })
+//                 .join(", ");
 
-            format!("{{{values}}}")
-        }
-        Value::Bytes(bytes) => bytes.as_bstr().to_string(),
-    }
-}
+//             format!("{{{values}}}")
+//         }
+//         Value::Bytes(bytes) => bytes.as_bstr().to_string(),
+//     }
+// }

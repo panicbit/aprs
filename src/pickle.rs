@@ -9,12 +9,14 @@ use anyhow::{Context, Result, anyhow, bail};
 use itertools::Itertools;
 use serde::Deserialize;
 
-use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Tuple, Value};
+use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Tuple};
 use crate::proto::server::print_json::HintStatus;
+
+mod value;
+pub use value::Value;
 
 mod dispatch;
 mod op;
-mod value;
 
 const HIGHEST_PROTOCOL: u8 = 5;
 

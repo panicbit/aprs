@@ -52,12 +52,8 @@ impl Dict {
         self.into_iter()
     }
 
-    pub fn values(&self) -> Values<'_> {
-        Values {
-            dict: self,
-            index: 0,
-            max_len: self.len(),
-        }
+    pub fn values(&self) -> Values {
+        Values::new(self.clone())
     }
 }
 
@@ -133,14 +129,14 @@ impl Iterator for Iter {
     type Item = (Value, Value);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let vec = self.dict.0.read();
+        let map = self.dict.0.read();
 
         // This prevents appending a dict to itself from ending up in an endless loop
         if self.index >= self.max_len {
             return None;
         }
 
-        let (Element(key), Element(value)) = vec.get_index(self.index)?;
+        let (Element(key), Element(value)) = map.get_index(self.index)?;
         let value = (key.clone(), value.clone());
 
         self.index += 1;
@@ -149,17 +145,27 @@ impl Iterator for Iter {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(self.max_len - self.index.max(self.max_len)))
+        (0, Some(self.max_len - self.index.min(self.max_len)))
     }
 }
 
-pub struct Values<'a> {
-    dict: &'a Dict,
+pub struct Values {
+    dict: Dict,
     index: usize,
     max_len: usize,
 }
 
-impl Iterator for Values<'_> {
+impl Values {
+    fn new(dict: Dict) -> Self {
+        Self {
+            max_len: dict.len(),
+            dict,
+            index: 0,
+        }
+    }
+}
+
+impl Iterator for Values {
     type Item = Value;
 
     fn next(&mut self) -> Option<Self::Item> {

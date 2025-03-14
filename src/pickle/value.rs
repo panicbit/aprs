@@ -35,7 +35,11 @@ pub use str::Str;
 mod bool;
 pub use bool::Bool;
 
+mod deserialize;
 mod deserializer;
+mod serde_error;
+mod serialize;
+// mod serializer;
 
 mod rw_gc;
 mod traced;
@@ -74,6 +78,10 @@ impl Value {
 
     pub fn empty_list() -> Self {
         Value::List(List::new())
+    }
+
+    pub fn bool(v: bool) -> Self {
+        Self::Bool(v.into())
     }
 
     #[expect(non_snake_case)]
@@ -202,6 +210,10 @@ impl Value {
         Self::Str(Str::from(s.into()))
     }
 
+    pub fn number(n: impl Into<Number>) -> Self {
+        Self::Number(n.into())
+    }
+
     pub fn callable<F>(f: F) -> Self
     where
         F: Fn(&Tuple) -> Result<Value> + Send + Sync + 'static,
@@ -215,6 +227,12 @@ impl Value {
 
     pub fn empty_set() -> Self {
         Self::Set(Set::new())
+    }
+}
+
+impl Default for Value {
+    fn default() -> Self {
+        Value::none()
     }
 }
 

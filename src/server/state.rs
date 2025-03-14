@@ -1,7 +1,7 @@
 use fnv::{FnvHashMap, FnvHashSet};
-use serde_json::Value;
 
 use crate::game::{LocationId, MultiData, SlotId, TeamId};
+use crate::pickle::Value;
 
 pub struct State {
     slot_states: FnvHashMap<SlotId, SlotState>,

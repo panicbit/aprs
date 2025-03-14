@@ -10,6 +10,8 @@ use crate::pickle::value::Id;
 
 use super::Value;
 
+// TODO: ensure that all int types properly get represented as the smallest possible N type
+
 #[derive(Clone, PartialEq)]
 pub struct Number(Gc<N>);
 
@@ -90,6 +92,12 @@ impl From<bool> for Number {
     }
 }
 
+impl From<i8> for Number {
+    fn from(n: i8) -> Self {
+        Self::new(N::from(i64::from(n)))
+    }
+}
+
 impl From<u8> for Number {
     fn from(n: u8) -> Self {
         Self::new(N::from(i64::from(n)))
@@ -126,24 +134,38 @@ impl From<i64> for Number {
     }
 }
 
+impl From<u64> for Number {
+    fn from(n: u64) -> Self {
+        Self::new(N::from(n))
+    }
+}
+
 impl From<i128> for Number {
     fn from(n: i128) -> Self {
         Self::new(N::from(n))
     }
 }
 
+impl From<u128> for Number {
+    fn from(n: u128) -> Self {
+        Self::new(N::from(n))
+    }
+}
+
 impl From<usize> for Number {
     fn from(n: usize) -> Self {
-        if let Ok(n) = i128::try_from(n) {
-            return Self::new(N::from(n));
-        }
-
-        Self::new(N::from(BigInt::from(n)))
+        Self::new(N::from(n))
     }
 }
 
 impl From<BigInt> for Number {
     fn from(n: BigInt) -> Self {
+        Self::new(N::from(n))
+    }
+}
+
+impl From<f32> for Number {
+    fn from(n: f32) -> Self {
         Self::new(N::from(n))
     }
 }
@@ -191,6 +213,16 @@ impl From<i64> for N {
     }
 }
 
+impl From<u64> for N {
+    fn from(n: u64) -> Self {
+        if let Ok(n) = i64::try_from(n) {
+            return N::from(n);
+        }
+
+        N::I128(n.into())
+    }
+}
+
 impl From<i128> for N {
     fn from(n: i128) -> Self {
         if let Ok(n) = i64::try_from(n) {
@@ -201,6 +233,26 @@ impl From<i128> for N {
     }
 }
 
+impl From<u128> for N {
+    fn from(n: u128) -> Self {
+        if let Ok(n) = i128::try_from(n) {
+            return N::from(n);
+        }
+
+        N::BigInt(n.into())
+    }
+}
+
+impl From<usize> for N {
+    fn from(n: usize) -> Self {
+        if let Ok(n) = i128::try_from(n) {
+            return N::from(n);
+        }
+
+        N::from(BigInt::from(n))
+    }
+}
+
 impl From<BigInt> for N {
     fn from(n: BigInt) -> Self {
         if let Ok(n) = i128::try_from(&n) {
@@ -208,6 +260,18 @@ impl From<BigInt> for N {
         }
 
         N::BigInt(n)
+    }
+}
+
+impl From<f32> for N {
+    fn from(n: f32) -> Self {
+        if n.fract().is_zero() {
+            if let Some(n) = BigInt::from_f32(n) {
+                return N::from(n);
+            }
+        }
+
+        N::F64(n.into())
     }
 }
 

@@ -1,12 +1,10 @@
-use std::collections::BTreeMap;
-
 use anyhow::Result;
 use aprs::server::{Config, Server};
 use clap::Parser;
 use tokio::runtime::Runtime;
 
 use crate::cli::Cli;
-use aprs::game::{Game, SlotId};
+use aprs::game::Game;
 
 mod cli;
 
@@ -17,6 +15,9 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     let game = Game::load(cli.multiworld_path)?;
     let config = Config::default();
+
+    eprintln!("Server started.");
+
     let server = Server::new(config, game.multi_data);
 
     Runtime::new()?.block_on(server.run())

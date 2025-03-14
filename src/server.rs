@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use fnv::FnvHashMap;
-use serde_json::Value;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
 use tokio::sync::Mutex;
@@ -12,6 +11,7 @@ use tokio_tungstenite::tungstenite::handshake::server::Callback;
 use tokio_tungstenite::tungstenite::http::Uri;
 
 use crate::game::{MultiData, SlotId, TeamId};
+use crate::pickle::Value;
 use crate::proto::server::{Message, NetworkPlayer};
 use crate::server::client::Client;
 use crate::server::event::Event;
@@ -71,15 +71,15 @@ impl Server {
         }
     }
 
-    fn get_key(&self, key: &str) -> Option<Arc<Value>> {
+    fn get_key(&self, key: &str) -> Option<Value> {
         if let Some(key) = key.strip_prefix("_read_") {
             return self.get_special_key(key);
         }
 
-        self.state.data_storage_get(key).map(Arc::new)
+        self.state.data_storage_get(key)
     }
 
-    fn get_special_key(&self, key: &str) -> Option<Arc<Value>> {
+    fn get_special_key(&self, key: &str) -> Option<Value> {
         if let Some(key) = key.strip_prefix("hints_") {
             return self.get_hints(key);
         }
@@ -91,17 +91,17 @@ impl Server {
         todo!()
     }
 
-    fn get_hints(&self, key: &str) -> Option<Arc<Value>> {
+    fn get_hints(&self, key: &str) -> Option<Value> {
         let (team, slot) = key.split_once("_")?;
         let team = team.parse::<i64>().map(TeamId).ok()?;
         let slot = slot.parse::<i64>().map(SlotId).ok()?;
 
         let hints = self.state.get_hints(team, slot)?;
 
-        Some(Arc::new(hints))
+        Some(hints)
     }
 
-    fn get_slot_data(&self, key: &str) -> Option<Arc<Value>> {
+    fn get_slot_data(&self, key: &str) -> Option<Value> {
         let slot = key.parse::<i64>().map(SlotId).ok()?;
 
         self.multi_data.slot_data.get(&slot).cloned()
