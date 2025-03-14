@@ -2,6 +2,7 @@ use std::net::SocketAddr;
 use std::pin::pin;
 use std::sync::Arc;
 
+use fnv::FnvHashSet;
 use tokio::net::TcpStream;
 use tokio::select;
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -19,6 +20,7 @@ pub struct Client {
     pub is_connected: bool,
     pub slot_name: SlotName,
     pub slot_id: SlotId,
+    pub wants_updates_for_keys: FnvHashSet<String>,
 }
 
 impl Client {
@@ -37,6 +39,7 @@ impl Client {
             is_connected: false,
             slot_name: SlotName::empty(),
             slot_id: SlotId(-1),
+            wants_updates_for_keys: FnvHashSet::default(),
         }
     }
 

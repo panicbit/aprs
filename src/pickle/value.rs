@@ -230,6 +230,76 @@ impl Value {
     }
 }
 
+impl Value {
+    fn add(&self, other: &Value) -> Result<Value> {
+        let a = self.as_number()?;
+        let b = other.as_number()?;
+
+        // Ok(a.add(b))
+        todo!()
+    }
+
+    fn mul(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn pow(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn r#mod(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn floor(&self) -> Result<Value> {
+        todo!()
+    }
+
+    fn ceil(&self) -> Result<Value> {
+        todo!()
+    }
+
+    fn max(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn min(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn and(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn or(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn xor(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn left_shift(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn right_shift(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn remove(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn pop(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+
+    fn update(&self, other: &Value) -> Result<Value> {
+        todo!()
+    }
+}
+
 impl Default for Value {
     fn default() -> Self {
         Value::none()

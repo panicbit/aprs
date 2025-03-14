@@ -3,18 +3,18 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
 use fnv::FnvHashMap;
-use serde_json::Value;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::game::TeamAndSlot;
+use crate::pickle::Value;
 use crate::proto::client::{
-    Connect, Get, LocationScouts, Message as ClientMessage, Messages as ClientMessages, Say, Set, SetOperation
+    Connect, Get, LocationScouts, Message as ClientMessage, Messages as ClientMessages, Say, Set, SetNotify, SetOperation
 };
 use crate::proto::common::{Close, Ping, Pong};
 use crate::proto::server::{
-    CommandPermission, Connected, ConnectionRefused, LocationInfo, Message, NetworkItem, Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo, Time
+    CommandPermission, Connected, ConnectionRefused, LocationInfo, Message, NetworkItem, Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo, SetReply, Time
 };
 use crate::server::client::Client;
 use crate::server::event::Event;
@@ -139,6 +139,7 @@ impl super::Server {
             ClientMessage::Say(say) => self.on_say(client, say).await,
             ClientMessage::Get(get) => self.on_get(client, get).await,
             ClientMessage::Set(set) => self.on_set(client, set).await,
+            ClientMessage::SetNotify(set_notify) => self.on_set_notify(client, set_notify).await,
             ClientMessage::LocationScouts(location_scouts) => {
                 self.on_location_scouts(client, location_scouts).await
             }
@@ -259,47 +260,87 @@ impl super::Server {
     }
 
     async fn on_set(&self, client: &Mutex<Client>, set: Set) {
-        // TODO: handle Set packet
-        eprintln!("TODO: handle Set packet");
-        // let Set { key, default, want_reply, operations } = set;
+        let Set { key, default, want_reply, operations } = set;
         
-        // let original = self.state.data_storage_get(&key).unwrap_or(default);
-        // let mut current = original.clone();
+        let slot = client.lock().await.slot_id;
+        let original_value = self.state.data_storage_get(&key).unwrap_or(default);
+        let mut value = original_value.clone();
 
-        // fn handle_op(current: Value, operation: SetOperation) -> Result<Value> {
-        //     let n = |value: Value| value.as_number().cloned().context("invalid number");
+        fn handle_op(current: Value, operation: SetOperation) -> Result<Value> {
+            Ok(match operation {
+                SetOperation::Default => current,
+                SetOperation::Replace(value) => value,
+                // TODO: implement remaining set ops
+                // SetOperation::Add(value) => current.add(value),
+                // SetOperation::Mul(value) => current.mul(value),
+                // SetOperation::Pow(value) => current.pow(value),
+                // SetOperation::Mod(value) => current.r#mod(value),
+                // SetOperation::Floor => current.floor(),
+                // SetOperation::Ceil => current.ceil(),
+                // SetOperation::Max(value) => current.max(value),
+                // SetOperation::Min(value) => current.min(value),
+                // SetOperation::And(value) => current.and(value),
+                // SetOperation::Or(value) => current.or(value),
+                // SetOperation::Xor(value) => current.xor(value),
+                // SetOperation::LeftShift(value) => current.left_shift(value),
+                // SetOperation::RightShift(value) => current.right_shift(value),
+                // SetOperation::Remove(value) => current.remove(value),
+                // SetOperation::Pop(value) => current.pop(value),
+                SetOperation::Update(value) => {
+                    {
 
-        //     Ok(match operation {
-        //         SetOperation::Default => current,
-        //         SetOperation::Replace(value) => value,
-        //         SetOperation::Add(value) => n(current)? + n(value)?,
-        //         SetOperation::Mul(value) => todo!(),
-        //         SetOperation::Pow(value) => todo!(),
-        //         SetOperation::Mod(value) => todo!(),
-        //         SetOperation::Floor => todo!(),
-        //         SetOperation::Ceil => todo!(),
-        //         SetOperation::Max(value) => todo!(),
-        //         SetOperation::Min(value) => todo!(),
-        //         SetOperation::And(value) => todo!(),
-        //         SetOperation::Or(value) => todo!(),
-        //         SetOperation::Xor(value) => todo!(),
-        //         SetOperation::LeftShift(value) => todo!(),
-        //         SetOperation::RightShift(value) => todo!(),
-        //         SetOperation::Remove(value) => todo!(),
-        //         SetOperation::Pop(value) => todo!(),
-        //         SetOperation::Update(value) => todo!(),
-        //     })
-        // }
+                        let current = current.as_dict()?;
+                        let value = value.as_dict()?;
+                        
+                        for (key, value) in value {
+                            current.insert(key, value)?;
+                        }
+                    }
 
-        // for operation in operations {
-        //     current = match handle_op(current, operation) {
-        //         Ok(value) => value,
-        //         Err(err) => {
-        //             eprintln!("op err: {err:?}");
-        //             return;
-        //         },
-        //     }
-        // }
+                    value
+                },
+                _ => bail!("TODO: implement SetOperation: {operation:?}"),
+            })
+        }
+
+        for operation in operations {
+            value = match handle_op(value, operation) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("op err: {err:?}");
+                    return;
+                },
+            }
+        }
+
+        let set_reply = Arc::new(Message::SetReply(SetReply {
+            key: key.clone(),
+            value,
+            original_value,
+            slot,
+        }));
+
+        {
+            let client = client.lock().await;
+
+            if want_reply && !client.wants_updates_for_keys.contains(&key) {
+                client.send(set_reply.clone()).await;
+            }
+        }
+
+        for client in self.clients.values() {
+            let client = client.lock().await;
+            
+            if client.wants_updates_for_keys.contains(&key) {
+                client.send(set_reply.clone()).await;
+            }
+        }
+    }
+
+    pub async fn on_set_notify(&mut self, client: &Mutex<Client>, set_notify: SetNotify) {
+        let SetNotify { keys } = set_notify;
+
+        client.lock().await.wants_updates_for_keys = keys;
     }
 
     pub async fn on_location_scouts(

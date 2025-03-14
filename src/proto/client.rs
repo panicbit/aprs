@@ -13,6 +13,9 @@ pub use location_scouts::LocationScouts;
 mod set;
 pub use set::{Set, SetOperation};
 
+mod set_notify;
+pub use set_notify::SetNotify;
+
 pub type Messages = SmallVec<[Message; 1]>;
 
 #[derive(Deserialize, Debug)]
@@ -21,6 +24,7 @@ pub enum Message {
     Connect(Connect),
     Get(Get),
     Set(Set),
+    SetNotify(SetNotify),
     Say(Say),
     LocationScouts(LocationScouts),
     #[serde(skip)]

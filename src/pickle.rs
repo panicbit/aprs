@@ -12,7 +12,7 @@ use serde::Deserialize;
 use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Tuple};
 use crate::proto::server::print_json::HintStatus;
 
-mod value;
+pub mod value;
 pub use value::Value;
 
 mod dispatch;

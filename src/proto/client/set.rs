@@ -1,5 +1,6 @@
 use serde::Deserialize;
-use serde_json::Value;
+
+use crate::pickle::Value;
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "o")]

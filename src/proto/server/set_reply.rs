@@ -1,7 +1,7 @@
 use serde::Serialize;
-use serde_json::Value;
 
 use crate::game::SlotId;
+use crate::pickle::Value;
 
 #[derive(Serialize, Debug)]
 pub struct SetReply {
