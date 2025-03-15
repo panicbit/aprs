@@ -9,6 +9,7 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio_tungstenite::WebSocketStream;
 
 use crate::game::{SlotId, SlotName};
+use crate::pickle::value::Str;
 use crate::proto::server::MessageSink;
 use crate::proto::server::{Message as ServerMessage, MessageStream};
 use crate::server::event::Event;
@@ -20,7 +21,7 @@ pub struct Client {
     pub is_connected: bool,
     pub slot_name: SlotName,
     pub slot_id: SlotId,
-    pub wants_updates_for_keys: FnvHashSet<String>,
+    pub wants_updates_for_keys: FnvHashSet<Str>,
 }
 
 impl Client {

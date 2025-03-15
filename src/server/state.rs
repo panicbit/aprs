@@ -2,10 +2,11 @@ use fnv::{FnvHashMap, FnvHashSet};
 
 use crate::game::{LocationId, MultiData, SlotId, TeamId};
 use crate::pickle::Value;
+use crate::pickle::value::Str;
 
 pub struct State {
     slot_states: FnvHashMap<SlotId, SlotState>,
-    data_storage: FnvHashMap<String, Value>,
+    data_storage: FnvHashMap<Str, Value>,
 }
 
 impl State {
@@ -27,6 +28,10 @@ impl State {
 
     pub fn data_storage_get(&self, key: &str) -> Option<Value> {
         self.data_storage.get(key).cloned()
+    }
+
+    pub fn data_storage_set(&mut self, key: Str, value: impl Into<Value>) {
+        self.data_storage.insert(key, value.into());
     }
 
     pub fn get_hints(&self, team: TeamId, slot: SlotId) -> Option<Value> {

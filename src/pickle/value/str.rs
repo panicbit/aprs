@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Deref;
@@ -5,10 +6,11 @@ use std::ops::Deref;
 use anyhow::{Error, Result};
 use dumpster::Trace;
 use dumpster::sync::Gc;
+use serde::{Deserialize, Serialize};
 
 use crate::pickle::value::{Id, Value};
 
-#[derive(Trace, PartialEq, Clone)]
+#[derive(Trace, PartialEq, Eq, Clone)]
 pub struct Str(Gc<String>);
 
 impl Str {
@@ -68,5 +70,32 @@ impl Deref for Str {
 impl fmt::Debug for Str {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.as_str().fmt(f)
+    }
+}
+
+impl Borrow<str> for Str {
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl<'de> Deserialize<'de> for Str {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let str = String::deserialize(deserializer)?;
+        let str = Self::from(str);
+
+        Ok(str)
+    }
+}
+
+impl Serialize for Str {
+    fn serialize<S>(&self, ser: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        ser.serialize_str(&self.0)
     }
 }

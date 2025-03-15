@@ -1,11 +1,12 @@
 use serde::Deserialize;
 
 use crate::pickle::Value;
+use crate::pickle::value::Str;
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "o")]
 pub struct Set {
-    pub key: String,
+    pub key: Str,
     pub default: Value,
     pub want_reply: bool,
     pub operations: Vec<SetOperation>,

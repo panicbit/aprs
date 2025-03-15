@@ -259,7 +259,7 @@ impl super::Server {
         client.lock().await.send(Retrieved { keys: retrieved }).await;
     }
 
-    async fn on_set(&self, client: &Mutex<Client>, set: Set) {
+    async fn on_set(&mut self, client: &Mutex<Client>, set: Set) {
         let Set { key, default, want_reply, operations } = set;
         
         let slot = client.lock().await.slot_id;
@@ -302,6 +302,8 @@ impl super::Server {
                 _ => bail!("TODO: implement SetOperation: {operation:?}"),
             })
         }
+
+        self.state.data_storage_set(key.clone(), value.clone());
 
         for operation in operations {
             value = match handle_op(value, operation) {
