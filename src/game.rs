@@ -133,7 +133,7 @@ pub struct ServerOptions {
     pub rest: BTreeMap<String, serde_json::Value>,
 }
 
-#[derive(Deserialize_tuple, Debug)]
+#[derive(Deserialize_tuple, Debug, Hash, PartialEq, Eq, Copy, Clone)]
 pub struct LocationInfo {
     pub item: ItemId,
     pub slot: SlotId,

@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 use crate::proto::common::{Close, Ping, Pong};
 
 mod connect;
-pub use connect::Connect;
+pub use connect::{Connect, ItemsHandling};
 
 mod location_scouts;
 pub use location_scouts::LocationScouts;
@@ -15,6 +15,12 @@ pub use set::{Set, SetOperation};
 
 mod set_notify;
 pub use set_notify::SetNotify;
+
+mod location_checks;
+pub use location_checks::LocationChecks;
+
+mod sync;
+pub use sync::Sync;
 
 pub type Messages = SmallVec<[Message; 1]>;
 
@@ -26,7 +32,9 @@ pub enum Message {
     Set(Set),
     SetNotify(SetNotify),
     Say(Say),
+    Sync(Sync),
     LocationScouts(LocationScouts),
+    LocationChecks(LocationChecks),
     #[serde(skip)]
     Ping(Ping),
     #[serde(skip)]

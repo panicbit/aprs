@@ -17,6 +17,7 @@ fn main() -> Result<()> {
     let config = Config::default();
 
     eprintln!("Server started.");
+    eprintln!("{:#?}", game.multi_data.rest);
 
     let server = Server::new(config, game.multi_data);
 

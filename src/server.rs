@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -88,7 +89,45 @@ impl Server {
             return self.get_slot_data(key);
         }
 
-        todo!()
+        if let Some(key) = key.strip_prefix("item_name_groups_") {
+            return self.get_item_name_groups(key);
+        }
+
+        if let Some(key) = key.strip_prefix("location_name_groups_") {
+            return self.get_location_name_groups(key);
+        }
+
+        if let Some(key) = key.strip_prefix("client_status_") {
+            return self.get_client_status(key);
+        }
+
+        if let Some(key) = key.strip_prefix("client_status_") {
+            return self.get_race_mode(key);
+        }
+
+        eprintln!("Unknown special key: {key}");
+
+        None
+    }
+
+    fn get_item_name_groups(&self, key: &str) -> Option<Value> {
+        eprintln!("TODO: implement get_item_name_groups");
+        None
+    }
+
+    fn get_location_name_groups(&self, key: &str) -> Option<Value> {
+        eprintln!("TODO: implement get_location_name_groups");
+        None
+    }
+
+    fn get_client_status(&self, key: &str) -> Option<Value> {
+        eprintln!("TODO: implement get_client_status");
+        None
+    }
+
+    fn get_race_mode(&self, key: &str) -> Option<Value> {
+        eprintln!("TODO: implement get_race_mode");
+        None
     }
 
     fn get_hints(&self, key: &str) -> Option<Value> {
@@ -127,6 +166,47 @@ impl Server {
         for client in self.clients.values() {
             client.lock().await.send(message.clone()).await;
         }
+    }
+
+    async fn broadcast_messages(&self, messages: &[Arc<Message>]) {
+        for client in self.clients.values() {
+            let client = client.lock().await;
+
+            for message in messages {
+                client.send(message.clone()).await;
+            }
+        }
+    }
+
+    async fn sync_items_to_clients(&self) {
+        for client in self.clients.values() {
+            self.sync_items_to_client(client).await;
+        }
+    }
+
+    async fn sync_items_to_client(&self, client: &Mutex<Client>) {
+        let slot = client.lock().await.slot_id;
+        let Some(slot_state) = self.state.get_slot_state(slot) else {
+            eprintln!("BUG: trying to sync items to invalid slot {:?}", slot);
+            return;
+        };
+        let starting_inventory = self
+            .multi_data
+            .precollected_items
+            .get(&slot)
+            .map(Cow::Borrowed)
+            .unwrap_or_default();
+        let slot_received_items = slot_state.received_items();
+
+        client
+            .lock()
+            .await
+            .sync_items(slot_received_items, &starting_inventory)
+            .await
+    }
+
+    fn save_state(&self) {
+        eprintln!("TODO: save state");
     }
 }
 

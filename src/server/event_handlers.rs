@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
 use fnv::FnvHashMap;
+use itertools::Itertools;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::WebSocketStream;
@@ -10,7 +11,7 @@ use tokio_tungstenite::WebSocketStream;
 use crate::game::TeamAndSlot;
 use crate::pickle::Value;
 use crate::proto::client::{
-    Connect, Get, LocationScouts, Message as ClientMessage, Messages as ClientMessages, Say, Set, SetNotify, SetOperation
+    Connect, Get, LocationChecks, LocationScouts, Message as ClientMessage, Messages as ClientMessages, Say, Set, SetNotify, SetOperation
 };
 use crate::proto::common::{Close, Ping, Pong};
 use crate::proto::server::{
@@ -143,6 +144,8 @@ impl super::Server {
             ClientMessage::LocationScouts(location_scouts) => {
                 self.on_location_scouts(client, location_scouts).await
             }
+            ClientMessage::LocationChecks(location_checks) => self.on_location_checks(client, location_checks).await,
+            ClientMessage::Sync(_) => self.on_sync(client).await,
             ClientMessage::Unknown(value) => eprintln!("Unknown client message: {value:?}"),
             ClientMessage::Ping(_) => bail!("unreachable: Ping"),
             ClientMessage::Pong(_) => bail!("unreachable: Pong"),
@@ -153,13 +156,14 @@ impl super::Server {
     }
 
     pub async fn on_connect(&self, client: &Mutex<Client>, connect: Connect) -> Result<()> {
+        let Connect { password, game, name, uuid, version, items_handling, tags, slot_data } = connect;
         // TODO: implement checks:
         // - items handling
         // - version (skip if tags are appropriate)
 
         // the password must match if one is required
-        if let Some(password) = &self.multi_data.server_options.client_password {
-            if Some(password) != connect.password.as_ref() {
+        if let Some(client_password) = &self.multi_data.server_options.client_password {
+            if Some(client_password) != password.as_ref() {
                 client
                     .lock()
                     .await
@@ -170,7 +174,7 @@ impl super::Server {
         }
 
         // the requested slot name must exist
-        let Some(team_and_slot) = self.multi_data.connect_names.get(&connect.name) else {
+        let Some(team_and_slot) = self.multi_data.connect_names.get(&name) else {
             client
                 .lock()
                 .await
@@ -189,13 +193,12 @@ impl super::Server {
             return Ok(());
         };
 
-        let skip_game_and_version_validation = connect
-            .tags
+        let skip_game_and_version_validation = tags
             .iter()
             .any(|tag| ["Tracker", "TextOnly", "HintGame"].contains(&tag.as_str()));
 
         // the requested slot game must match
-        if slot_info.game != connect.game && !skip_game_and_version_validation {
+        if slot_info.game != game && !skip_game_and_version_validation {
             client
                 .lock()
                 .await
@@ -204,36 +207,42 @@ impl super::Server {
             return Ok(());
         }
 
-        let mut client = client.lock().await;
+        {
+            let mut client = client.lock().await;
 
-        let slot_state = self
-            .state
-            .get_slot_state(slot)
-            .context("BUG: missing slot state for slot {slot}")?;
+            let slot_state = self
+                .state
+                .get_slot_state(slot)
+                .context("BUG: missing slot state for slot {slot}")?;
 
-        client
-            .send(Connected {
-                team,
-                slot,
-                players: self.network_players(),
-                missing_locations: slot_state.missing_locations().clone(),
-                checked_locations: slot_state.checked_locations().clone(),
-                slot_data: self
-                    .multi_data
-                    .slot_data
-                    .get(&slot)
-                    .filter(|_| connect.slot_data)
-                    .cloned()
-                    .unwrap_or_default(),
-                slot_info: self.multi_data.slot_info.clone(),
-                // TODO: sent actual hintpoints
-                hint_points: 0,
-            })
-            .await;
+            client.set_items_handling(items_handling);
 
-        client.slot_name = connect.name;
-        client.slot_id = slot;
-        client.is_connected = true;
+            client
+                .send(Connected {
+                    team,
+                    slot,
+                    players: self.network_players(),
+                    missing_locations: slot_state.missing_locations().clone(),
+                    checked_locations: slot_state.checked_locations().clone(),
+                    slot_data: self
+                        .multi_data
+                        .slot_data
+                        .get(&slot)
+                        .filter(|_| slot_data)
+                        .cloned()
+                        .unwrap_or_default(),
+                    slot_info: self.multi_data.slot_info.clone(),
+                    // TODO: sent actual hintpoints
+                    hint_points: 0,
+                })
+                .await;
+
+            client.slot_name = name;
+            client.slot_id = slot;
+            client.is_connected = true;
+        }
+
+        self.sync_items_to_client(client).await;
 
         Ok(())
     }
@@ -377,6 +386,66 @@ impl super::Server {
         client.lock().await.send(LocationInfo {
             locations,
         }).await;
+    }
+
+    pub async fn on_location_checks(&mut self, client: &Mutex<Client>, location_checks: LocationChecks) {
+        let LocationChecks { locations } = location_checks;
+
+        let slot_sending = client.lock().await.slot_id;
+
+        let Some(location_infos) = self.multi_data.get_locations(slot_sending) else {
+            eprintln!("BUG: missing location info for slot {slot_sending:?}");
+            return;
+        };
+
+        let Some(state) = self.state.get_slot_state_mut(slot_sending) else {
+            eprintln!("BUG: missing state for slot {slot_sending:?}");
+            return;
+        };
+
+        let items_by_slot = locations.iter()
+            .filter_map(|location| {
+                if state.check_location(*location).location_was_checked() {
+                    return None;
+                }
+    
+                let location_info = location_infos.get(location)?;
+                let network_item = NetworkItem {
+                    item: location_info.item,
+                    location: *location,
+                    player: slot_sending,
+                    flags: location_info.flags,
+                };
+
+                Some((location_info.slot, network_item))
+            })
+            .into_group_map();
+
+        let mut chat_messages = Vec::new();
+
+        for (slot_receiving, items) in items_by_slot {
+            let Some(slot_state) = self.state.get_slot_state_mut(slot_receiving) else {
+                eprintln!("Tried to add items to invalid slot {slot_receiving:?}");
+                continue;
+            };
+
+            for item in &items {
+                let message = PrintJson::chat_message_for_received_item(*item, slot_receiving);
+
+                chat_messages.push(message.into());
+            }
+
+            slot_state.add_received_items(items);
+        }
+
+        self.save_state();
+        self.sync_items_to_clients().await;
+        self.broadcast_messages(&chat_messages).await;
+    }
+
+    pub async fn on_sync(&mut self, client: &Mutex<Client>) {
+        client.lock().await.reset_received_items();
+        self.sync_items_to_client(client).await;
     }
 
     pub async fn on_close(&mut self, client: &Mutex<Client>) {

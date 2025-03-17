@@ -24,7 +24,6 @@ where
             Message::Pong(pong) => tungstenite::Message::Pong(pong.0.clone()),
             Message::Close(_close) => tungstenite::Message::Close(None),
             _ => {
-                eprintln!("About to to_string message");
                 let json = serde_json::to_string(&[message])?;
                 tungstenite::Message::text(json)
             }

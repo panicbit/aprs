@@ -1,11 +1,12 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
+use fnv::FnvHashSet;
 use serde::Deserialize;
 use serde_with::{FromInto, serde_as};
 
 use crate::game::{
-    GameData, HashedGameData, LocationId, LocationInfo, MinimumVersions, NetworkSlot,
+    GameData, HashedGameData, ItemId, LocationId, LocationInfo, MinimumVersions, NetworkSlot,
     PickledVersion, SeedName, ServerOptions, SlotId, SlotName, TeamAndSlot,
 };
 use crate::pickle::Value;
@@ -27,6 +28,7 @@ pub struct MultiData {
     pub data_package: Arc<BTreeMap<String, HashedGameData>>,
     pub locations: BTreeMap<SlotId, BTreeMap<LocationId, LocationInfo>>,
     pub spheres: Vec<BTreeMap<SlotId, Vec<LocationId>>>,
+    pub precollected_items: BTreeMap<SlotId, Vec<ItemId>>,
     #[serde(flatten)]
     pub rest: BTreeMap<String, Value>,
 }
