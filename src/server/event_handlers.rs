@@ -12,11 +12,13 @@ use tokio_tungstenite::WebSocketStream;
 use crate::game::TeamAndSlot;
 use crate::pickle::Value;
 use crate::proto::client::{
-    Connect, Get, LocationChecks, LocationScouts, Message as ClientMessage, Messages as ClientMessages, Say, Set, SetNotify, SetOperation
+    Connect, Get, LocationChecks, LocationScouts, Message as ClientMessage,
+    Messages as ClientMessages, Say, Set, SetNotify, SetOperation,
 };
 use crate::proto::common::{Close, Ping, Pong};
 use crate::proto::server::{
-    CommandPermission, Connected, ConnectionRefused, LocationInfo, Message, NetworkItem, Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo, SetReply, Time
+    CommandPermission, Connected, ConnectionRefused, LocationInfo, Message, NetworkItem,
+    Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo, SetReply, Time,
 };
 use crate::server::client::Client;
 use crate::server::event::Event;
@@ -143,7 +145,9 @@ impl super::Server {
             ClientMessage::LocationScouts(location_scouts) => {
                 self.on_location_scouts(client, location_scouts).await
             }
-            ClientMessage::LocationChecks(location_checks) => self.on_location_checks(client, location_checks).await,
+            ClientMessage::LocationChecks(location_checks) => {
+                self.on_location_checks(client, location_checks).await
+            }
             ClientMessage::Sync(_) => self.on_sync(client).await,
             ClientMessage::Unknown(value) => eprintln!("Unknown client message: {value:?}"),
             ClientMessage::Ping(_) => bail!("unreachable: Ping"),
@@ -155,7 +159,16 @@ impl super::Server {
     }
 
     pub async fn on_connect(&self, client: &Mutex<Client>, connect: Connect) -> Result<()> {
-        let Connect { password, game, name: connect_name, uuid, version, items_handling, tags, slot_data } = connect;
+        let Connect {
+            password,
+            game,
+            name: connect_name,
+            uuid,
+            version,
+            items_handling,
+            tags,
+            slot_data,
+        } = connect;
         // TODO: implement checks:
         // - items handling
         // - version (skip if tags are appropriate)
@@ -280,13 +293,22 @@ impl super::Server {
                 retrieved.insert(key, value);
             }
         }
-        
-        client.lock().await.send(Retrieved { keys: retrieved }).await;
+
+        client
+            .lock()
+            .await
+            .send(Retrieved { keys: retrieved })
+            .await;
     }
 
     async fn on_set(&mut self, client: &Mutex<Client>, set: Set) {
-        let Set { key, default, want_reply, operations } = set;
-        
+        let Set {
+            key,
+            default,
+            want_reply,
+            operations,
+        } = set;
+
         let slot = client.lock().await.slot_id;
         let original_value = self.state.data_storage_get(&key).unwrap_or(default);
         let mut value = original_value.clone();
@@ -313,17 +335,16 @@ impl super::Server {
                 // SetOperation::Pop(value) => current.pop(value),
                 SetOperation::Update(value) => {
                     {
-
                         let current = current.as_dict()?;
                         let value = value.as_dict()?;
-                        
+
                         for (key, value) in value {
                             current.insert(key, value)?;
                         }
                     }
 
                     value
-                },
+                }
                 _ => bail!("TODO: implement SetOperation: {operation:?}"),
             })
         }
@@ -336,7 +357,7 @@ impl super::Server {
                 Err(err) => {
                     eprintln!("op err: {err:?}");
                     return;
-                },
+                }
             }
         }
 
@@ -357,7 +378,7 @@ impl super::Server {
 
         for client in self.clients.values() {
             let client = client.lock().await;
-            
+
             if client.wants_updates_for_keys.contains(&key) {
                 client.send(set_reply.clone()).await;
             }
@@ -376,12 +397,15 @@ impl super::Server {
         location_scouts: LocationScouts,
     ) {
         // TODO: handle `create_as_hint`
-        let LocationScouts { locations, create_as_hint } = location_scouts;
+        let LocationScouts {
+            locations,
+            create_as_hint,
+        } = location_scouts;
         let slot = client.lock().await.slot_id;
 
         let locations = locations.into_iter()
             .filter_map(|location_id| {
-                let location_info = self.multi_data.location_info(slot, location_id); 
+                let location_info = self.multi_data.location_info(slot, location_id);
 
                 if location_info.is_none() {
                     eprintln!("Client for slot {slot:?} asked for location that does not exist: {location_id:?}")
@@ -399,12 +423,14 @@ impl super::Server {
             })
             .collect::<Vec<_>>();
 
-        client.lock().await.send(LocationInfo {
-            locations,
-        }).await;
+        client.lock().await.send(LocationInfo { locations }).await;
     }
 
-    pub async fn on_location_checks(&mut self, client: &Mutex<Client>, location_checks: LocationChecks) {
+    pub async fn on_location_checks(
+        &mut self,
+        client: &Mutex<Client>,
+        location_checks: LocationChecks,
+    ) {
         let LocationChecks { locations } = location_checks;
 
         let slot_sending = client.lock().await.slot_id;
@@ -419,12 +445,13 @@ impl super::Server {
             return;
         };
 
-        let items_by_slot = locations.iter()
+        let items_by_slot = locations
+            .iter()
             .filter_map(|location| {
                 if state.check_location(*location).location_was_checked() {
                     return None;
                 }
-    
+
                 let location_info = location_infos.get(location)?;
                 let network_item = NetworkItem {
                     item: location_info.item,
