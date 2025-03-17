@@ -12,6 +12,7 @@ use tokio_tungstenite::WebSocketStream;
 use crate::game::{ItemId, SlotId, SlotName};
 use crate::pickle::value::Str;
 use crate::proto;
+use crate::proto::client::ItemsHandling;
 use crate::proto::server::{Message as ServerMessage, MessageStream, ReceivedItems};
 use crate::proto::server::{MessageSink, NetworkItem};
 use crate::server::event::Event;
@@ -24,6 +25,7 @@ pub struct Client {
     pub slot_name: SlotName,
     pub slot_id: SlotId,
     pub wants_updates_for_keys: FnvHashSet<Str>,
+    starting_inventory: FnvHashSet<ItemId>,
     items_handling: ItemsHandling,
     next_slot_item_index: usize,
     next_client_item_index: usize,
@@ -46,7 +48,8 @@ impl Client {
             slot_name: SlotName::empty(),
             slot_id: SlotId(-1),
             wants_updates_for_keys: FnvHashSet::default(),
-            items_handling: ItemsHandling::NoItems,
+            starting_inventory: FnvHashSet::default(),
+            items_handling: ItemsHandling::empty(),
             next_slot_item_index: 0,
             next_client_item_index: 0,
         }
@@ -57,11 +60,7 @@ impl Client {
         self.server_message_tx.send(message.into()).await.ok();
     }
 
-    pub fn set_items_handling(&mut self, items_handling: proto::client::ItemsHandling) {
-        eprintln!("Incoming items handling: 0b{items_handling:03b}");
-        let new_items_handling = ItemsHandling::from(items_handling);
-        eprintln!("Converted items handling: {new_items_handling:?}");
-
+    pub fn set_items_handling(&mut self, new_items_handling: proto::client::ItemsHandling) {
         if new_items_handling == self.items_handling {
             return;
         }
@@ -70,14 +69,19 @@ impl Client {
         self.reset_received_items();
     }
 
+    pub fn set_starting_inventory(&mut self, starting_inventory: &[ItemId]) {
+        self.starting_inventory = starting_inventory
+            .iter()
+            .copied()
+            .collect::<FnvHashSet<_>>();
+    }
+
     pub fn reset_received_items(&mut self) {
         self.next_slot_item_index = 0;
         self.next_client_item_index = 0;
     }
 
-    pub async fn sync_items(&mut self, slot_items: &[NetworkItem], starting_inventory: &[ItemId]) {
-        dbg!(slot_items, starting_inventory);
-
+    pub async fn sync_items(&mut self, slot_items: &[NetworkItem]) {
         let Some(missing_items) = slot_items.get(self.next_slot_item_index..) else {
             eprintln!("BUG: next_slot_item_index out of bounds");
             return;
@@ -87,21 +91,27 @@ impl Client {
 
         let client_index = self.next_client_item_index;
 
-        let missing_items = match self.items_handling {
-            ItemsHandling::NoItems => vec![],
-            ItemsHandling::All => missing_items.to_owned(),
-            ItemsHandling::OwnWorld => missing_items
-                .iter()
-                .filter(|item| item.player == self.slot_id)
-                .copied()
-                .collect_vec(),
-            ItemsHandling::StartingInventory => missing_items
-                .iter()
-                .filter(|item| item.player == self.slot_id)
-                .filter(|item| starting_inventory.contains(&item.item))
-                .copied()
-                .collect_vec(),
-        };
+        let missing_items = missing_items
+            .iter()
+            .filter(|item| {
+                if !self.items_handling.is_remote() {
+                    return false;
+                }
+
+                if item.player != self.slot_id {
+                    return true;
+                }
+
+                if self.items_handling.is_starting_inventory()
+                    && self.starting_inventory.contains(&item.item)
+                {
+                    return true;
+                }
+
+                self.items_handling.is_own_world()
+            })
+            .copied()
+            .collect_vec();
 
         dbg!(&missing_items);
 
@@ -114,7 +124,7 @@ impl Client {
 
         self.send(ReceivedItems {
             index: client_index,
-            items: missing_items.to_owned(),
+            items: missing_items,
         })
         .await;
     }
@@ -162,29 +172,5 @@ async fn client_loop(
                 event_tx.send(Event::ClientMessages(address, client_messages)).await.ok();
             }
         }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum ItemsHandling {
-    NoItems,
-    All,
-    OwnWorld,
-    StartingInventory,
-}
-
-impl From<proto::client::ItemsHandling> for ItemsHandling {
-    fn from(value: proto::client::ItemsHandling) -> Self {
-        if value.is_remote() {
-            if value.is_own_world_only() {
-                return Self::OwnWorld;
-            } else if value.is_starting_inventory_only() {
-                return Self::StartingInventory;
-            } else {
-                return Self::All;
-            }
-        }
-
-        Self::NoItems
     }
 }

@@ -190,19 +190,9 @@ impl Server {
             eprintln!("BUG: trying to sync items to invalid slot {:?}", slot);
             return;
         };
-        let starting_inventory = self
-            .multi_data
-            .precollected_items
-            .get(&slot)
-            .map(Cow::Borrowed)
-            .unwrap_or_default();
         let slot_received_items = slot_state.received_items();
 
-        client
-            .lock()
-            .await
-            .sync_items(slot_received_items, &starting_inventory)
-            .await
+        client.lock().await.sync_items(slot_received_items).await
     }
 
     fn save_state(&self) {

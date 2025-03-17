@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
 
-use crate::game::{ItemId, LocationId, MultiData, SlotId, TeamId};
+use crate::game::{LocationId, MultiData, SlotId, TeamId};
 use crate::pickle::Value;
 use crate::pickle::value::Str;
 use crate::proto::server::NetworkItem;

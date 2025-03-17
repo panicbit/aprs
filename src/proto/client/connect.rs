@@ -26,8 +26,8 @@ pub struct ItemsHandling(u8);
 bitflags! {
     impl ItemsHandling: u8 {
         const Remote = 0b001;
-        const OwnWorldOnly = 0b010;
-        const StartingInventoryOnly = 0b100;
+        const OwnWorld = 0b010;
+        const StartingInventory = 0b100;
     }
 }
 
@@ -40,11 +40,11 @@ impl ItemsHandling {
         self.contains(Self::Remote)
     }
 
-    pub fn is_own_world_only(&self) -> bool {
-        self.contains(Self::OwnWorldOnly)
+    pub fn is_own_world(&self) -> bool {
+        self.contains(Self::OwnWorld)
     }
 
-    pub fn is_starting_inventory_only(&self) -> bool {
-        self.contains(Self::StartingInventoryOnly)
+    pub fn is_starting_inventory(&self) -> bool {
+        self.contains(Self::StartingInventory)
     }
 }

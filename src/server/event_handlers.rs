@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -214,6 +215,17 @@ impl super::Server {
                 .state
                 .get_slot_state(slot)
                 .context("BUG: missing slot state for slot {slot}")?;
+
+            if items_handling.is_starting_inventory() {
+                let starting_inventory = self
+                    .multi_data
+                    .precollected_items
+                    .get(&slot)
+                    .map(Cow::Borrowed)
+                    .unwrap_or_default();
+
+                client.set_starting_inventory(&starting_inventory);
+            }
 
             client.set_items_handling(items_handling);
 
