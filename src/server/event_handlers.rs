@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result, bail};
 use fnv::FnvHashMap;
 use itertools::Itertools;
+use levenshtein::levenshtein;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::WebSocketStream;
@@ -273,14 +274,93 @@ impl super::Server {
     }
 
     pub async fn on_say(&mut self, client: &Mutex<Client>, say: Say) {
+        let Say { text } = say;
+        let text = text.trim();
+
         let slot = client.lock().await.slot_id;
         let message = PrintJson::builder()
             .with_player(slot)
             .with_text(": ")
-            .with_text(say.text)
+            .with_text(text)
             .build();
 
         self.broadcast(message).await;
+
+        if let Some(item) = text.strip_prefix("!hint ") {
+            self.on_command_hint(client, item).await;
+        }
+    }
+
+    async fn on_command_hint(&self, client: &Mutex<Client>, needle_item: &str) {
+        let needle_item = needle_item.trim();
+        let slot = client.lock().await.slot_id;
+
+        if needle_item.is_empty() {
+            self.broadcast(PrintJson::chat_message("Usage: !hint <item name>"))
+                .await;
+            return;
+        }
+
+        let Some(slot_info) = self.multi_data.get_slot_info(slot) else {
+            eprintln!("BUG: tried to get slot_info for invalid slot {slot:?}");
+            return;
+        };
+        let game = &slot_info.game;
+        let Some(game_data) = self.multi_data.get_game_data(game) else {
+            eprintln!("BUG: tried to get game data for invalid game {game:?}");
+            return;
+        };
+
+        let Some((found_item_name, found_item_id, confidence)) = game_data
+            .item_name_to_id
+            .iter()
+            .map(|(item_name, item_id)| {
+                let distance = levenshtein(needle_item, item_name);
+                let confidence =
+                    (distance.min(needle_item.len()) as f32) / (needle_item.len() as f32);
+                let confidence = 1.0 - confidence;
+                let confidence = (confidence * 100.).floor() as u32;
+
+                (item_name, item_id, confidence)
+            })
+            .max_by_key(|(_, _, confidence)| *confidence)
+        else {
+            // TODO: maybe broadcast message in this case
+            eprintln!("BUG: world doesn't seem to have any items?");
+            return;
+        };
+
+        let confidence_threshold = 70;
+
+        if confidence < confidence_threshold {
+            self.broadcast(PrintJson::chat_message(format!(
+                "No matching item found. Did you mean '{found_item_name}'? ({confidence}% match)"
+            )))
+            .await;
+            return;
+        }
+
+        // TOOD: get first uncollected item by sphere
+        let Some((item_slot, item_location, flags)) =
+            self.multi_data.find_item_location(*found_item_id)
+        else {
+            // TODO: maybe broadcast message in this case
+            eprintln!("BUG: item does not seem to be placed?");
+            return;
+        };
+
+        self.broadcast(
+            PrintJson::builder()
+                .with_player(slot)
+                .with_text("'s ")
+                .with_item(slot, *found_item_id, flags)
+                .with_text(" is at ")
+                .with_player(item_slot)
+                .with_text("'s ")
+                .with_location(item_slot, item_location)
+                .build(),
+        )
+        .await;
     }
 
     pub async fn on_get(&mut self, client: &Mutex<Client>, get: Get) {

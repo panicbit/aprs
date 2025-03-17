@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
-use fnv::FnvHashSet;
 use serde::Deserialize;
 use serde_with::{FromInto, serde_as};
 
@@ -63,6 +62,21 @@ impl MultiData {
             .into_iter()
             .flat_map(|map| map.keys())
             .copied()
+    }
+
+    // TODO: return all found locations, not just the first one
+    pub fn find_item_location(&self, item_id: ItemId) -> Option<(SlotId, LocationId, u64)> {
+        for (slot, locations) in &self.locations {
+            for (location_id, location) in locations {
+                if location.item != item_id {
+                    continue;
+                }
+
+                return Some((*slot, *location_id, location.flags));
+            }
+        }
+
+        None
     }
 }
 

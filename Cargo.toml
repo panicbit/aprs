@@ -34,6 +34,7 @@ dumpster = "1.1.0"
 parking_lot = "0.12.3"
 itertools = "0.14.0"
 num = "0.4.3"
+levenshtein = "1.0.5"
 
 [dependencies.serde-value]
 version = "0.7.0"
