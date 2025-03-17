@@ -79,8 +79,6 @@ impl super::Server {
                     .collect(),
                 seed_name: self.multi_data.seed_name.0.clone(),
                 time: Time::now(),
-                // should be empty
-                players: vec![],
             })
             .await;
     }
@@ -157,7 +155,7 @@ impl super::Server {
     }
 
     pub async fn on_connect(&self, client: &Mutex<Client>, connect: Connect) -> Result<()> {
-        let Connect { password, game, name, uuid, version, items_handling, tags, slot_data } = connect;
+        let Connect { password, game, name: connect_name, uuid, version, items_handling, tags, slot_data } = connect;
         // TODO: implement checks:
         // - items handling
         // - version (skip if tags are appropriate)
@@ -175,7 +173,7 @@ impl super::Server {
         }
 
         // the requested slot name must exist
-        let Some(team_and_slot) = self.multi_data.connect_names.get(&name) else {
+        let Some(team_and_slot) = self.multi_data.connect_names.get(&connect_name) else {
             client
                 .lock()
                 .await
@@ -249,7 +247,9 @@ impl super::Server {
                 })
                 .await;
 
-            client.slot_name = name;
+            client.connect_name = connect_name;
+            // TODO: maybe store entire slot_info in client to make slot_info access easier
+            client.slot_name = slot_info.name.clone();
             client.slot_id = slot;
             client.is_connected = true;
         }

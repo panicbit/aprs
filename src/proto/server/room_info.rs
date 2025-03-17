@@ -2,7 +2,7 @@ use fnv::FnvHashMap;
 use serde::Serialize;
 
 use crate::proto::common::NetworkVersion;
-use crate::proto::server::{GameName, NetworkPlayer, Permissions, Time};
+use crate::proto::server::{GameName, Permissions, Time};
 
 #[derive(Serialize, Clone)]
 pub struct RoomInfo {
@@ -31,6 +31,4 @@ pub struct RoomInfo {
     pub seed_name: String,
     /// Current server time in seconds since the Unix epoch.
     pub time: Time,
-    /// Legacy field, should be empty
-    pub players: Vec<NetworkPlayer>,
 }

@@ -1,7 +1,7 @@
 use bitflags::bitflags;
 use uuid::Uuid;
 
-use crate::game::SlotName;
+use crate::game::{ConnectName, SlotName};
 use crate::proto::client::Deserialize;
 use crate::proto::common::NetworkVersion;
 use crate::proto::u128_uuid;
@@ -10,7 +10,7 @@ use crate::proto::u128_uuid;
 pub struct Connect {
     pub password: Option<String>,
     pub game: String,
-    pub name: SlotName,
+    pub name: ConnectName,
     // parse either number OR string
     #[serde(with = "u128_uuid")]
     pub uuid: Uuid,

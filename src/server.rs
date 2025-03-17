@@ -1,9 +1,10 @@
-use std::borrow::Cow;
+use std::iter;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anyhow::Result;
 use fnv::FnvHashMap;
+use itertools::Itertools;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
 use tokio::sync::Mutex;
@@ -11,7 +12,7 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio_tungstenite::tungstenite::handshake::server::Callback;
 use tokio_tungstenite::tungstenite::http::Uri;
 
-use crate::game::{MultiData, SlotId, TeamId};
+use crate::game::{MultiData, SlotId, SlotName, TeamId};
 use crate::pickle::Value;
 use crate::proto::server::{Message, NetworkPlayer};
 use crate::server::client::Client;
@@ -147,17 +148,28 @@ impl Server {
     }
 
     fn network_players(&self) -> Vec<NetworkPlayer> {
-        self.multi_data
-            .connect_names
+        let archipelago = NetworkPlayer {
+            team: TeamId(0),
+            slot: SlotId(0),
+            alias: "Archipelago".into(),
+            name: SlotName("Archipelago".into()),
+        };
+
+        let players = self
+            .multi_data
+            .slot_info
             .iter()
-            .map(|(slot_name, ts)| NetworkPlayer {
-                team: ts.team,
-                slot: ts.slot,
+            .map(|(slot_id, slot_info)| NetworkPlayer {
+                team: TeamId(0),
+                slot: *slot_id,
                 // TODO: get alias from state/slot_state
-                alias: slot_name.as_str().to_owned(),
-                name: slot_name.clone(),
-            })
-            .collect()
+                alias: slot_info.name.as_str().into(),
+                name: slot_info.name.clone(),
+            });
+
+        let players = iter::once(archipelago).chain(players).collect_vec();
+
+        players
     }
 
     async fn broadcast(&self, message: impl Into<Arc<Message>>) {

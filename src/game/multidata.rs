@@ -6,8 +6,8 @@ use serde::Deserialize;
 use serde_with::{FromInto, serde_as};
 
 use crate::game::{
-    GameData, HashedGameData, ItemId, LocationId, LocationInfo, MinimumVersions, NetworkSlot,
-    PickledVersion, SeedName, ServerOptions, SlotId, SlotName, TeamAndSlot,
+    ConnectName, GameData, HashedGameData, ItemId, LocationId, LocationInfo, MinimumVersions,
+    NetworkSlot, PickledVersion, SeedName, ServerOptions, SlotId, SlotName, TeamAndSlot,
 };
 use crate::pickle::Value;
 use crate::proto::common::NetworkVersion;
@@ -18,7 +18,7 @@ use crate::proto::common::NetworkVersion;
 pub struct MultiData {
     pub slot_info: Arc<BTreeMap<SlotId, NetworkSlot>>,
     pub slot_data: Arc<BTreeMap<SlotId, Value>>,
-    pub connect_names: BTreeMap<SlotName, TeamAndSlot>,
+    pub connect_names: BTreeMap<ConnectName, TeamAndSlot>,
     pub seed_name: SeedName,
     pub minimum_versions: MinimumVersions,
     pub server_options: ServerOptions,
