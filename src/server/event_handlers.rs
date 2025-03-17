@@ -260,8 +260,12 @@ impl super::Server {
     }
 
     pub async fn on_say(&mut self, client: &Mutex<Client>, say: Say) {
-        let name = client.lock().await.slot_name.clone();
-        let message = PrintJson::chat_message(format!("{name}: {}", say.text));
+        let slot = client.lock().await.slot_id;
+        let message = PrintJson::builder()
+            .with_player(slot)
+            .with_text(": ")
+            .with_text(say.text)
+            .build();
 
         self.broadcast(message).await;
     }
