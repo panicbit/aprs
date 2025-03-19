@@ -564,6 +564,7 @@ impl super::Server {
         self.save_state();
         self.sync_items_to_clients().await;
         self.broadcast_messages(&chat_messages).await;
+        // TODO: send RoomUpdate for checked_locations
     }
 
     pub async fn on_sync(&mut self, client: &Mutex<Client>) {
