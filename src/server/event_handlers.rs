@@ -2,13 +2,14 @@ use std::borrow::Cow;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use anyhow::{Context, Result, bail};
+use eyre::{ContextCompat, Result, bail};
 use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
 use levenshtein::levenshtein;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::WebSocketStream;
+use tracing::{debug, error, info, warn};
 
 use crate::game::{LocationId, TeamAndSlot};
 use crate::pickle::Value;
@@ -44,7 +45,7 @@ impl super::Server {
         address: SocketAddr,
         stream: WebSocketStream<TcpStream>,
     ) {
-        eprintln!("New client connected: {}", address);
+        debug!("New client connected: {}", address);
 
         // TODO: Generate and assign client id.
         // Stop using SocketAddr as identifier.
@@ -87,7 +88,7 @@ impl super::Server {
     }
 
     pub async fn on_client_disconnected(&mut self, address: SocketAddr) {
-        eprintln!("Client connected: {}", address);
+        info!("Client disconnected: {}", address);
     }
 
     pub async fn on_client_messages(&mut self, address: SocketAddr, messages: ClientMessages) {
@@ -97,7 +98,7 @@ impl super::Server {
 
         for message in messages {
             if let Err(err) = self.on_client_message(&client, message).await {
-                eprintln!("||| {err:?}");
+                debug!("||| {err:?}");
                 client.lock().await.send(Close).await;
                 self.clients.remove(&address);
             }
@@ -153,7 +154,7 @@ impl super::Server {
                 self.on_status_update(client, status_update).await
             }
             ClientMessage::Sync(_) => self.on_sync(client).await,
-            ClientMessage::Unknown(value) => eprintln!("Unknown client message: {value:?}"),
+            ClientMessage::Unknown(value) => warn!("Unknown client message: {value:?}"),
             ClientMessage::Ping(_) => bail!("unreachable: Ping"),
             ClientMessage::Pong(_) => bail!("unreachable: Pong"),
             ClientMessage::Close(_) => bail!("unreachable: Close"),
@@ -200,7 +201,8 @@ impl super::Server {
         };
         let TeamAndSlot { slot, team } = *team_and_slot;
         let Some(slot_info) = self.multi_data.slot_info.get(&slot) else {
-            eprintln!("Inconsistent multi data!");
+            error!("Inconsistent multi data!");
+
             client
                 .lock()
                 .await
@@ -307,12 +309,12 @@ impl super::Server {
         }
 
         let Some(slot_info) = self.multi_data.get_slot_info(slot) else {
-            eprintln!("BUG: tried to get slot_info for invalid slot {slot:?}");
+            error!("BUG: tried to get slot_info for invalid slot {slot:?}");
             return;
         };
         let game = &slot_info.game;
         let Some(game_data) = self.multi_data.get_game_data(game) else {
-            eprintln!("BUG: tried to get game data for invalid game {game:?}");
+            error!("BUG: tried to get game data for invalid game {game:?}");
             return;
         };
 
@@ -331,7 +333,7 @@ impl super::Server {
             .max_by_key(|(_, _, confidence)| *confidence)
         else {
             // TODO: maybe broadcast message in this case
-            eprintln!("BUG: world doesn't seem to have any items?");
+            error!("BUG: world doesn't seem to have any items?");
             return;
         };
 
@@ -350,7 +352,7 @@ impl super::Server {
             self.multi_data.find_item_location(*found_item_id)
         else {
             // TODO: maybe broadcast message in this case
-            eprintln!("BUG: item does not seem to be placed?");
+            error!("BUG: item does not seem to be placed?");
             return;
         };
 
@@ -440,7 +442,7 @@ impl super::Server {
             value = match handle_op(value, operation) {
                 Ok(value) => value,
                 Err(err) => {
-                    eprintln!("op err: {err:?}");
+                    error!("op err: {err:?}");
                     return;
                 }
             }
@@ -494,7 +496,7 @@ impl super::Server {
                 let location_info = self.multi_data.location_info(slot, location_id);
 
                 if location_info.is_none() {
-                    eprintln!("Client for slot {slot:?} asked for location that does not exist: {location_id:?}")
+                    error!("Client for slot {slot:?} asked for location that does not exist: {location_id:?}")
                 }
 
                 Some((location_id, location_info?))
@@ -530,12 +532,12 @@ impl super::Server {
         let slot_sending = client.lock().await.slot_id;
 
         let Some(location_infos) = self.multi_data.get_locations(slot_sending) else {
-            eprintln!("BUG: missing location info for slot {slot_sending:?}");
+            error!("BUG: missing location info for slot {slot_sending:?}");
             return;
         };
 
         let Some(state) = self.state.get_slot_state_mut(slot_sending) else {
-            eprintln!("BUG: missing state for slot {slot_sending:?}");
+            error!("BUG: missing state for slot {slot_sending:?}");
             return;
         };
 
@@ -562,7 +564,7 @@ impl super::Server {
 
         for (slot_receiving, items) in items_by_slot {
             let Some(slot_state) = self.state.get_slot_state_mut(slot_receiving) else {
-                eprintln!("Tried to add items to invalid slot {slot_receiving:?}");
+                error!("Tried to add items to invalid slot {slot_receiving:?}");
                 continue;
             };
 
@@ -599,7 +601,7 @@ impl super::Server {
     pub async fn on_goal_complete(&mut self, client: &Mutex<Client>) {
         let slot = client.lock().await.slot_id;
         let Some(slot_state) = self.state.get_slot_state(slot) else {
-            eprintln!("Tried to get slot state for unknown slot {slot:?}");
+            error!("Tried to get slot state for unknown slot {slot:?}");
             return;
         };
         let missing_locations = slot_state.missing_locations().clone();

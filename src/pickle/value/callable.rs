@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::{fmt, ptr};
 
-use anyhow::{Context, Result};
+use eyre::{Context, Result};
 use dumpster::Trace;
 
 use crate::pickle::value::{Id, Tuple};

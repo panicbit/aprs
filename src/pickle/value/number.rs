@@ -1,7 +1,7 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use anyhow::{Error, Result};
+use eyre::{Error, Result};
 use dumpster::Trace;
 use dumpster::sync::Gc;
 use num::{BigInt, FromPrimitive, Zero};

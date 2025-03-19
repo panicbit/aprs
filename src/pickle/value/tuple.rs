@@ -1,8 +1,8 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use anyhow::{Context, Error, Result, bail};
 use dumpster::Trace;
+use eyre::{Context, ContextCompat, Error, Result, bail};
 
 use crate::pickle::value::{Id, List, Value, list};
 

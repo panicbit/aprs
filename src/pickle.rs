@@ -5,9 +5,10 @@ use std::io::{Cursor, Read};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use anyhow::{Context, Result, anyhow, bail};
+use eyre::{Context, ContextCompat, Result, anyhow, bail};
 use itertools::Itertools;
 use serde::Deserialize;
+use tracing::debug;
 
 use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Tuple};
 use crate::proto::server::print_json::HintStatus;
@@ -31,7 +32,7 @@ where
 
 pub fn unpickle<R: Read>(reader: &mut R) -> Result<Value> {
     Unpickler::new(reader, |module, name| {
-        eprintln!("Trying to locate {module}.{name}");
+        debug!("Trying to locate {module}.{name}");
 
         Ok(match (module, name) {
             ("NetUtils", "NetworkSlot") => Value::callable(|args| {

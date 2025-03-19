@@ -1,6 +1,6 @@
 use std::fmt;
 
-use anyhow::{Result, bail};
+use eyre::{Result, bail};
 use dumpster::Trace;
 
 use crate::pickle::value::Id;

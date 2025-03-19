@@ -1,8 +1,9 @@
 use std::hash::{Hash, Hasher};
 use std::{cmp, fmt};
 
-use anyhow::{Result, bail};
 use dumpster::Trace;
+use eyre::{Result, bail};
+use tracing::error;
 
 use crate::FnvIndexSet;
 use crate::pickle::value::Id;
@@ -155,7 +156,7 @@ impl Hash for Element {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0
             .hash(state)
-            .unwrap_or_else(|err| eprintln!("hash of unhashable value: {err}"));
+            .unwrap_or_else(|err| error!("hash of unhashable value: {err}"));
     }
 }
 

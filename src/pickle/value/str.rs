@@ -3,7 +3,7 @@ use std::fmt;
 use std::hash::Hash;
 use std::ops::Deref;
 
-use anyhow::{Error, Result};
+use eyre::{Error, Result};
 use dumpster::Trace;
 use dumpster::sync::Gc;
 use serde::{Deserialize, Serialize};

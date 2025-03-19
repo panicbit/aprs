@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use eyre::Result;
 use futures::{Sink, SinkExt};
 use tokio_tungstenite::tungstenite;
+use tracing::{debug, trace};
 
 use crate::proto::server::Message;
 
@@ -29,7 +30,7 @@ where
             }
         };
 
-        eprintln!(">>> {message}");
+        debug!(">>> {message}");
 
         <Self as futures::sink::SinkExt<_>>::send(self, message).await?;
 

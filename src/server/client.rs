@@ -8,6 +8,7 @@ use tokio::net::TcpStream;
 use tokio::select;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio_tungstenite::WebSocketStream;
+use tracing::{debug, error};
 
 use crate::game::{ConnectName, ItemId, SlotId, SlotName};
 use crate::pickle::value::Str;
@@ -85,11 +86,11 @@ impl Client {
 
     pub async fn sync_items(&mut self, slot_items: &[NetworkItem]) {
         let Some(missing_items) = slot_items.get(self.next_slot_item_index..) else {
-            eprintln!("BUG: next_slot_item_index out of bounds");
+            error!("BUG: next_slot_item_index out of bounds");
             return;
         };
 
-        dbg!(missing_items);
+        debug!("missing_items before: {:?}", missing_items);
 
         let client_index = self.next_client_item_index;
 
@@ -115,7 +116,7 @@ impl Client {
             .copied()
             .collect_vec();
 
-        dbg!(&missing_items);
+        debug!("missing_items after: {:?}", missing_items);
 
         self.next_client_item_index += missing_items.len();
         self.next_slot_item_index = slot_items.len();
@@ -146,13 +147,13 @@ async fn client_loop(
             _ = event_tx.closed() => return,
             server_message = server_message_rx.recv() => {
                 let Some(server_message) = server_message else {
-                    eprintln!("Server closed message channel to client");
+                    debug!("Server closed message channel to client");
                     return
                 };
 
                 // TODO: decouple sending and receiving
                 if let Err(err) = stream.send(server_message).await {
-                    eprintln!("failed to send message to client: {err:?}");
+                    error!("failed to send message to client: {err:?}");
 
                     event_tx.send(Event::ClientDisconnected(address)).await.ok();
 
@@ -163,7 +164,7 @@ async fn client_loop(
                 let client_messages = match client_messages {
                     Ok(client_messages) => client_messages,
                     Err(err) => {
-                        eprintln!("Failed to receive client messages: {err:?}");
+                        error!("Failed to receive client messages: {err:?}");
 
                         event_tx.send(Event::ClientDisconnected(address)).await.ok();
 

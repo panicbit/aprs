@@ -1,10 +1,10 @@
 use std::error::Error as StdError;
 use std::fmt;
 
-use anyhow::anyhow;
+use eyre::anyhow;
 use serde::{de, ser};
 
-pub struct SerdeError(anyhow::Error);
+pub struct SerdeError(eyre::Error);
 
 impl SerdeError {
     pub fn msg(msg: impl fmt::Display) -> SerdeError {

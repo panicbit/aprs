@@ -2,7 +2,7 @@ use std::iter;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use anyhow::Result;
+use eyre::Result;
 use fnv::FnvHashMap;
 use itertools::Itertools;
 use tokio::net::{TcpListener, TcpStream};
@@ -11,6 +11,7 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio_tungstenite::tungstenite::handshake::server::Callback;
 use tokio_tungstenite::tungstenite::http::Uri;
+use tracing::{debug, error, instrument, warn};
 
 use crate::game::{MultiData, SlotId, SlotName, TeamId};
 use crate::pickle::Value;
@@ -51,6 +52,7 @@ impl Server {
         }
     }
 
+    #[instrument(skip_all)]
     pub async fn run(self) -> Result<()> {
         let listen_address = self.config.listen_address;
         let listener = TcpListener::bind(listen_address).await?;
@@ -65,7 +67,7 @@ impl Server {
     pub async fn event_loop(mut self) {
         loop {
             let Some(event) = self.rx.recv().await else {
-                eprintln!("Event channel closed.");
+                debug!("Event channel closed.");
                 return;
             };
 
@@ -106,28 +108,28 @@ impl Server {
             return self.get_race_mode(key);
         }
 
-        eprintln!("Unknown special key: {key}");
+        error!("Unknown special key: {key}");
 
         None
     }
 
     fn get_item_name_groups(&self, key: &str) -> Option<Value> {
-        eprintln!("TODO: implement get_item_name_groups");
+        warn!("TODO: implement get_item_name_groups");
         None
     }
 
     fn get_location_name_groups(&self, key: &str) -> Option<Value> {
-        eprintln!("TODO: implement get_location_name_groups");
+        warn!("TODO: implement get_location_name_groups");
         None
     }
 
     fn get_client_status(&self, key: &str) -> Option<Value> {
-        eprintln!("TODO: implement get_client_status");
+        warn!("TODO: implement get_client_status");
         None
     }
 
     fn get_race_mode(&self, key: &str) -> Option<Value> {
-        eprintln!("TODO: implement get_race_mode");
+        warn!("TODO: implement get_race_mode");
         None
     }
 
@@ -199,7 +201,7 @@ impl Server {
     async fn sync_items_to_client(&self, client: &Mutex<Client>) {
         let slot = client.lock().await.slot_id;
         let Some(slot_state) = self.state.get_slot_state(slot) else {
-            eprintln!("BUG: trying to sync items to invalid slot {:?}", slot);
+            error!("BUG: trying to sync items to invalid slot {:?}", slot);
             return;
         };
         let slot_received_items = slot_state.received_items();
@@ -208,7 +210,7 @@ impl Server {
     }
 
     fn save_state(&self) {
-        eprintln!("TODO: save state");
+        warn!("TODO: save state");
     }
 }
 
@@ -216,14 +218,14 @@ async fn acceptor_loop(listener: TcpListener, event_tx: Sender<Event>) {
     loop {
         select! {
             _ = event_tx.closed() => {
-                eprintln!("acceptor loop shutting down");
+                debug!("acceptor loop shutting down");
                 return
             },
             accepted = listener.accept() => {
                 let (stream, address) = match accepted {
                     Ok(client) => client,
                     Err(err) => {
-                        eprintln!("Error accepting client: {err:?}");
+                        error!("Error accepting client: {err:?}");
                         continue;
                     }
                 };
@@ -232,7 +234,7 @@ async fn acceptor_loop(listener: TcpListener, event_tx: Sender<Event>) {
 
                 tokio::spawn(async move {
                     if let Err(err) = handle_accept(stream, address, event_tx).await {
-                        eprintln!("Failed to accept client {address}: {err:?}");
+                        error!("Failed to accept client {address}: {err:?}");
                     }
                 });
             }
@@ -245,7 +247,7 @@ async fn handle_accept(
     address: SocketAddr,
     event_tx: Sender<Event>,
 ) -> Result<()> {
-    eprintln!("||| {address:?} connected");
+    debug!("||| {address:?} connected");
 
     #[derive(Default)]
     struct Data {
@@ -275,7 +277,7 @@ async fn handle_accept(
         .await
         .is_err()
     {
-        eprintln!("Can't accept client, event channel is closed");
+        debug!("Can't accept client, event channel is closed");
     }
 
     Ok(())

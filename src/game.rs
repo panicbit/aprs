@@ -4,9 +4,9 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::{fs, ops};
 
-use anyhow::{Context, Result, ensure};
 use bitflags::bitflags;
 use byteorder::ReadBytesExt;
+use eyre::{Context, ContextCompat, Result, ensure};
 use flate2::read::ZlibDecoder;
 use serde::{Deserialize, Serialize};
 use serde_tuple::Deserialize_tuple;

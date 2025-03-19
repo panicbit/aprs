@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use anyhow::{Result, bail};
+use eyre::{Result, bail};
 
 use super::{Value, op};
 

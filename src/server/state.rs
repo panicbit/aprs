@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
+use tracing::warn;
 
 use crate::game::{LocationId, MultiData, SlotId, TeamId};
 use crate::pickle::Value;
@@ -44,7 +45,7 @@ impl State {
 
     pub fn get_hints(&self, team: TeamId, slot: SlotId) -> Option<Value> {
         // TODO: implement get hints
-        eprintln!("TODO: implement get_hints");
+        warn!("TODO: implement get_hints");
         None
     }
 }

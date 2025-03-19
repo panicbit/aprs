@@ -1,7 +1,7 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use anyhow::{Result, bail};
+use eyre::{Result, bail};
 use dumpster::Trace;
 use dumpster::sync::Gc;
 
