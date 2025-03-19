@@ -3,18 +3,18 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
-use fnv::FnvHashMap;
+use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
 use levenshtein::levenshtein;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::WebSocketStream;
 
-use crate::game::TeamAndSlot;
+use crate::game::{LocationId, TeamAndSlot};
 use crate::pickle::Value;
 use crate::proto::client::{
-    Connect, Get, LocationChecks, LocationScouts, Message as ClientMessage,
-    Messages as ClientMessages, Say, Set, SetNotify, SetOperation,
+    ClientStatus, Connect, Get, LocationChecks, LocationScouts, Message as ClientMessage,
+    Messages as ClientMessages, Say, Set, SetNotify, SetOperation, StatusUpdate,
 };
 use crate::proto::common::{Close, Ping, Pong};
 use crate::proto::server::{
@@ -148,6 +148,9 @@ impl super::Server {
             }
             ClientMessage::LocationChecks(location_checks) => {
                 self.on_location_checks(client, location_checks).await
+            }
+            ClientMessage::StatusUpdate(status_update) => {
+                self.on_status_update(client, status_update).await
             }
             ClientMessage::Sync(_) => self.on_sync(client).await,
             ClientMessage::Unknown(value) => eprintln!("Unknown client message: {value:?}"),
@@ -288,6 +291,8 @@ impl super::Server {
 
         if let Some(item) = text.strip_prefix("!hint ") {
             self.on_command_hint(client, item).await;
+        } else if text == "!release" {
+            self.on_goal_complete(client).await;
         }
     }
 
@@ -482,10 +487,7 @@ impl super::Server {
         } = location_scouts;
         let slot = client.lock().await.slot_id;
 
-        if create_as_hint != 0 {
-            // TODO: create checked locations as hints
-            return;
-        }
+        // TODO: handle create_as_hint
 
         let locations = locations.into_iter()
             .filter_map(|location_id| {
@@ -517,6 +519,14 @@ impl super::Server {
     ) {
         let LocationChecks { locations } = location_checks;
 
+        self.check_locations(client, &locations).await;
+    }
+
+    async fn check_locations(
+        &mut self,
+        client: &Mutex<Client>,
+        locations: &FnvHashSet<LocationId>,
+    ) {
         let slot_sending = client.lock().await.slot_id;
 
         let Some(location_infos) = self.multi_data.get_locations(slot_sending) else {
@@ -569,6 +579,33 @@ impl super::Server {
         self.sync_items_to_clients().await;
         self.broadcast_messages(&chat_messages).await;
         // TODO: send RoomUpdate for checked_locations
+    }
+
+    pub async fn on_status_update(&mut self, client: &Mutex<Client>, status_update: StatusUpdate) {
+        let StatusUpdate { status } = status_update;
+
+        // TODO: handle other status updates
+        match status {
+            ClientStatus::Unknown => {}
+            ClientStatus::Connected => {}
+            ClientStatus::Ready => {}
+            ClientStatus::Playing => {}
+            ClientStatus::Goal => {
+                self.on_goal_complete(client).await;
+            }
+        };
+    }
+
+    pub async fn on_goal_complete(&mut self, client: &Mutex<Client>) {
+        let slot = client.lock().await.slot_id;
+        let Some(slot_state) = self.state.get_slot_state(slot) else {
+            eprintln!("Tried to get slot state for unknown slot {slot:?}");
+            return;
+        };
+        let missing_locations = slot_state.missing_locations().clone();
+
+        // TODO: handle disabled autocollect
+        self.check_locations(client, &missing_locations).await;
     }
 
     pub async fn on_sync(&mut self, client: &Mutex<Client>) {

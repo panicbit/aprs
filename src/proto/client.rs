@@ -22,6 +22,9 @@ pub use location_checks::LocationChecks;
 mod sync;
 pub use sync::Sync;
 
+mod status_update;
+pub use status_update::{ClientStatus, StatusUpdate};
+
 pub type Messages = SmallVec<[Message; 1]>;
 
 #[derive(Deserialize, Debug)]
@@ -35,6 +38,7 @@ pub enum Message {
     Sync(Sync),
     LocationScouts(LocationScouts),
     LocationChecks(LocationChecks),
+    StatusUpdate(StatusUpdate),
     #[serde(skip)]
     Ping(Ping),
     #[serde(skip)]
