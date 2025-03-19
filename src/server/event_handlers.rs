@@ -476,12 +476,16 @@ impl super::Server {
         client: &Mutex<Client>,
         location_scouts: LocationScouts,
     ) {
-        // TODO: handle `create_as_hint`
         let LocationScouts {
             locations,
             create_as_hint,
         } = location_scouts;
         let slot = client.lock().await.slot_id;
+
+        if create_as_hint != 0 {
+            // TODO: create checked locations as hints
+            return;
+        }
 
         let locations = locations.into_iter()
             .filter_map(|location_id| {
