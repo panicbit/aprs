@@ -20,7 +20,8 @@ use crate::proto::client::{
 use crate::proto::common::{Close, Ping, Pong};
 use crate::proto::server::{
     CommandPermission, Connected, ConnectionRefused, LocationInfo, Message, NetworkItem,
-    Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo, SetReply, Time,
+    Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo, RoomUpdate, SetReply,
+    Time,
 };
 use crate::server::client::Client;
 use crate::server::event::Event;
@@ -521,14 +522,10 @@ impl super::Server {
     ) {
         let LocationChecks { locations } = location_checks;
 
-        self.check_locations(client, &locations).await;
+        self.check_locations(client, locations).await;
     }
 
-    async fn check_locations(
-        &mut self,
-        client: &Mutex<Client>,
-        locations: &FnvHashSet<LocationId>,
-    ) {
+    async fn check_locations(&mut self, client: &Mutex<Client>, locations: FnvHashSet<LocationId>) {
         let slot_sending = client.lock().await.slot_id;
 
         let Some(location_infos) = self.multi_data.get_locations(slot_sending) else {
@@ -583,6 +580,8 @@ impl super::Server {
         }
 
         self.save_state();
+        self.broadcast_slot(slot_sending, RoomUpdate::checked_locations(locations))
+            .await;
         self.sync_items_to_clients().await;
         self.broadcast_messages(&chat_messages).await;
         // TODO: send RoomUpdate for checked_locations
@@ -612,7 +611,7 @@ impl super::Server {
         let missing_locations = slot_state.missing_locations().clone();
 
         // TODO: handle disabled autocollect
-        self.check_locations(client, &missing_locations).await;
+        self.check_locations(client, missing_locations).await;
     }
 
     pub async fn on_sync(&mut self, client: &Mutex<Client>) {

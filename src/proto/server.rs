@@ -52,6 +52,9 @@ pub use set_reply::SetReply;
 mod received_items;
 pub use received_items::ReceivedItems;
 
+mod room_update;
+pub use room_update::RoomUpdate;
+
 pub type GameName = String;
 
 #[derive(Serialize)]
@@ -64,6 +67,7 @@ pub enum Message {
     LocationInfo(LocationInfo),
     SetReply(SetReply),
     ReceivedItems(ReceivedItems),
+    RoomUpdate(RoomUpdate),
     #[serde(rename = "PrintJSON")]
     PrintJson(PrintJson),
     Bounced(Bounced),
@@ -144,5 +148,11 @@ impl From<SetReply> for Arc<Message> {
 impl From<ReceivedItems> for Arc<Message> {
     fn from(value: ReceivedItems) -> Self {
         Arc::new(Message::ReceivedItems(value))
+    }
+}
+
+impl From<RoomUpdate> for Arc<Message> {
+    fn from(value: RoomUpdate) -> Self {
+        Arc::new(Message::RoomUpdate(value))
     }
 }

@@ -205,6 +205,20 @@ impl Server {
         }
     }
 
+    async fn broadcast_slot(&self, slot: SlotId, message: impl Into<Arc<Message>>) {
+        let message = message.into();
+
+        for client in self.clients.values() {
+            let client = client.lock().await;
+
+            if client.slot_id != slot {
+                continue;
+            }
+
+            client.send(message.clone()).await;
+        }
+    }
+
     async fn sync_items_to_clients(&self) {
         for client in self.clients.values() {
             self.sync_items_to_client(client).await;

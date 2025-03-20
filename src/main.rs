@@ -45,7 +45,11 @@ pub fn run() -> Result<()> {
 fn configure_tracing() {
     tracing_subscriber::registry()
         .with(LevelFilter::DEBUG)
-        .with(tracing_subscriber::fmt::layer().with_target(false))
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_target(false)
+                .without_time(),
+        )
         .with(ErrorLayer::default())
         .init();
 }
