@@ -198,6 +198,7 @@ impl Server {
         for client in self.clients.values() {
             let client = client.lock().await;
 
+            // TODO: allow multiple messages to be sent as a single batch
             for message in messages {
                 client.send(message.clone()).await;
             }
