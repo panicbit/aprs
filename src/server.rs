@@ -1,6 +1,7 @@
 use std::iter;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Instant;
 
 use eyre::Result;
 use fnv::FnvHashMap;
@@ -11,7 +12,7 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio_tungstenite::tungstenite::handshake::server::Callback;
 use tokio_tungstenite::tungstenite::http::Uri;
-use tracing::{debug, error, instrument, warn};
+use tracing::{debug, error, info, instrument, warn};
 
 use crate::game::{MultiData, SlotId, SlotName, TeamId};
 use crate::pickle::Value;
@@ -39,17 +40,28 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(config: Config, multi_data: MultiData) -> Self {
+    pub fn new(config: Config, multi_data: MultiData) -> Result<Self> {
         let (tx, rx) = mpsc::channel(10_000);
 
-        Self {
+        let state = match State::try_load(&config.state_path)? {
+            Some(state) => {
+                info!("Loaded existing state from {:?}", config.state_path);
+                state
+            }
+            None => {
+                info!("No existing state found at {:?}", config.state_path);
+                State::new(&multi_data)
+            }
+        };
+
+        Ok(Self {
             config,
             tx,
             rx,
             clients: FnvHashMap::default(),
-            state: State::new(&multi_data),
             multi_data,
-        }
+            state,
+        })
     }
 
     #[instrument(skip_all)]
@@ -210,7 +222,16 @@ impl Server {
     }
 
     fn save_state(&self) {
-        warn!("TODO: save state");
+        info!("Saving state...");
+        let start = Instant::now();
+        let result = self.state.save(&self.config.state_path);
+        let elapsed = start.elapsed();
+
+        if let Err(err) = result {
+            error!("Failed to save state after {elapsed:?}: {err:?}");
+        } else {
+            info!("Saved state successfuly after {elapsed:?}");
+        }
     }
 }
 

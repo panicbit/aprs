@@ -1,7 +1,9 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, SocketAddr};
+use std::path::PathBuf;
 
 pub struct Config {
     pub listen_address: SocketAddr,
+    pub state_path: PathBuf,
 }
 
 impl Config {
@@ -18,13 +20,5 @@ impl Config {
     pub fn with_listen_port(mut self, listen_port: u16) -> Self {
         self.listen_address.set_port(listen_port);
         self
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            listen_address: (Ipv4Addr::LOCALHOST, 18283).into(),
-        }
     }
 }

@@ -560,6 +560,11 @@ impl super::Server {
             })
             .into_group_map();
 
+        // we have nothing to do
+        if items_by_slot.is_empty() {
+            return;
+        }
+
         let mut chat_messages = Vec::new();
 
         for (slot_receiving, items) in items_by_slot {

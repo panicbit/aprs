@@ -1,8 +1,8 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::game::{ItemId, LocationId, SlotId};
 
-#[derive(Copy, Clone, Debug, Hash)]
+#[derive(Copy, Clone, Debug, Hash, Deserialize)]
 pub struct NetworkItem {
     pub item: ItemId,
     pub location: LocationId,

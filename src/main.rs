@@ -1,3 +1,5 @@
+use std::net::Ipv4Addr;
+
 use aprs::server::{Config, Server};
 use clap::Parser;
 use eyre::Result;
@@ -27,12 +29,15 @@ fn main() {
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
-    let game = Game::load(cli.multiworld_path)?;
-    let config = Config::default();
+    let game = Game::load(&cli.multiworld_path)?;
+    let config = Config {
+        listen_address: (Ipv4Addr::LOCALHOST, 18283).into(),
+        state_path: cli.multiworld_path.with_extension("aprs.state"),
+    };
 
     info!("Server started.");
 
-    let server = Server::new(config, game.multi_data);
+    let server = Server::new(config, game.multi_data)?;
 
     Runtime::new()?.block_on(server.run())
 }

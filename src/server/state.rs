@@ -1,7 +1,17 @@
 use std::borrow::Cow;
+use std::fs;
+use std::fs::File;
+use std::io;
+use std::io::Write;
+use std::path::Path;
 
+use eyre::ContextCompat;
+use eyre::Result;
 use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
+use serde::Deserialize;
+use serde::Serialize;
+use tempfile::NamedTempFile;
 use tracing::warn;
 
 use crate::game::{LocationId, MultiData, SlotId, TeamId};
@@ -9,6 +19,7 @@ use crate::pickle::Value;
 use crate::pickle::value::Str;
 use crate::proto::server::NetworkItem;
 
+#[derive(Deserialize, Serialize)]
 pub struct State {
     slot_states: FnvHashMap<SlotId, SlotState>,
     data_storage: FnvHashMap<Str, Value>,
@@ -25,6 +36,31 @@ impl State {
             slot_states,
             data_storage: FnvHashMap::default(),
         }
+    }
+
+    pub fn try_load(path: &Path) -> Result<Option<Self>> {
+        let file = match File::open(path) {
+            Ok(file) => file,
+            Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(None),
+            Err(err) => return Err(err.into()),
+        };
+        let decoder = zstd::Decoder::new(file)?;
+        let state = rmp_serde::from_read::<_, State>(decoder)?;
+
+        Ok(Some(state))
+    }
+
+    pub fn save(&self, path: &Path) -> Result<()> {
+        let dir = path.parent().context("invalid save path")?;
+        let file = NamedTempFile::new_in(dir)?;
+        let mut encoder = zstd::Encoder::new(file, zstd::DEFAULT_COMPRESSION_LEVEL)?;
+
+        rmp_serde::encode::write_named(&mut encoder, self)?;
+
+        let file = encoder.finish()?;
+        file.persist(path)?;
+
+        Ok(())
     }
 
     pub fn get_slot_state(&self, slot: SlotId) -> Option<&SlotState> {
@@ -50,6 +86,7 @@ impl State {
     }
 }
 
+#[derive(Deserialize, Serialize)]
 pub struct SlotState {
     missing_locations: FnvHashSet<LocationId>,
     checked_locations: FnvHashSet<LocationId>,
