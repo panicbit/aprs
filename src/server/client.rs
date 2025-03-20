@@ -106,6 +106,7 @@ impl Client {
                 }
 
                 if self.items_handling.is_starting_inventory()
+                    && item.player.is_server()
                     && self.starting_inventory.contains(&item.item)
                 {
                     return true;

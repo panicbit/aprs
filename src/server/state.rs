@@ -104,7 +104,7 @@ impl SlotState {
             .map(|&item| NetworkItem {
                 item,
                 location: LocationId(0),
-                player: slot,
+                player: SlotId::SERVER,
                 flags: 0,
             })
             .collect_vec();
