@@ -631,15 +631,12 @@ impl super::Server {
 
         let client = client.lock().await;
 
-        for game in games {
-            if let Some(data_package) = self.multi_data.data_package.get(game.as_str()) {
-                client
-                    .send(DataPackage {
-                        data: data_package.game_data.clone(),
-                    })
-                    .await;
-            }
-        }
+        // TODO: only send back games asked for
+        client
+            .send(DataPackage {
+                data: self.multi_data.data_package.clone(),
+            })
+            .await;
     }
 
     pub async fn on_sync(&mut self, client: &Mutex<Client>) {
