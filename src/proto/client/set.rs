@@ -8,8 +8,13 @@ use crate::pickle::value::Str;
 pub struct Set {
     pub key: Str,
     pub default: Value,
+    #[serde(default = "bool_true")]
     pub want_reply: bool,
     pub operations: Vec<SetOperation>,
+}
+
+fn bool_true() -> bool {
+    true
 }
 
 #[derive(Deserialize, Debug)]
