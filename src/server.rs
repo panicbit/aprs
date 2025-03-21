@@ -162,15 +162,7 @@ impl Server {
     }
 
     fn network_players(&self) -> Vec<NetworkPlayer> {
-        let archipelago = NetworkPlayer {
-            team: TeamId(0),
-            slot: SlotId(0),
-            alias: "Archipelago".into(),
-            name: SlotName("Archipelago".into()),
-        };
-
-        let players = self
-            .multi_data
+        self.multi_data
             .slot_info
             .iter()
             .map(|(slot_id, slot_info)| NetworkPlayer {
@@ -179,11 +171,8 @@ impl Server {
                 // TODO: get alias from state/slot_state
                 alias: slot_info.name.as_str().into(),
                 name: slot_info.name.clone(),
-            });
-
-        let players = iter::once(archipelago).chain(players).collect_vec();
-
-        players
+            })
+            .collect_vec()
     }
 
     async fn broadcast(&self, message: impl Into<Arc<Message>>) {
