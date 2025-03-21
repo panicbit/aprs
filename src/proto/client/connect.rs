@@ -1,3 +1,5 @@
+use std::default;
+
 use bitflags::bitflags;
 use uuid::Uuid;
 
@@ -17,7 +19,12 @@ pub struct Connect {
     pub version: NetworkVersion,
     pub items_handling: ItemsHandling,
     pub tags: Vec<String>,
+    #[serde(default = "bool_true")]
     pub slot_data: bool,
+}
+
+fn bool_true() -> bool {
+    true
 }
 
 #[derive(Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
