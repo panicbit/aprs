@@ -31,7 +31,7 @@ pub fn run() -> Result<()> {
     let cli = Cli::parse();
     let game = Game::load(&cli.multiworld_path)?;
     let config = Config {
-        listen_address: (Ipv4Addr::LOCALHOST, 18283).into(),
+        listen_address: (Ipv4Addr::UNSPECIFIED, 18283).into(),
         state_path: cli.multiworld_path.with_extension("aprs.state"),
     };
 

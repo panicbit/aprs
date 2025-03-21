@@ -14,14 +14,15 @@ use tracing::{debug, error, info, warn};
 use crate::game::{LocationId, TeamAndSlot};
 use crate::pickle::Value;
 use crate::proto::client::{
-    ClientStatus, Connect, Get, LocationChecks, LocationScouts, Message as ClientMessage,
-    Messages as ClientMessages, Say, Set, SetNotify, SetOperation, StatusUpdate,
+    ClientStatus, Connect, Get, GetDataPackage, LocationChecks, LocationScouts,
+    Message as ClientMessage, Messages as ClientMessages, Say, Set, SetNotify, SetOperation,
+    StatusUpdate,
 };
 use crate::proto::common::{Close, Ping, Pong};
 use crate::proto::server::{
-    CommandPermission, Connected, ConnectionRefused, LocationInfo, Message, NetworkItem,
-    Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo, RoomUpdate, SetReply,
-    Time,
+    CommandPermission, Connected, ConnectionRefused, DataPackage, LocationInfo, Message,
+    NetworkItem, Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo,
+    RoomUpdate, SetReply, Time,
 };
 use crate::server::client::Client;
 use crate::server::event::Event;
@@ -123,6 +124,9 @@ impl super::Server {
                 self.on_close(client).await;
                 return Ok(());
             }
+            ClientMessage::GetDataPackage(ref get_data_package) => {
+                self.on_get_data_package(client, get_data_package).await
+            }
             _ => {}
         }
 
@@ -155,6 +159,9 @@ impl super::Server {
                 self.on_status_update(client, status_update).await
             }
             ClientMessage::Sync(_) => self.on_sync(client).await,
+            ClientMessage::GetDataPackage(_) => {
+                error!("BUG: GetDataPackage should already be handled as unauthenticated packet")
+            }
             ClientMessage::Unknown(value) => warn!("Unknown client message: {value:?}"),
             ClientMessage::Ping(_) => bail!("unreachable: Ping"),
             ClientMessage::Pong(_) => bail!("unreachable: Pong"),
@@ -612,6 +619,26 @@ impl super::Server {
 
         // TODO: handle disabled autocollect
         self.check_locations(client, missing_locations).await;
+    }
+
+    pub async fn on_get_data_package(
+        &mut self,
+        client: &Mutex<Client>,
+        get_data_package: &GetDataPackage,
+    ) {
+        let GetDataPackage { games } = get_data_package;
+
+        let client = client.lock().await;
+
+        for game in games {
+            if let Some(data_package) = self.multi_data.data_package.get(game.as_str()) {
+                client
+                    .send(DataPackage {
+                        data: data_package.game_data.clone(),
+                    })
+                    .await;
+            }
+        }
     }
 
     pub async fn on_sync(&mut self, client: &Mutex<Client>) {
