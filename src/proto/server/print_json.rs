@@ -33,7 +33,7 @@ impl PrintJson {
             message.add_text(" found their ");
             message.add_net_item(item);
         } else {
-            message.add_text(" send ");
+            message.add_text(" sent ");
             message.add_net_item(item.with_player(receiving_slot));
         }
 
