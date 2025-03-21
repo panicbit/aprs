@@ -13,7 +13,7 @@ pub struct Connect {
     pub name: ConnectName,
     // parse either number OR string
     #[serde(with = "u128_uuid")]
-    pub uuid: Uuid,
+    pub uuid: String,
     pub version: NetworkVersion,
     pub items_handling: ItemsHandling,
     pub tags: Vec<String>,
