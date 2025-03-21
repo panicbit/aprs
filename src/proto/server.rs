@@ -56,7 +56,7 @@ mod room_update;
 pub use room_update::RoomUpdate;
 
 mod data_package;
-pub use data_package::DataPackage;
+pub use data_package::{DataPackage, DataPackageData};
 
 pub type GameName = String;
 

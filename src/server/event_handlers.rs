@@ -20,8 +20,8 @@ use crate::proto::client::{
 };
 use crate::proto::common::{Close, Ping, Pong};
 use crate::proto::server::{
-    CommandPermission, Connected, ConnectionRefused, DataPackage, LocationInfo, Message,
-    NetworkItem, Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo,
+    CommandPermission, Connected, ConnectionRefused, DataPackage, DataPackageData, LocationInfo,
+    Message, NetworkItem, Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo,
     RoomUpdate, SetReply, Time,
 };
 use crate::server::client::Client;
@@ -634,7 +634,9 @@ impl super::Server {
         // TODO: only send back games asked for
         client
             .send(DataPackage {
-                data: self.multi_data.data_package.clone(),
+                data: DataPackageData {
+                    games: self.multi_data.data_package.clone(),
+                },
             })
             .await;
     }

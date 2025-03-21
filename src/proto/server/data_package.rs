@@ -7,5 +7,10 @@ use crate::game::HashedGameData;
 
 #[derive(Serialize, Debug)]
 pub struct DataPackage {
-    pub data: Arc<BTreeMap<String, HashedGameData>>,
+    pub data: DataPackageData,
+}
+
+#[derive(Serialize, Debug)]
+pub struct DataPackageData {
+    pub games: Arc<BTreeMap<String, HashedGameData>>,
 }
