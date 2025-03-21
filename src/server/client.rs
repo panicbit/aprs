@@ -90,10 +90,7 @@ impl Client {
             return;
         };
 
-        debug!("missing_items before: {:?}", missing_items);
-
         let client_index = self.next_client_item_index;
-
         let missing_items = missing_items
             .iter()
             .filter(|item| {
@@ -116,8 +113,6 @@ impl Client {
             })
             .copied()
             .collect_vec();
-
-        debug!("missing_items after: {:?}", missing_items);
 
         self.next_client_item_index += missing_items.len();
         self.next_slot_item_index = slot_items.len();
