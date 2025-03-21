@@ -125,7 +125,8 @@ impl super::Server {
                 return Ok(());
             }
             ClientMessage::GetDataPackage(ref get_data_package) => {
-                self.on_get_data_package(client, get_data_package).await
+                self.on_get_data_package(client, get_data_package).await;
+                return Ok(());
             }
             _ => {}
         }
