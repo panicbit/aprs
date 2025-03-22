@@ -414,7 +414,7 @@ impl super::Server {
                 SetOperation::Default => current,
                 SetOperation::Replace(value) => value,
                 // TODO: implement remaining set ops
-                // SetOperation::Add(value) => current.add(value),
+                SetOperation::Add(value) => current.add(&value)?,
                 // SetOperation::Mul(value) => current.mul(value),
                 // SetOperation::Pow(value) => current.pow(value),
                 // SetOperation::Mod(value) => current.r#mod(value),
@@ -423,7 +423,7 @@ impl super::Server {
                 // SetOperation::Max(value) => current.max(value),
                 // SetOperation::Min(value) => current.min(value),
                 // SetOperation::And(value) => current.and(value),
-                // SetOperation::Or(value) => current.or(value),
+                SetOperation::Or(value) => current.or(&value)?,
                 // SetOperation::Xor(value) => current.xor(value),
                 // SetOperation::LeftShift(value) => current.left_shift(value),
                 // SetOperation::RightShift(value) => current.right_shift(value),

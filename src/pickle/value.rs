@@ -1,9 +1,9 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use eyre::{Result, bail};
 use dumpster::Trace;
 use dumpster::sync::Gc;
+use eyre::{Result, bail};
 
 mod list;
 pub use list::List;
@@ -231,23 +231,29 @@ impl Value {
 }
 
 impl Value {
-    fn add(&self, other: &Value) -> Result<Value> {
-        let a = self.as_number()?;
-        let b = other.as_number()?;
+    pub fn add(&self, rhs: &Value) -> Result<Value> {
+        match (self, rhs) {
+            (Value::Number(a), Value::Number(b)) => Ok(a.add(b).into()),
+            _ => bail!("Can't `add` {self:?} and {rhs:?}"),
+        }
+    }
 
-        // Ok(a.add(b))
+    pub fn sub(&self, rhs: &Value) -> Result<Value> {
+        match (self, rhs) {
+            (Value::Number(a), Value::Number(b)) => Ok(a.sub(b).into()),
+            _ => bail!("Can't `sub` {self:?} and {rhs:?}"),
+        }
+    }
+
+    fn mul(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn mul(&self, other: &Value) -> Result<Value> {
+    fn pow(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn pow(&self, other: &Value) -> Result<Value> {
-        todo!()
-    }
-
-    fn r#mod(&self, other: &Value) -> Result<Value> {
+    fn r#mod(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 
@@ -259,43 +265,47 @@ impl Value {
         todo!()
     }
 
-    fn max(&self, other: &Value) -> Result<Value> {
+    fn max(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn min(&self, other: &Value) -> Result<Value> {
+    fn min(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn and(&self, other: &Value) -> Result<Value> {
+    fn and(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn or(&self, other: &Value) -> Result<Value> {
+    pub fn or(&self, rhs: &Value) -> Result<Value> {
+        match (self, rhs) {
+            (Value::Number(a), Value::Number(b)) => a.or(b).map(<_>::into),
+            (Value::Bool(a), Value::Bool(b)) => Ok((**a || **b).into()),
+            _ => bail!("Can't `or` {self:?} and {rhs:?}"),
+        }
+    }
+
+    fn xor(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn xor(&self, other: &Value) -> Result<Value> {
+    fn left_shift(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn left_shift(&self, other: &Value) -> Result<Value> {
+    fn right_shift(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn right_shift(&self, other: &Value) -> Result<Value> {
+    fn remove(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn remove(&self, other: &Value) -> Result<Value> {
+    fn pop(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn pop(&self, other: &Value) -> Result<Value> {
-        todo!()
-    }
-
-    fn update(&self, other: &Value) -> Result<Value> {
+    fn update(&self, rhs: &Value) -> Result<Value> {
         todo!()
     }
 }
@@ -345,6 +355,18 @@ impl From<i32> for Value {
 impl From<f64> for Value {
     fn from(value: f64) -> Self {
         Value::from(Number::from(value))
+    }
+}
+
+impl From<Bool> for Value {
+    fn from(value: Bool) -> Self {
+        Value::Bool(value)
+    }
+}
+
+impl From<bool> for Value {
+    fn from(value: bool) -> Self {
+        Value::from(Bool::from(value))
     }
 }
 

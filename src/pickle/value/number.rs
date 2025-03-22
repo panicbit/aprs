@@ -1,10 +1,10 @@
-use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::{f64, fmt};
 
-use eyre::{Error, Result};
 use dumpster::Trace;
 use dumpster::sync::Gc;
-use num::{BigInt, FromPrimitive, Zero};
+use eyre::{Error, Result, bail};
+use num::{BigInt, FromPrimitive, ToPrimitive, Zero};
 
 use crate::pickle::value::Id;
 
@@ -77,6 +77,22 @@ impl Number {
             N::F64(n) => Some(n),
             _ => None,
         }
+    }
+
+    pub fn add(&self, rhs: &Number) -> Number {
+        Pair::from(self, rhs).add()
+    }
+
+    pub fn sub(&self, rhs: &Number) -> Number {
+        Pair::from(self, rhs).sub()
+    }
+
+    pub fn or(&self, rhs: &Number) -> Result<Number> {
+        Pair::from(self, rhs).or()
+    }
+
+    pub fn and(&self, rhs: &Number) -> Result<Number> {
+        Pair::from(self, rhs).and()
     }
 }
 
@@ -322,5 +338,83 @@ impl fmt::Debug for Number {
             N::BigInt(n) => n.fmt(f),
             N::F64(n) => n.fmt(f),
         }
+    }
+}
+
+enum Pair {
+    I64(i64, i64),
+    I128(i128, i128),
+    BigInt(BigInt, BigInt),
+    F64(f64, f64),
+}
+
+impl Pair {
+    fn from(a: &Number, b: &Number) -> Self {
+        match (a.inner().clone(), b.inner().clone()) {
+            (N::I64(a), N::I64(b)) => Self::I64(a, b),
+            (N::I64(a), N::I128(b)) => Self::I128(a as i128, b),
+            (N::I64(a), N::BigInt(b)) => Self::BigInt(a.into(), b),
+            (N::I64(a), N::F64(b)) => Self::F64(a as f64, b),
+            (N::I128(a), N::I64(b)) => Self::I128(a, b.into()),
+            (N::I128(a), N::I128(b)) => Self::I128(a, b),
+            (N::I128(a), N::BigInt(b)) => Self::BigInt(a.into(), b),
+            (N::I128(a), N::F64(b)) => Self::F64(a as f64, b),
+            (N::BigInt(a), N::I64(b)) => Self::BigInt(a, b.into()),
+            (N::BigInt(a), N::I128(b)) => Self::BigInt(a, b.into()),
+            (N::BigInt(a), N::BigInt(b)) => Self::BigInt(a, b),
+            (N::BigInt(a), N::F64(b)) => Self::F64(a.to_f64().unwrap_or(f64::NAN), b),
+            (N::F64(a), N::I64(b)) => Self::F64(a, b as f64),
+            (N::F64(a), N::I128(b)) => Self::F64(a, b as f64),
+            (N::F64(a), N::BigInt(b)) => Self::F64(a, b.to_f64().unwrap_or(f64::NAN)),
+            (N::F64(a), N::F64(b)) => Self::F64(a, b),
+        }
+    }
+
+    fn add(self) -> Number {
+        match self {
+            Self::I64(a, b) => a
+                .checked_add(b)
+                .map(Number::from)
+                .unwrap_or_else(|| Self::I128(a.into(), b.into()).add()),
+            Self::I128(a, b) => a
+                .checked_add(b)
+                .map(Number::from)
+                .unwrap_or_else(|| Self::BigInt(a.into(), b.into()).add()),
+            Self::BigInt(a, b) => Number::from(a + b),
+            Self::F64(a, b) => Number::from(a + b),
+        }
+    }
+
+    fn sub(self) -> Number {
+        match self {
+            Self::I64(a, b) => a
+                .checked_sub(b)
+                .map(Number::from)
+                .unwrap_or_else(|| Self::I128(a as i128, b as i128).add()),
+            Self::I128(a, b) => a
+                .checked_sub(b)
+                .map(Number::from)
+                .unwrap_or_else(|| Self::BigInt(BigInt::from(a), BigInt::from(b)).add()),
+            Self::BigInt(a, b) => Number::from(a - b),
+            Self::F64(a, b) => Number::from(a - b),
+        }
+    }
+
+    fn or(self) -> Result<Number> {
+        Ok(match self {
+            Pair::I64(a, b) => (a | b).into(),
+            Pair::I128(a, b) => (a | b).into(),
+            Pair::BigInt(a, b) => (a | b).into(),
+            Pair::F64(_, _) => bail!("can't OR floats"),
+        })
+    }
+
+    fn and(self) -> Result<Number> {
+        Ok(match self {
+            Pair::I64(a, b) => (a & b).into(),
+            Pair::I128(a, b) => (a & b).into(),
+            Pair::BigInt(a, b) => (a & b).into(),
+            Pair::F64(_, _) => bail!("can't AND floats"),
+        })
     }
 }
