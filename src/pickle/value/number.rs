@@ -390,11 +390,11 @@ impl Pair {
             Self::I64(a, b) => a
                 .checked_sub(b)
                 .map(Number::from)
-                .unwrap_or_else(|| Self::I128(a as i128, b as i128).add()),
+                .unwrap_or_else(|| Self::I128(a as i128, b as i128).sub()),
             Self::I128(a, b) => a
                 .checked_sub(b)
                 .map(Number::from)
-                .unwrap_or_else(|| Self::BigInt(BigInt::from(a), BigInt::from(b)).add()),
+                .unwrap_or_else(|| Self::BigInt(BigInt::from(a), BigInt::from(b)).sub()),
             Self::BigInt(a, b) => Number::from(a - b),
             Self::F64(a, b) => Number::from(a - b),
         }
