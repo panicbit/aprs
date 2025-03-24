@@ -87,6 +87,14 @@ impl Number {
         Pair::from(self, rhs).sub()
     }
 
+    pub fn mul(&self, rhs: &Number) -> Number {
+        Pair::from(self, rhs).mul()
+    }
+
+    // pub fn pow(&self, rhs: &Number) -> Number {
+    //     Pair::from(self, rhs).pow()
+    // }
+
     pub fn or(&self, rhs: &Number) -> Result<Number> {
         Pair::from(self, rhs).or()
     }
@@ -399,6 +407,36 @@ impl Pair {
             Self::F64(a, b) => Number::from(a - b),
         }
     }
+
+    fn mul(self) -> Number {
+        match self {
+            Self::I64(a, b) => a
+                .checked_mul(b)
+                .map(Number::from)
+                .unwrap_or_else(|| Self::I128(a as i128, b as i128).mul()),
+            Self::I128(a, b) => a
+                .checked_mul(b)
+                .map(Number::from)
+                .unwrap_or_else(|| Self::BigInt(BigInt::from(a), BigInt::from(b)).mul()),
+            Self::BigInt(a, b) => Number::from(a * b),
+            Self::F64(a, b) => Number::from(a * b),
+        }
+    }
+
+    // fn pow(self) -> Number {
+    //     match self {
+    //         Self::I64(a, b) => a
+    //             .checked_pow(b)
+    //             .map(Number::from)
+    //             .unwrap_or_else(|| Self::I128(a as i128, b as i128).pow()),
+    //         Self::I128(a, b) => a
+    //             .checked_pow(b)
+    //             .map(Number::from)
+    //             .unwrap_or_else(|| Self::BigInt(BigInt::from(a), BigInt::from(b)).pow()),
+    //         Self::BigInt(a, b) => Number::from(a.pow(b)),
+    //         Self::F64(a, b) => Number::from(a.powf(b)),
+    //     }
+    // }
 
     fn or(self) -> Result<Number> {
         Ok(match self {

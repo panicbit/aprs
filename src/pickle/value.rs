@@ -245,13 +245,19 @@ impl Value {
         }
     }
 
-    fn mul(&self, rhs: &Value) -> Result<Value> {
-        todo!()
+    pub fn mul(&self, rhs: &Value) -> Result<Value> {
+        match (self, rhs) {
+            (Value::Number(a), Value::Number(b)) => Ok(a.mul(b).into()),
+            _ => bail!("Can't `mul` {self:?} and {rhs:?}"),
+        }
     }
 
-    fn pow(&self, rhs: &Value) -> Result<Value> {
-        todo!()
-    }
+    // fn pow(&self, rhs: &Value) -> Result<Value> {
+    //     match (self, rhs) {
+    //         (Value::Number(a), Value::Number(b)) => Ok(a.pow(b)).into()
+    //         _ => bail!("Can't `pow` {self:?} and {rhs:?}"),
+    //     }
+    // }
 
     fn r#mod(&self, rhs: &Value) -> Result<Value> {
         todo!()
@@ -273,8 +279,12 @@ impl Value {
         todo!()
     }
 
-    fn and(&self, rhs: &Value) -> Result<Value> {
-        todo!()
+    pub fn and(&self, rhs: &Value) -> Result<Value> {
+        match (self, rhs) {
+            (Value::Number(a), Value::Number(b)) => a.and(b).map(<_>::into),
+            (Value::Bool(a), Value::Bool(b)) => Ok((**a && **b).into()),
+            _ => bail!("Can't `and` {self:?} and {rhs:?}"),
+        }
     }
 
     pub fn or(&self, rhs: &Value) -> Result<Value> {
