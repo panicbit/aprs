@@ -102,6 +102,15 @@ impl Number {
     pub fn and(&self, rhs: &Number) -> Result<Number> {
         Pair::from(self, rhs).and()
     }
+
+    pub fn to_usize(&self) -> Option<usize> {
+        match *self.inner() {
+            N::I64(n) => n.try_into().ok(),
+            N::I128(n) => n.try_into().ok(),
+            N::BigInt(ref n) => n.to_usize(),
+            N::F64(_) => None,
+        }
+    }
 }
 
 impl Hash for Number {

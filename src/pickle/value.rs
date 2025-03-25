@@ -228,6 +228,13 @@ impl Value {
     pub fn empty_set() -> Self {
         Self::Set(Set::new())
     }
+
+    pub fn to_usize(&self) -> Option<usize> {
+        match self {
+            Value::Number(number) => number.to_usize(),
+            _ => None,
+        }
+    }
 }
 
 impl Value {
@@ -311,8 +318,10 @@ impl Value {
         todo!()
     }
 
-    fn pop(&self, rhs: &Value) -> Result<Value> {
-        todo!()
+    pub fn pop(&self, rhs: &Value) -> Result<Option<Value>> {
+        let list = self.as_list()?;
+
+        list.remove(rhs)
     }
 
     pub fn update(&self, dict: &Value) -> Result<()> {

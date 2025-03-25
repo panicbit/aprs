@@ -428,7 +428,7 @@ impl super::Server {
                 // SetOperation::LeftShift(value) => current.left_shift(value),
                 // SetOperation::RightShift(value) => current.right_shift(value),
                 // SetOperation::Remove(value) => current.remove(value),
-                // SetOperation::Pop(value) => current.pop(value),
+                SetOperation::Pop(value) => current.pop(&value).map(|_| current)?,
                 SetOperation::Update(value) => current.update(&value).map(|_| current)?,
                 _ => bail!("TODO: implement SetOperation: {operation:?}"),
             })
