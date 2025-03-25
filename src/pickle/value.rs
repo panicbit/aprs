@@ -270,12 +270,12 @@ impl Value {
         todo!()
     }
 
-    fn floor(&self) -> Result<Value> {
-        todo!()
+    pub fn floor(&self) -> Result<Value> {
+        Ok(Self::Number(self.as_number()?.floor()))
     }
 
-    fn ceil(&self) -> Result<Value> {
-        todo!()
+    pub fn ceil(&self) -> Result<Value> {
+        Ok(Self::Number(self.as_number()?.ceil()))
     }
 
     fn max(&self, rhs: &Value) -> Result<Value> {

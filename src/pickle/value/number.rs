@@ -103,6 +103,20 @@ impl Number {
         Pair::from(self, rhs).and()
     }
 
+    pub fn floor(&self) -> Number {
+        match self.inner() {
+            N::I64(_) | N::I128(_) | N::BigInt(_) => self.clone(),
+            N::F64(n) => Self::from(n.floor()),
+        }
+    }
+
+    pub fn ceil(&self) -> Number {
+        match self.inner() {
+            N::I64(_) | N::I128(_) | N::BigInt(_) => self.clone(),
+            N::F64(n) => Self::from(n.ceil()),
+        }
+    }
+
     pub fn to_usize(&self) -> Option<usize> {
         match *self.inner() {
             N::I64(n) => n.try_into().ok(),
