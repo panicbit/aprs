@@ -429,18 +429,7 @@ impl super::Server {
                 // SetOperation::RightShift(value) => current.right_shift(value),
                 // SetOperation::Remove(value) => current.remove(value),
                 // SetOperation::Pop(value) => current.pop(value),
-                SetOperation::Update(value) => {
-                    {
-                        let current = current.as_dict()?;
-                        let value = value.as_dict()?;
-
-                        for (key, value) in value {
-                            current.insert(key, value)?;
-                        }
-                    }
-
-                    value
-                }
+                SetOperation::Update(value) => current.update(&value).map(|_| current)?,
                 _ => bail!("TODO: implement SetOperation: {operation:?}"),
             })
         }

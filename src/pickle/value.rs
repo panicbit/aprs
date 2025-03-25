@@ -315,8 +315,15 @@ impl Value {
         todo!()
     }
 
-    fn update(&self, rhs: &Value) -> Result<Value> {
-        todo!()
+    pub fn update(&self, dict: &Value) -> Result<()> {
+        let this = self.as_dict()?;
+        let dict = dict.as_dict()?;
+
+        for (key, value) in dict {
+            this.insert(key, value)?;
+        }
+
+        Ok(())
     }
 }
 
