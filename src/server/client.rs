@@ -1,23 +1,18 @@
 use std::net::SocketAddr;
-use std::pin::pin;
 use std::sync::Arc;
 
 use fnv::FnvHashSet;
 use itertools::Itertools;
-use tokio::net::TcpStream;
-use tokio::select;
-use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio_tungstenite::WebSocketStream;
-use tracing::{debug, error};
+use tokio::sync::mpsc::Sender;
+use tracing::error;
 
 use crate::game::{ConnectName, ItemId, SlotId, SlotName};
 use crate::pickle::value::Str;
 use crate::proto;
 use crate::proto::client::ItemsHandling;
 use crate::proto::common::{Close, Control, ControlOrMessage};
-use crate::proto::server::{Message as ServerMessage, MessageStream, ReceivedItems};
-use crate::proto::server::{MessageSink, NetworkItem};
-use crate::server::event::Event;
+use crate::proto::server::NetworkItem;
+use crate::proto::server::{Message as ServerMessage, ReceivedItems};
 
 #[derive(Clone)]
 pub struct Client {
@@ -37,13 +32,8 @@ pub struct Client {
 impl Client {
     pub fn new(
         address: SocketAddr,
-        stream: WebSocketStream<TcpStream>,
-        event_tx: Sender<Event>,
+        server_message_tx: Sender<ControlOrMessage<Arc<ServerMessage>>>,
     ) -> Self {
-        let (server_message_tx, server_message_rx) = mpsc::channel(1_000);
-
-        tokio::spawn(client_loop(stream, address, event_tx, server_message_rx));
-
         Self {
             server_message_tx,
             address,
@@ -142,51 +132,5 @@ impl Client {
             items: missing_items,
         })
         .await;
-    }
-}
-
-async fn client_loop(
-    stream: WebSocketStream<TcpStream>,
-    address: SocketAddr,
-    event_tx: Sender<Event>,
-    mut server_message_rx: Receiver<ControlOrMessage<Arc<ServerMessage>>>,
-) {
-    let mut stream = pin!(stream);
-    let stream = &mut *stream;
-
-    loop {
-        select! {
-            _ = event_tx.closed() => return,
-            server_message = server_message_rx.recv() => {
-                let Some(server_message) = server_message else {
-                    debug!("Server closed message channel to client");
-                    return
-                };
-
-                // TODO: decouple sending and receiving
-                if let Err(err) = stream.send(server_message).await {
-                    error!("failed to send message to client: {err:?}");
-
-                    event_tx.send(Event::ClientDisconnected(address)).await.ok();
-
-                    return;
-                }
-            }
-            client_messages = stream.recv() => {
-                let event = match client_messages {
-                    Ok(ControlOrMessage::Control(control)) => Event::ClientControl(address, control),
-                    Ok(ControlOrMessage::Message(messages)) => Event::ClientMessages(address, messages),
-                    Err(err) => {
-                        error!("Failed to receive client messages: {err:?}");
-
-                        event_tx.send(Event::ClientDisconnected(address)).await.ok();
-
-                        return
-                    }
-                };
-
-                event_tx.send(event).await.ok();
-            }
-        }
     }
 }

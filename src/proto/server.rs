@@ -2,12 +2,6 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-mod message_sink;
-pub use message_sink::MessageSink;
-
-mod message_stream;
-pub use message_stream::MessageStream;
-
 mod room_info;
 pub use room_info::RoomInfo;
 

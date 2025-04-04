@@ -6,9 +6,7 @@ use eyre::{ContextCompat, Result, bail};
 use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
 use levenshtein::levenshtein;
-use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use tokio_tungstenite::WebSocketStream;
 use tracing::{debug, error, info, warn};
 
 use crate::game::{LocationId, TeamAndSlot};
@@ -18,7 +16,7 @@ use crate::proto::client::{
     Message as ClientMessage, Messages as ClientMessages, Say, Set, SetNotify, SetOperation,
     StatusUpdate,
 };
-use crate::proto::common::{Close, Control, Ping, Pong};
+use crate::proto::common::{Close, Control, Pong};
 use crate::proto::server::{
     CommandPermission, Connected, ConnectionRefused, DataPackage, DataPackageData, LocationInfo,
     Message, NetworkItem, Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo,
@@ -30,8 +28,8 @@ use crate::server::event::Event;
 impl super::Server {
     pub async fn on_event(&mut self, event: Event) {
         match event {
-            Event::ClientAccepted(address, stream) => {
-                self.on_client_accepted(address, stream).await
+            Event::ClientAccepted(address, client) => {
+                self.on_client_accepted(address, client).await
             }
             Event::ClientDisconnected(address) => {
                 self.on_client_disconnected(address).await //
@@ -45,17 +43,12 @@ impl super::Server {
         }
     }
 
-    pub async fn on_client_accepted(
-        &mut self,
-        address: SocketAddr,
-        stream: WebSocketStream<TcpStream>,
-    ) {
+    pub async fn on_client_accepted(&mut self, address: SocketAddr, client: Client) {
         debug!("New client connected: {}", address);
 
         // TODO: Generate and assign client id.
         // Stop using SocketAddr as identifier.
 
-        let client = Client::new(address, stream, self.tx.clone());
         let client = Arc::new(Mutex::new(client));
 
         self.clients.insert(address, client.clone());

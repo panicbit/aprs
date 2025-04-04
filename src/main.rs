@@ -1,6 +1,6 @@
 use std::net::Ipv4Addr;
 
-use aprs::server::{Config, Server};
+use aprs::websocket_server::{Config, WebsocketServer};
 use clap::Parser;
 use eyre::Result;
 use tokio::runtime::Runtime;
@@ -37,7 +37,7 @@ pub fn run() -> Result<()> {
 
     info!("Server started.");
 
-    let server = Server::new(config, game.multi_data)?;
+    let server = WebsocketServer::new(config, game.multi_data)?;
 
     Runtime::new()?.block_on(server.run())
 }
