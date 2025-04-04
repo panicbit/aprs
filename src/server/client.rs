@@ -14,13 +14,14 @@ use crate::game::{ConnectName, ItemId, SlotId, SlotName};
 use crate::pickle::value::Str;
 use crate::proto;
 use crate::proto::client::ItemsHandling;
+use crate::proto::common::{Close, Control, ControlOrMessage};
 use crate::proto::server::{Message as ServerMessage, MessageStream, ReceivedItems};
 use crate::proto::server::{MessageSink, NetworkItem};
 use crate::server::event::Event;
 
 #[derive(Clone)]
 pub struct Client {
-    server_message_tx: Sender<Arc<ServerMessage>>,
+    server_message_tx: Sender<ControlOrMessage<Arc<ServerMessage>>>,
     pub address: SocketAddr,
     pub is_connected: bool,
     pub connect_name: ConnectName,
@@ -60,7 +61,22 @@ impl Client {
 
     pub async fn send(&self, message: impl Into<Arc<ServerMessage>>) {
         // TODO: handle overload situation, probably using timeout
-        self.server_message_tx.send(message.into()).await.ok();
+        self.send_control_or_message(ControlOrMessage::Message(message.into()))
+            .await
+    }
+
+    pub async fn send_control(&self, control: impl Into<Control>) {
+        // TODO: handle overload situation, probably using timeout
+        self.send_control_or_message(control.into().into()).await
+    }
+
+    pub async fn send_control_or_message(&self, message: ControlOrMessage<Arc<ServerMessage>>) {
+        // TODO: handle overload situation, probably using timeout
+        self.server_message_tx.send(message).await.ok();
+    }
+
+    pub async fn close(&self) {
+        self.send_control(Close).await
     }
 
     pub fn set_items_handling(&mut self, new_items_handling: proto::client::ItemsHandling) {
@@ -133,7 +149,7 @@ async fn client_loop(
     stream: WebSocketStream<TcpStream>,
     address: SocketAddr,
     event_tx: Sender<Event>,
-    mut server_message_rx: Receiver<Arc<ServerMessage>>,
+    mut server_message_rx: Receiver<ControlOrMessage<Arc<ServerMessage>>>,
 ) {
     let mut stream = pin!(stream);
     let stream = &mut *stream;
@@ -157,8 +173,9 @@ async fn client_loop(
                 }
             }
             client_messages = stream.recv() => {
-                let client_messages = match client_messages {
-                    Ok(client_messages) => client_messages,
+                let event = match client_messages {
+                    Ok(ControlOrMessage::Control(control)) => Event::ClientControl(address, control),
+                    Ok(ControlOrMessage::Message(messages)) => Event::ClientMessages(address, messages),
                     Err(err) => {
                         error!("Failed to receive client messages: {err:?}");
 
@@ -168,7 +185,7 @@ async fn client_loop(
                     }
                 };
 
-                event_tx.send(Event::ClientMessages(address, client_messages)).await.ok();
+                event_tx.send(event).await.ok();
             }
         }
     }

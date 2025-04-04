@@ -1,30 +1,35 @@
 use std::sync::Arc;
 
 use eyre::Result;
-use futures::{Sink, SinkExt};
+use futures::SinkExt;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::tungstenite;
-use tracing::{debug, trace};
+use tracing::debug;
 
+use crate::proto::common::{Control, ControlOrMessage};
 use crate::proto::server::Message;
 
 // TODO: Arc messages
 pub trait MessageSink {
-    async fn send(&mut self, message: impl Into<Arc<Message>>) -> Result<()>;
+    async fn send(&mut self, message: ControlOrMessage<Arc<Message>>) -> Result<()>;
+    // TODO: maybe add ping and pong methods?
     async fn close(&mut self) -> Result<()>;
 }
 
-impl<S> MessageSink for S
+impl<S> MessageSink for tokio_tungstenite::WebSocketStream<S>
 where
-    S: Sink<tungstenite::Message, Error = tungstenite::Error> + Unpin,
+    S: AsyncRead + AsyncWrite + Unpin,
 {
-    async fn send(&mut self, message: impl Into<Arc<Message>>) -> Result<()> {
-        let message = message.into();
-
-        let message = match &*message {
-            Message::Ping(ping) => tungstenite::Message::Ping(ping.0.clone()),
-            Message::Pong(pong) => tungstenite::Message::Pong(pong.0.clone()),
-            Message::Close(_close) => tungstenite::Message::Close(None),
-            _ => {
+    async fn send(&mut self, message: ControlOrMessage<Arc<Message>>) -> Result<()> {
+        let message = match message {
+            ControlOrMessage::Control(Control::Ping(ping)) => {
+                tungstenite::Message::Ping(ping.0.clone())
+            }
+            ControlOrMessage::Control(Control::Pong(pong)) => {
+                tungstenite::Message::Pong(pong.0.clone())
+            }
+            ControlOrMessage::Control(Control::Close(_close)) => tungstenite::Message::Close(None),
+            ControlOrMessage::Message(message) => {
                 let json = serde_json::to_string(&[message])?;
                 tungstenite::Message::text(json)
             }
@@ -32,7 +37,7 @@ where
 
         debug!(">>> {message}");
 
-        <Self as futures::sink::SinkExt<_>>::send(self, message).await?;
+        <Self as SinkExt<_>>::send(self, message).await?;
 
         Ok(())
     }

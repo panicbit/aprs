@@ -1,56 +1,66 @@
 use eyre::{Result, bail};
 use format_serde_error::SerdeError;
 use smallvec::smallvec;
-use tokio_stream::Stream;
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio_stream::StreamExt;
 use tokio_tungstenite::tungstenite;
-use tracing::debug;
+use tracing::{debug, error};
 
 use crate::proto::client;
-use crate::proto::common::{Close, Ping, Pong};
+use crate::proto::common::{Close, ControlOrMessage, Ping, Pong};
 
 pub trait MessageStream {
-    async fn recv(&mut self) -> Result<client::Messages>;
+    async fn recv(&mut self) -> Result<ControlOrMessage<client::Messages>>;
 }
 
-impl<S> MessageStream for S
+impl<S> MessageStream for tokio_tungstenite::WebSocketStream<S>
 where
-    S: Stream<Item = Result<tungstenite::Message, tungstenite::Error>> + Unpin,
+    S: AsyncRead + AsyncWrite + Unpin,
 {
-    async fn recv(&mut self) -> Result<client::Messages> {
-        let message = <Self as tokio_stream::StreamExt>::next(self)
-            .await
-            .transpose()?;
+    async fn recv(&mut self) -> Result<ControlOrMessage<client::Messages>> {
+        let message = <Self as StreamExt>::next(self).await.transpose()?;
 
         let Some(message) = message else {
-            return Ok(smallvec![]);
+            return Ok(smallvec![].into());
         };
 
-        Ok(match message {
+        let message = match message {
             tungstenite::Message::Text(message) => {
                 debug!("<<< {message}");
                 let messages = serde_json::from_str::<client::Messages>(message.as_str())
                     .map_err(|err| SerdeError::new(message.to_string(), err))?;
 
-                messages
+                messages.into()
             }
             tungstenite::Message::Binary(message) => {
                 debug!("<<< <binary>");
                 let messages = serde_json::from_slice::<client::Messages>(&message)?;
 
-                messages
+                messages.into()
             }
             tungstenite::Message::Ping(bytes) => {
-                debug!("<<< ping");
-                smallvec![Ping(bytes).into()]
+                // TODO: allow passing on Ping to the server
+                debug!("<<< ping ({} bytes)", bytes.len());
+
+                Ping(bytes).into()
             }
             tungstenite::Message::Pong(bytes) => {
-                debug!("<<< pong");
-                smallvec![Pong(bytes).into()]
+                // TODO: allow passing on Pong to the server
+                debug!("<<< pong ({} bytes)", bytes.len());
+
+                Pong(bytes).into()
             }
             tungstenite::Message::Close(_close_frame) => {
-                smallvec![Close.into()]
+                debug!("<<< close");
+
+                Close.into()
             }
-            tungstenite::Message::Frame(_frame) => bail!("received raw frame"),
-        })
+            tungstenite::Message::Frame(_frame) => {
+                error!("BUG: received raw frame");
+                bail!("BUG: received raw frame");
+            }
+        };
+
+        Ok(message)
     }
 }

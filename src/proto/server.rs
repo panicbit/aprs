@@ -2,8 +2,6 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::proto::common::{Close, Ping, Pong};
-
 mod message_sink;
 pub use message_sink::MessageSink;
 
@@ -75,12 +73,6 @@ pub enum Message {
     #[serde(rename = "PrintJSON")]
     PrintJson(PrintJson),
     Bounced(Bounced),
-    #[serde(skip)]
-    Ping(Ping),
-    #[serde(skip)]
-    Pong(Pong),
-    #[serde(skip)]
-    Close(Close),
 }
 
 impl From<RoomInfo> for Arc<Message> {
@@ -110,24 +102,6 @@ impl From<Retrieved> for Arc<Message> {
 impl From<PrintJson> for Arc<Message> {
     fn from(value: PrintJson) -> Self {
         Arc::new(Message::PrintJson(value))
-    }
-}
-
-impl From<Ping> for Arc<Message> {
-    fn from(value: Ping) -> Self {
-        Arc::new(Message::Ping(value))
-    }
-}
-
-impl From<Pong> for Arc<Message> {
-    fn from(value: Pong) -> Self {
-        Arc::new(Message::Pong(value))
-    }
-}
-
-impl From<Close> for Arc<Message> {
-    fn from(value: Close) -> Self {
-        Arc::new(Message::Close(value))
     }
 }
 

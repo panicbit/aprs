@@ -18,7 +18,7 @@ use crate::proto::client::{
     Message as ClientMessage, Messages as ClientMessages, Say, Set, SetNotify, SetOperation,
     StatusUpdate,
 };
-use crate::proto::common::{Close, Ping, Pong};
+use crate::proto::common::{Close, Control, Ping, Pong};
 use crate::proto::server::{
     CommandPermission, Connected, ConnectionRefused, DataPackage, DataPackageData, LocationInfo,
     Message, NetworkItem, Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo,
@@ -39,6 +39,9 @@ impl super::Server {
             Event::ClientMessages(address, messages) => {
                 self.on_client_messages(address, messages).await
             }
+            Event::ClientControl(address, control) => {
+                self.on_client_control(address, control).await
+            }
         }
     }
 
@@ -56,8 +59,6 @@ impl super::Server {
         let client = Arc::new(Mutex::new(client));
 
         self.clients.insert(address, client.clone());
-
-        client.lock().await.send(Ping("hello".into())).await;
 
         client
             .lock()
@@ -101,8 +102,24 @@ impl super::Server {
         for message in messages {
             if let Err(err) = self.on_client_message(&client, message).await {
                 debug!("||| {err:?}");
-                client.lock().await.send(Close).await;
+                client.lock().await.send_control(Close).await;
                 self.clients.remove(&address);
+            }
+        }
+    }
+
+    pub async fn on_client_control(&mut self, address: SocketAddr, control: Control) {
+        let Some(client) = self.clients.get(&address).cloned() else {
+            return;
+        };
+
+        match control {
+            Control::Ping(ping) => {
+                client.lock().await.send_control(Pong(ping.0)).await;
+            }
+            Control::Pong(_) => {}
+            Control::Close(_) => {
+                self.on_close(&client).await;
             }
         }
     }
@@ -112,23 +129,10 @@ impl super::Server {
         client: &Mutex<Client>,
         message: ClientMessage,
     ) -> Result<()> {
-        match message {
-            ClientMessage::Ping(ping) => {
-                client.lock().await.send(Pong(ping.0)).await;
-                return Ok(());
-            }
-            ClientMessage::Pong(_) => {
-                return Ok(());
-            }
-            ClientMessage::Close(_) => {
-                self.on_close(client).await;
-                return Ok(());
-            }
-            ClientMessage::GetDataPackage(ref get_data_package) => {
-                self.on_get_data_package(client, get_data_package).await;
-                return Ok(());
-            }
-            _ => {}
+        // GetDataPackage is allowed to be sent before authenticating
+        if let ClientMessage::GetDataPackage(ref get_data_package) = message {
+            self.on_get_data_package(client, get_data_package).await;
+            return Ok(());
         }
 
         if !client.lock().await.is_connected {
@@ -164,9 +168,6 @@ impl super::Server {
                 error!("BUG: GetDataPackage should already be handled as unauthenticated packet")
             }
             ClientMessage::Unknown(value) => warn!("Unknown client message: {value:?}"),
-            ClientMessage::Ping(_) => bail!("unreachable: Ping"),
-            ClientMessage::Pong(_) => bail!("unreachable: Pong"),
-            ClientMessage::Close(_) => bail!("unreachable: Close"),
         }
 
         Ok(())
