@@ -254,8 +254,12 @@ impl ops::DerefMut for HashedGameData {
 // field order is significant for checksum calculation
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GameData {
+    // TODO: remove `serde(default)` once `proto` doesn't rely on this struct anymore
+    #[serde(default)]
     pub item_name_groups: FnvIndexMap<String, Vec<String>>,
     pub item_name_to_id: FnvIndexMap<String, ItemId>,
+    // TODO: remove `serde(default)` once `proto` doesn't rely on this struct anymore
+    #[serde(default)]
     pub location_name_groups: FnvIndexMap<String, Vec<String>>,
     pub location_name_to_id: FnvIndexMap<String, LocationId>,
 }
