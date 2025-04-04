@@ -1,10 +1,10 @@
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use serde_repr::Serialize_repr;
 
 use crate::game::{ItemId, LocationId, SlotId};
 use crate::proto::server::NetworkItem;
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PrintJson {
     pub data: Vec<JsonMessagePart>,
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
@@ -45,7 +45,7 @@ impl PrintJson {
     }
 }
 
-#[derive(Serialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct AdditionalInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub r#type: Option<Type>,
@@ -67,7 +67,7 @@ pub struct AdditionalInfo {
     pub countdown: Option<u32>,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum JsonMessagePart {
     Text {
@@ -88,6 +88,8 @@ pub enum JsonMessagePart {
         #[serde(rename = "text", serialize_with = "slot_id_as_string")]
         player_id: SlotId,
     },
+    #[serde(untagged)]
+    Other(serde_json::Value),
 }
 
 fn item_id_as_string<S: Serializer>(item_id: &ItemId, ser: S) -> Result<S::Ok, S::Error> {
@@ -127,7 +129,7 @@ impl JsonMessagePart {
     }
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Type {
     ItemSend,
     ItemCheat,
@@ -144,6 +146,8 @@ pub enum Type {
     Release,
     Collect,
     Countdown,
+    #[serde(untagged)]
+    Other(String),
 }
 
 #[derive(Serialize_repr, Clone, Debug)]

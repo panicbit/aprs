@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::proto::common::{Close, Ping, Pong};
 
@@ -60,7 +60,7 @@ pub use data_package::{DataPackage, DataPackageData};
 
 pub type GameName = String;
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(tag = "cmd")]
 pub enum Message {
     RoomInfo(RoomInfo),

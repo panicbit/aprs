@@ -1,6 +1,6 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ConnectionRefused {
     pub errors: Vec<ConnectionError>,
 }
@@ -31,7 +31,7 @@ impl From<ConnectionError> for ConnectionRefused {
     }
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ConnectionError {
     InvalidSlot,
     InvalidGame,

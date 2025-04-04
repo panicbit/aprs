@@ -1,8 +1,8 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::proto::server::NetworkItem;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ReceivedItems {
     pub index: usize,
     pub items: Vec<NetworkItem>,

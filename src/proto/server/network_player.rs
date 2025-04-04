@@ -1,8 +1,8 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::game::{SlotId, SlotName, TeamId};
 
-#[derive(Clone, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct NetworkPlayer {
     pub team: TeamId,
     pub slot: SlotId,

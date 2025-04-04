@@ -1,7 +1,7 @@
-use serde::Serialize;
-use serde_repr::Serialize_repr;
+use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
-#[derive(Serialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Copy, Clone)]
 pub struct Permissions {
     /// permission for the `release` command
     pub release: CommandPermission,
@@ -12,7 +12,7 @@ pub struct Permissions {
 }
 
 #[repr(u8)]
-#[derive(Serialize_repr, Copy, Clone)]
+#[derive(Serialize_repr, Deserialize_repr, Copy, Clone)]
 pub enum CommandPermission {
     Disabled = 0b000,    // 0, completely disables access
     Enabled = 0b001,     // 1, allows manual use
@@ -22,7 +22,7 @@ pub enum CommandPermission {
 }
 
 #[repr(u8)]
-#[derive(Serialize_repr, Copy, Clone)]
+#[derive(Serialize_repr, Deserialize_repr, Copy, Clone)]
 pub enum RemainingCommandPermission {
     Disabled = 0b000, // 0, completely disables access
     Enabled = 0b001,  // 1, allows manual use

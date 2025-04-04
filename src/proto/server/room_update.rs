@@ -1,9 +1,9 @@
 use fnv::FnvHashSet;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::game::LocationId;
 
-#[derive(Serialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct RoomUpdate {
     // TODO: implement more fields
     #[serde(skip_serializing_if = "FnvHashSet::is_empty")]

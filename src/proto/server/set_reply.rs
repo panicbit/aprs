@@ -1,10 +1,10 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::game::SlotId;
 use crate::pickle::Value;
 use crate::pickle::value::Str;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SetReply {
     pub key: Str,
     pub value: Value,

@@ -1,10 +1,10 @@
 use fnv::FnvHashMap;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::proto::common::NetworkVersion;
 use crate::proto::server::{GameName, Permissions, Time};
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct RoomInfo {
     /// Version the server is running
     pub version: NetworkVersion,

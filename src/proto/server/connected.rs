@@ -2,13 +2,13 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use fnv::FnvHashSet;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::game::{LocationId, NetworkSlot, SlotId, TeamId};
 use crate::pickle::Value;
 use crate::proto::server::NetworkPlayer;
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Connected {
     pub team: TeamId,
     pub slot: SlotId,
