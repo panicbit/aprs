@@ -48,8 +48,7 @@ fn configure_tracing() {
         .with(
             tracing_subscriber::fmt::layer()
                 .with_target(false)
-                .without_time()
-                .pretty(),
+                .without_time(),
         )
         .with(ErrorLayer::default())
         .init();

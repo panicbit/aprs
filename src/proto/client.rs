@@ -26,6 +26,9 @@ pub use status_update::{ClientStatus, StatusUpdate};
 mod get_data_package;
 pub use get_data_package::GetDataPackage;
 
+mod bounce;
+pub use bounce::Bounce;
+
 pub type Messages = SmallVec<[Message; 1]>;
 
 #[derive(Deserialize, Debug)]
@@ -41,6 +44,7 @@ pub enum Message {
     LocationChecks(LocationChecks),
     GetDataPackage(GetDataPackage),
     StatusUpdate(StatusUpdate),
+    Bounce(Bounce),
     #[serde(untagged)]
     Unknown(Value),
 }

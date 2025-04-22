@@ -12,15 +12,15 @@ use tracing::{debug, error, info, warn};
 use crate::game::{LocationId, TeamAndSlot};
 use crate::pickle::Value;
 use crate::proto::client::{
-    ClientStatus, Connect, Get, GetDataPackage, LocationChecks, LocationScouts,
+    Bounce, ClientStatus, Connect, Get, GetDataPackage, LocationChecks, LocationScouts,
     Message as ClientMessage, Messages as ClientMessages, Say, Set, SetNotify, SetOperation,
     StatusUpdate,
 };
 use crate::proto::common::{Close, Control, Pong};
 use crate::proto::server::{
-    CommandPermission, Connected, ConnectionRefused, DataPackage, DataPackageData, LocationInfo,
-    Message, NetworkItem, Permissions, PrintJson, RemainingCommandPermission, Retrieved, RoomInfo,
-    RoomUpdate, SetReply, Time,
+    Bounced, CommandPermission, Connected, ConnectionRefused, DataPackage, DataPackageData,
+    LocationInfo, Message, NetworkItem, Permissions, PrintJson, RemainingCommandPermission,
+    Retrieved, RoomInfo, RoomUpdate, SetReply, Time,
 };
 use crate::server::client::Client;
 use crate::server::event::Event;
@@ -160,6 +160,7 @@ impl super::Server {
             ClientMessage::GetDataPackage(_) => {
                 error!("BUG: GetDataPackage should already be handled as unauthenticated packet")
             }
+            ClientMessage::Bounce(bounce) => self.on_bounce(client, &bounce).await,
             ClientMessage::Unknown(value) => warn!("Unknown client message: {value:?}"),
         }
 
@@ -270,9 +271,13 @@ impl super::Server {
                 .await;
 
             client.connect_name = connect_name;
-            // TODO: maybe store entire slot_info in client to make slot_info access easier
+            // TODO: maybe store entire slot_info in client to make slot_info access easier,
+            // or separate client into authenticated and unauthenticated types
             client.slot_name = slot_info.name.clone();
             client.slot_id = slot;
+            client.team_id = team;
+            client.tags = FnvHashSet::from_iter(tags);
+            client.game = game;
             client.is_connected = true;
         }
 
@@ -627,6 +632,33 @@ impl super::Server {
     pub async fn on_sync(&mut self, client: &Mutex<Client>) {
         client.lock().await.reset_received_items();
         self.sync_items_to_client(client).await;
+    }
+
+    pub async fn on_bounce(&mut self, client: &Mutex<Client>, bounce: &Bounce) {
+        let bounced = Bounced::from(bounce.clone());
+        let bounced = Arc::<Message>::from(bounced);
+        let Bounce {
+            games,
+            slots,
+            tags,
+            data: _,
+        } = bounce;
+
+        let team_id = client.lock().await.team_id;
+
+        for client in self.clients.values() {
+            let client = client.lock().await;
+
+            let team_matches = || client.team_id != team_id;
+            let game_matches = || games.contains(&client.game);
+            let team_and_game_matches = || team_matches() && game_matches();
+            let tag_matches = || tags.iter().any(|tag| client.tags.contains(tag));
+            let slot_matches = || slots.contains(&client.slot_id);
+
+            if team_and_game_matches() || tag_matches() || slot_matches() {
+                client.send(bounced.clone()).await;
+            }
+        }
     }
 
     pub async fn on_close(&mut self, client: &Mutex<Client>) {

@@ -6,7 +6,7 @@ use itertools::Itertools;
 use tokio::sync::mpsc::Sender;
 use tracing::error;
 
-use crate::game::{ConnectName, ItemId, SlotId, SlotName};
+use crate::game::{ConnectName, ItemId, SlotId, SlotName, TeamId};
 use crate::pickle::value::Str;
 use crate::proto;
 use crate::proto::client::ItemsHandling;
@@ -22,6 +22,9 @@ pub struct Client {
     pub connect_name: ConnectName,
     pub slot_name: SlotName,
     pub slot_id: SlotId,
+    pub team_id: TeamId,
+    pub tags: FnvHashSet<String>,
+    pub game: String,
     pub wants_updates_for_keys: FnvHashSet<Str>,
     starting_inventory: FnvHashSet<ItemId>,
     items_handling: ItemsHandling,
@@ -41,6 +44,9 @@ impl Client {
             connect_name: ConnectName::new(),
             slot_name: SlotName::new(),
             slot_id: SlotId(-1),
+            team_id: TeamId(-1),
+            game: "<unknown>".into(),
+            tags: FnvHashSet::default(),
             wants_updates_for_keys: FnvHashSet::default(),
             starting_inventory: FnvHashSet::default(),
             items_handling: ItemsHandling::empty(),
