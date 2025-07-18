@@ -103,7 +103,7 @@ impl Server {
             return self.get_client_status(key);
         }
 
-        if let Some(key) = key.strip_prefix("client_status_") {
+        if key == "race_mode" {
             return self.get_race_mode(key);
         }
 
