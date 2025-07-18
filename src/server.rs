@@ -1,4 +1,3 @@
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -18,7 +17,7 @@ mod event_handlers;
 mod state;
 
 mod client;
-pub use client::Client;
+pub use client::{Client, ClientId};
 
 mod config;
 pub use config::Config;
@@ -31,7 +30,7 @@ pub struct Server {
     multi_data: MultiData,
     rx: Receiver<Event>,
     // TODO: remove lock after moving to proper client ids
-    clients: FnvHashMap<SocketAddr, Arc<Mutex<Client>>>,
+    clients: FnvHashMap<ClientId, Arc<Mutex<Client>>>,
     state: State,
 }
 

@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::net::SocketAddr;
 use std::sync::Arc;
 
 use eyre::{ContextCompat, Result, bail};
@@ -22,36 +21,35 @@ use crate::proto::server::{
     LocationInfo, Message, NetworkItem, Permissions, PrintJson, RemainingCommandPermission,
     Retrieved, RoomInfo, RoomUpdate, SetReply, Time,
 };
-use crate::server::client::Client;
+use crate::server::client::{Client, ClientId};
 use crate::server::event::Event;
 
 impl super::Server {
     pub async fn on_event(&mut self, event: Event) {
         match event {
-            Event::ClientAccepted(address, client) => {
-                self.on_client_accepted(address, client).await
+            Event::ClientAccepted(client) => self.on_client_accepted(client).await,
+            Event::ClientDisconnected(client_id) => {
+                self.on_client_disconnected(client_id).await //
             }
-            Event::ClientDisconnected(address) => {
-                self.on_client_disconnected(address).await //
+            Event::ClientMessages(client_id, messages) => {
+                self.on_client_messages(client_id, messages).await
             }
-            Event::ClientMessages(address, messages) => {
-                self.on_client_messages(address, messages).await
-            }
-            Event::ClientControl(address, control) => {
-                self.on_client_control(address, control).await
+            Event::ClientControl(client_id, control) => {
+                self.on_client_control(client_id, control).await
             }
         }
     }
 
-    pub async fn on_client_accepted(&mut self, address: SocketAddr, client: Client) {
-        debug!("New client connected: {}", address);
+    pub async fn on_client_accepted(&mut self, client: Client) {
+        debug!("New client connected: {:?}", client.id());
 
         // TODO: Generate and assign client id.
-        // Stop using SocketAddr as identifier.
+        // Stop using ClientId as identifier.
 
         let client = Arc::new(Mutex::new(client));
 
-        self.clients.insert(address, client.clone());
+        self.clients
+            .insert(client.lock().await.id(), client.clone());
 
         client
             .lock()
@@ -83,12 +81,12 @@ impl super::Server {
             .await;
     }
 
-    pub async fn on_client_disconnected(&mut self, address: SocketAddr) {
-        info!("Client disconnected: {}", address);
+    pub async fn on_client_disconnected(&mut self, client_id: ClientId) {
+        info!("Client disconnected: {:?}", client_id);
     }
 
-    pub async fn on_client_messages(&mut self, address: SocketAddr, messages: ClientMessages) {
-        let Some(client) = self.clients.get(&address).cloned() else {
+    pub async fn on_client_messages(&mut self, client_id: ClientId, messages: ClientMessages) {
+        let Some(client) = self.clients.get(&client_id).cloned() else {
             return;
         };
 
@@ -96,13 +94,13 @@ impl super::Server {
             if let Err(err) = self.on_client_message(&client, message).await {
                 debug!("||| {err:?}");
                 client.lock().await.send_control(Close).await;
-                self.clients.remove(&address);
+                self.clients.remove(&client_id);
             }
         }
     }
 
-    pub async fn on_client_control(&mut self, address: SocketAddr, control: Control) {
-        let Some(client) = self.clients.get(&address).cloned() else {
+    pub async fn on_client_control(&mut self, client_id: ClientId, control: Control) {
+        let Some(client) = self.clients.get(&client_id).cloned() else {
             return;
         };
 
@@ -662,6 +660,6 @@ impl super::Server {
     }
 
     pub async fn on_close(&mut self, client: &Mutex<Client>) {
-        self.clients.remove(&client.lock().await.address);
+        self.clients.remove(&client.lock().await.id());
     }
 }

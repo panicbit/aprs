@@ -19,7 +19,7 @@ use crate::game::MultiData;
 use crate::proto::client;
 use crate::proto::common::{Close, Control, ControlOrMessage, Ping, Pong};
 use crate::proto::server;
-use crate::server::{Client, Event, Server};
+use crate::server::{Client, ClientId, Event, Server};
 
 mod config;
 pub use config::Config;
@@ -108,21 +108,16 @@ async fn handle_accept(
     let stream = tokio_tungstenite::accept_hdr_async(stream, &mut data).await?;
 
     let (server_message_tx, server_message_rx) = mpsc::channel(1_000);
+    let client = Client::new(address, server_message_tx);
 
     tokio::spawn(client_loop(
         stream,
-        address,
+        client.id(),
         event_tx.clone(),
         server_message_rx,
     ));
 
-    let client = Client::new(address, server_message_tx);
-
-    if event_tx
-        .send(Event::ClientAccepted(address, client))
-        .await
-        .is_err()
-    {
+    if event_tx.send(Event::ClientAccepted(client)).await.is_err() {
         debug!("Can't accept client, event channel is closed");
     }
 
@@ -131,7 +126,7 @@ async fn handle_accept(
 
 async fn client_loop(
     stream: WebSocketStream<TcpStream>,
-    address: SocketAddr,
+    client_id: ClientId,
     event_tx: Sender<Event>,
     mut server_message_rx: Receiver<ControlOrMessage<Arc<server::Message>>>,
 ) {
@@ -151,19 +146,19 @@ async fn client_loop(
                 if let Err(err) = send(stream, server_message).await {
                     error!("failed to send message to client: {err:?}");
 
-                    event_tx.send(Event::ClientDisconnected(address)).await.ok();
+                    event_tx.send(Event::ClientDisconnected(client_id)).await.ok();
 
                     return;
                 }
             }
             client_messages = recv(stream) => {
                 let event = match client_messages {
-                    Ok(ControlOrMessage::Control(control)) => Event::ClientControl(address, control),
-                    Ok(ControlOrMessage::Message(messages)) => Event::ClientMessages(address, messages),
+                    Ok(ControlOrMessage::Control(control)) => Event::ClientControl(client_id, control),
+                    Ok(ControlOrMessage::Message(messages)) => Event::ClientMessages(client_id, messages),
                     Err(err) => {
                         error!("Failed to receive client messages: {err:?}");
 
-                        event_tx.send(Event::ClientDisconnected(address)).await.ok();
+                        event_tx.send(Event::ClientDisconnected(client_id)).await.ok();
 
                         return
                     }

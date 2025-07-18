@@ -5,6 +5,7 @@ use fnv::FnvHashSet;
 use itertools::Itertools;
 use tokio::sync::mpsc::Sender;
 use tracing::error;
+use uuid::Uuid;
 
 use crate::game::{ConnectName, ItemId, SlotId, SlotName, TeamId};
 use crate::pickle::value::Str;
@@ -14,10 +15,26 @@ use crate::proto::common::{Close, Control, ControlOrMessage};
 use crate::proto::server::NetworkItem;
 use crate::proto::server::{Message as ServerMessage, ReceivedItems};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ClientId(Uuid);
+
+impl ClientId {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
+impl Default for ClientId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Clone)]
 pub struct Client {
+    id: ClientId,
     server_message_tx: Sender<ControlOrMessage<Arc<ServerMessage>>>,
-    pub address: SocketAddr,
+    address: SocketAddr,
     pub is_connected: bool,
     pub connect_name: ConnectName,
     pub slot_name: SlotName,
@@ -38,6 +55,7 @@ impl Client {
         server_message_tx: Sender<ControlOrMessage<Arc<ServerMessage>>>,
     ) -> Self {
         Self {
+            id: ClientId::new(),
             server_message_tx,
             address,
             is_connected: false,
@@ -53,6 +71,10 @@ impl Client {
             next_slot_item_index: 0,
             next_client_item_index: 0,
         }
+    }
+
+    pub fn id(&self) -> ClientId {
+        self.id
     }
 
     pub async fn send(&self, message: impl Into<Arc<ServerMessage>>) {
