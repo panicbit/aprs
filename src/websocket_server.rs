@@ -5,6 +5,8 @@ use std::sync::Arc;
 use eyre::{Result, bail};
 use format_serde_error::SerdeError;
 use futures::SinkExt;
+use kameo::actor::ActorRef;
+use kameo::{Actor, mailbox};
 use smallvec::smallvec;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
@@ -25,34 +27,34 @@ mod config;
 pub use config::Config;
 
 pub struct WebsocketServer {
-    server: Server,
     config: Config,
-    tx: Sender<Event>,
+    multi_data: MultiData,
 }
 
 impl WebsocketServer {
     pub fn new(config: Config, multi_data: MultiData) -> Result<Self> {
-        let (tx, rx) = mpsc::channel(10_000);
-
-        let server = Server::new(config.clone().into(), multi_data, rx)?;
-
-        Ok(Self { server, config, tx })
+        Ok(Self { config, multi_data })
     }
 
     pub async fn run(self) -> Result<()> {
         let listen_address = self.config.listen_address;
         let listener = TcpListener::bind(listen_address).await?;
 
-        tokio::spawn(acceptor_loop(listener, self.tx.clone()));
+        let server = Server::new(self.config.into(), self.multi_data)?;
+        let server = Server::spawn_with_mailbox(server, mailbox::bounded(10_1000));
 
-        self.server.run().await
+        tokio::spawn(acceptor_loop(listener, server.clone()));
+
+        server.wait_for_shutdown_result().await?;
+
+        Ok(())
     }
 }
 
-async fn acceptor_loop(listener: TcpListener, event_tx: Sender<Event>) {
+async fn acceptor_loop(listener: TcpListener, server: ActorRef<Server>) {
     loop {
         select! {
-            _ = event_tx.closed() => {
+            _ = server.wait_for_shutdown_result() => {
                 debug!("acceptor loop shutting down");
                 return
             },
@@ -65,10 +67,10 @@ async fn acceptor_loop(listener: TcpListener, event_tx: Sender<Event>) {
                     }
                 };
 
-                let event_tx = event_tx.clone();
+                let server = server.clone();
 
                 tokio::spawn(async move {
-                    if let Err(err) = handle_accept(stream, address, event_tx).await {
+                    if let Err(err) = handle_accept(stream, address, server).await {
                         error!("Failed to accept client {address}: {err:?}");
                     }
                 });
@@ -80,7 +82,7 @@ async fn acceptor_loop(listener: TcpListener, event_tx: Sender<Event>) {
 async fn handle_accept(
     stream: TcpStream,
     address: SocketAddr,
-    event_tx: Sender<Event>,
+    server: ActorRef<Server>,
 ) -> Result<()> {
     debug!("||| {address:?} connected");
 
@@ -113,11 +115,11 @@ async fn handle_accept(
     tokio::spawn(client_loop(
         stream,
         client.id(),
-        event_tx.clone(),
+        server.clone(),
         server_message_rx,
     ));
 
-    if event_tx.send(Event::ClientAccepted(client)).await.is_err() {
+    if server.tell(Event::ClientAccepted(client)).await.is_err() {
         debug!("Can't accept client, event channel is closed");
     }
 
@@ -127,7 +129,7 @@ async fn handle_accept(
 async fn client_loop(
     stream: WebSocketStream<TcpStream>,
     client_id: ClientId,
-    event_tx: Sender<Event>,
+    server: ActorRef<Server>,
     mut server_message_rx: Receiver<ControlOrMessage<Arc<server::Message>>>,
 ) {
     let mut stream = pin!(stream);
@@ -135,7 +137,7 @@ async fn client_loop(
 
     loop {
         select! {
-            _ = event_tx.closed() => return,
+            _ = server.wait_for_shutdown() => return,
             server_message = server_message_rx.recv() => {
                 let Some(server_message) = server_message else {
                     debug!("Server closed message channel to client");
@@ -146,7 +148,7 @@ async fn client_loop(
                 if let Err(err) = send(stream, server_message).await {
                     error!("failed to send message to client: {err:?}");
 
-                    event_tx.send(Event::ClientDisconnected(client_id)).await.ok();
+                    server.tell(Event::ClientDisconnected(client_id)).await.ok();
 
                     return;
                 }
@@ -158,13 +160,13 @@ async fn client_loop(
                     Err(err) => {
                         error!("Failed to receive client messages: {err:?}");
 
-                        event_tx.send(Event::ClientDisconnected(client_id)).await.ok();
+                        server.tell(Event::ClientDisconnected(client_id)).await.ok();
 
                         return
                     }
                 };
 
-                event_tx.send(event).await.ok();
+                server.tell(event).await.ok();
             }
         }
     }
