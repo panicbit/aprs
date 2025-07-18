@@ -188,7 +188,7 @@ where
 
     fn try_from(tuple: &Tuple) -> Result<Self> {
         if tuple.len() != 4 {
-            bail!("expected tuple of length 3");
+            bail!("expected tuple of length 4");
         }
 
         let v1 = tuple.get(0).context("BUG: tuple too short")?;
