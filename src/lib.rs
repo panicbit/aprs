@@ -3,6 +3,7 @@
 use fnv::FnvBuildHasher;
 use indexmap::{IndexMap, IndexSet};
 
+pub mod config;
 pub mod game;
 pub mod pickle;
 pub mod proto;

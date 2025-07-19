@@ -5,9 +5,11 @@ use eyre::Result;
 use fnv::FnvHashMap;
 use itertools::Itertools;
 use kameo::Actor;
+use kameo::actor::ActorRef;
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
+use crate::config;
 use crate::game::{MultiData, SlotId, TeamId};
 use crate::pickle::Value;
 use crate::proto::server::{Message, NetworkPlayer};
@@ -19,23 +21,25 @@ mod state;
 mod client;
 pub use client::{Client, ClientId};
 
-mod config;
-pub use config::Config;
-
 mod event;
 pub use event::Event;
 
-#[derive(Actor)]
 pub struct Server {
-    config: Config,
     multi_data: MultiData,
+    config: config::General,
     // TODO: remove lock after moving to proper client ids
     clients: FnvHashMap<ClientId, Arc<Mutex<Client>>>,
     state: State,
 }
 
-impl Server {
-    pub fn new(config: Config, multi_data: MultiData) -> Result<Self> {
+impl Actor for Server {
+    type Args = (config::General, MultiData);
+    type Error = eyre::Error;
+
+    async fn on_start(
+        (config, multi_data): Self::Args,
+        _actor_ref: ActorRef<Self>,
+    ) -> Result<Self> {
         let state = match State::try_load(&config.state_path)? {
             Some(state) => {
                 info!("Loaded existing state from {:?}", config.state_path);
@@ -48,13 +52,15 @@ impl Server {
         };
 
         Ok(Self {
-            config,
             clients: FnvHashMap::default(),
             multi_data,
+            config,
             state,
         })
     }
+}
 
+impl Server {
     fn get_key(&self, key: &str) -> Option<Value> {
         if let Some(key) = key.strip_prefix("_read_") {
             return self.get_special_key(key);

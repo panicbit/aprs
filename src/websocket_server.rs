@@ -5,56 +5,47 @@ use std::sync::Arc;
 use eyre::{Result, bail};
 use format_serde_error::SerdeError;
 use futures::SinkExt;
+use kameo::Actor;
 use kameo::actor::ActorRef;
-use kameo::{Actor, mailbox};
 use smallvec::smallvec;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
-use tokio::sync::mpsc::{self, Receiver, Sender};
+use tokio::sync::mpsc::{self, Receiver};
 use tokio_stream::StreamExt;
 use tokio_tungstenite::tungstenite::handshake::server::Callback;
 use tokio_tungstenite::tungstenite::http::Uri;
 use tokio_tungstenite::{WebSocketStream, tungstenite};
 use tracing::{debug, error};
 
-use crate::game::MultiData;
+use crate::config;
 use crate::proto::client;
 use crate::proto::common::{Close, Control, ControlOrMessage, Ping, Pong};
 use crate::proto::server;
 use crate::server::{Client, ClientId, Event, Server};
 
-mod config;
-pub use config::Config;
+pub struct WebsocketServer {}
 
-pub struct WebsocketServer {
-    config: Config,
-    multi_data: MultiData,
-}
+impl Actor for WebsocketServer {
+    type Args = (ActorRef<Server>, config::WebSocket);
+    type Error = eyre::Report;
 
-impl WebsocketServer {
-    pub fn new(config: Config, multi_data: MultiData) -> Result<Self> {
-        Ok(Self { config, multi_data })
-    }
-
-    pub async fn run(self) -> Result<()> {
-        let listen_address = self.config.listen_address;
+    async fn on_start(
+        (server, config): Self::Args,
+        _actor_ref: ActorRef<Self>,
+    ) -> Result<Self, Self::Error> {
+        let listen_address = config.listen_address;
         let listener = TcpListener::bind(listen_address).await?;
-
-        let server = Server::new(self.config.into(), self.multi_data)?;
-        let server = Server::spawn_with_mailbox(server, mailbox::bounded(10_1000));
 
         tokio::spawn(acceptor_loop(listener, server.clone()));
 
-        server.wait_for_shutdown_result().await?;
-
-        Ok(())
+        Ok(Self {})
     }
 }
 
 async fn acceptor_loop(listener: TcpListener, server: ActorRef<Server>) {
     loop {
         select! {
-            _ = server.wait_for_shutdown_result() => {
+            _ = server.wait_for_shutdown() => {
                 debug!("acceptor loop shutting down");
                 return
             },

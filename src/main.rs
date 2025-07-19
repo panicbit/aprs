@@ -1,8 +1,11 @@
 use std::net::Ipv4Addr;
 
-use aprs::websocket_server::{Config, WebsocketServer};
+use aprs::config::{self, Config, General};
+use aprs::server::Server;
+use aprs::websocket_server::{self, WebsocketServer};
 use clap::Parser;
 use eyre::Result;
+use kameo::{Actor, mailbox};
 use tokio::runtime::Runtime;
 use tracing::level_filters::LevelFilter;
 use tracing::{error, info};
@@ -31,14 +34,32 @@ pub fn run() -> Result<()> {
     let cli = Cli::parse();
     let game = Game::load(&cli.multiworld_path)?;
     let config = Config {
-        listen_address: (Ipv4Addr::UNSPECIFIED, 18283).into(),
-        state_path: cli.multiworld_path.with_extension("aprs.state"),
+        general: General {
+            state_path: cli.multiworld_path.with_extension("aprs.state"),
+        },
+        websocket: config::WebSocket {
+            listen_address: (Ipv4Addr::UNSPECIFIED, 18283).into(),
+        },
     };
 
-    info!("Server started.");
+    Runtime::new()?.block_on(async move {
+        let prepared_server = Server::prepare_with_mailbox(mailbox::bounded(10_000));
+        let server = prepared_server.actor_ref().clone();
 
-    Runtime::new()?
-        .block_on(async move { WebsocketServer::new(config, game.multi_data)?.run().await })
+        let prepared_websocket_server = WebsocketServer::prepare();
+        let websocket_server = prepared_server.actor_ref();
+
+        server.link(websocket_server).await;
+
+        prepared_server.spawn((config.general, game.multi_data));
+        prepared_websocket_server.spawn((server.clone(), config.websocket));
+
+        info!("Server started.");
+        server.wait_for_shutdown().await;
+        info!("Server stopped.");
+
+        Ok(())
+    })
 }
 
 fn configure_tracing() {
