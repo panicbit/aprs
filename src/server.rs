@@ -4,9 +4,9 @@ use std::time::Instant;
 use eyre::Result;
 use fnv::FnvHashMap;
 use itertools::Itertools;
+use kameo::Actor;
 use tokio::sync::Mutex;
-use tokio::sync::mpsc::Receiver;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 use crate::game::{MultiData, SlotId, TeamId};
 use crate::pickle::Value;
@@ -25,17 +25,17 @@ pub use config::Config;
 mod event;
 pub use event::Event;
 
+#[derive(Actor)]
 pub struct Server {
     config: Config,
     multi_data: MultiData,
-    rx: Receiver<Event>,
     // TODO: remove lock after moving to proper client ids
     clients: FnvHashMap<ClientId, Arc<Mutex<Client>>>,
     state: State,
 }
 
 impl Server {
-    pub fn new(config: Config, multi_data: MultiData, rx: Receiver<Event>) -> Result<Self> {
+    pub fn new(config: Config, multi_data: MultiData) -> Result<Self> {
         let state = match State::try_load(&config.state_path)? {
             Some(state) => {
                 info!("Loaded existing state from {:?}", config.state_path);
@@ -49,28 +49,10 @@ impl Server {
 
         Ok(Self {
             config,
-            rx,
             clients: FnvHashMap::default(),
             multi_data,
             state,
         })
-    }
-
-    pub async fn run(self) -> Result<()> {
-        self.event_loop().await;
-
-        Ok(())
-    }
-
-    pub async fn event_loop(mut self) {
-        loop {
-            let Some(event) = self.rx.recv().await else {
-                debug!("Event channel closed.");
-                return;
-            };
-
-            self.on_event(event).await;
-        }
     }
 
     fn get_key(&self, key: &str) -> Option<Value> {
@@ -222,5 +204,17 @@ impl Server {
         } else {
             info!("Saved state successfuly after {elapsed:?}");
         }
+    }
+}
+
+impl kameo::prelude::Message<Event> for Server {
+    type Reply = ();
+
+    async fn handle(
+        &mut self,
+        event: Event,
+        _ctx: &mut kameo::prelude::Context<Self, Self::Reply>,
+    ) -> Self::Reply {
+        self.on_event(event).await;
     }
 }
