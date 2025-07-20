@@ -7,6 +7,7 @@ pub use network_version::NetworkVersion;
 
 use crate::proto::{client, server};
 
+#[derive(Debug)]
 pub enum ControlOrMessage<M> {
     Control(Control),
     Message(M),
@@ -27,6 +28,7 @@ impl From<client::Messages> for ControlOrMessage<client::Messages> {
     }
 }
 
+#[derive(Debug)]
 pub enum Control {
     Ping(Ping),
     Pong(Pong),

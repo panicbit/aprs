@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use fnv::FnvHashSet;
 use itertools::Itertools;
+use kameo::actor::Recipient;
 use tokio::sync::mpsc::Sender;
 use tracing::error;
 use uuid::Uuid;
@@ -33,7 +34,7 @@ impl Default for ClientId {
 #[derive(Clone)]
 pub struct Client {
     id: ClientId,
-    server_message_tx: Sender<ControlOrMessage<Arc<ServerMessage>>>,
+    transport: Recipient<ControlOrMessage<Arc<ServerMessage>>>,
     address: SocketAddr,
     pub is_connected: bool,
     pub connect_name: ConnectName,
@@ -52,11 +53,11 @@ pub struct Client {
 impl Client {
     pub fn new(
         address: SocketAddr,
-        server_message_tx: Sender<ControlOrMessage<Arc<ServerMessage>>>,
+        transport: Recipient<ControlOrMessage<Arc<ServerMessage>>>,
     ) -> Self {
         Self {
             id: ClientId::new(),
-            server_message_tx,
+            transport,
             address,
             is_connected: false,
             connect_name: ConnectName::new(),
@@ -90,7 +91,7 @@ impl Client {
 
     pub async fn send_control_or_message(&self, message: ControlOrMessage<Arc<ServerMessage>>) {
         // TODO: handle overload situation, probably using timeout
-        self.server_message_tx.send(message).await.ok();
+        self.transport.tell(message).await.ok();
     }
 
     pub async fn close(&self) {

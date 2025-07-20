@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::proto::common::NetworkVersion;
 use crate::proto::server::{GameName, Permissions, Time};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RoomInfo {
     /// Version the server is running
     pub version: NetworkVersion,

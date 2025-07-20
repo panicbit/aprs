@@ -52,7 +52,7 @@ pub use data_package::{DataPackage, DataPackageData};
 
 pub type GameName = String;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "cmd")]
 pub enum Message {
     RoomInfo(RoomInfo),
