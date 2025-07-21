@@ -104,11 +104,7 @@ async fn handle_accept(
 
     let client = Client::new(address, websocket_client.actor_ref().clone().recipient());
 
-    websocket_client.spawn(WebSocketClient {
-        stream,
-        client_id: client.id(),
-        server: server.clone(),
-    });
+    websocket_client.spawn((stream, server.clone()));
 
     if let Err(err) = server.tell(Event::ClientAccepted(client)).await {
         debug!("Can't accept client: {err:?}");
@@ -193,16 +189,20 @@ async fn recv(
 
 struct WebSocketClient {
     stream: WebSocketStream<TcpStream>,
-    client_id: ClientId,
     server: ActorRef<Server>,
+    client_id: ClientId,
 }
 
 impl Actor for WebSocketClient {
-    type Args = Self;
+    type Args = (WebSocketStream<TcpStream>, ActorRef<Server>);
     type Error = eyre::Error;
 
-    async fn on_start(this: Self::Args, _actor_ref: ActorRef<Self>) -> Result<Self> {
-        Ok(this)
+    async fn on_start((stream, server): Self::Args, actor_ref: ActorRef<Self>) -> Result<Self> {
+        Ok(Self {
+            stream,
+            server,
+            client_id: ClientId::from(actor_ref.id()),
+        })
     }
 
     async fn next(

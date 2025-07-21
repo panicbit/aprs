@@ -3,10 +3,8 @@ use std::sync::Arc;
 
 use fnv::FnvHashSet;
 use itertools::Itertools;
-use kameo::actor::Recipient;
-use tokio::sync::mpsc::Sender;
+use kameo::actor::{ActorID, Recipient};
 use tracing::error;
-use uuid::Uuid;
 
 use crate::game::{ConnectName, ItemId, SlotId, SlotName, TeamId};
 use crate::pickle::value::Str;
@@ -16,18 +14,12 @@ use crate::proto::common::{Close, Control, ControlOrMessage};
 use crate::proto::server::NetworkItem;
 use crate::proto::server::{Message as ServerMessage, ReceivedItems};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ClientId(Uuid);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ClientId(ActorID);
 
-impl ClientId {
-    pub fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-}
-
-impl Default for ClientId {
-    fn default() -> Self {
-        Self::new()
+impl From<ActorID> for ClientId {
+    fn from(value: ActorID) -> Self {
+        Self(value)
     }
 }
 
@@ -56,7 +48,7 @@ impl Client {
         transport: Recipient<ControlOrMessage<Arc<ServerMessage>>>,
     ) -> Self {
         Self {
-            id: ClientId::new(),
+            id: ClientId::from(transport.id()),
             transport,
             address,
             is_connected: false,
