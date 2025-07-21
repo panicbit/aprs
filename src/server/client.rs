@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use fnv::FnvHashSet;
 use itertools::Itertools;
-use kameo::actor::{ActorID, Recipient};
+use ractor::{ActorId, ActorRef};
 use tracing::error;
 
 use crate::game::{ConnectName, ItemId, SlotId, SlotName, TeamId};
@@ -15,10 +15,10 @@ use crate::proto::server::NetworkItem;
 use crate::proto::server::{Message as ServerMessage, ReceivedItems};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ClientId(ActorID);
+pub struct ClientId(ActorId);
 
-impl From<ActorID> for ClientId {
-    fn from(value: ActorID) -> Self {
+impl From<ActorId> for ClientId {
+    fn from(value: ActorId) -> Self {
         Self(value)
     }
 }
@@ -26,7 +26,7 @@ impl From<ActorID> for ClientId {
 #[derive(Clone)]
 pub struct Client {
     id: ClientId,
-    transport: Recipient<ControlOrMessage<Arc<ServerMessage>>>,
+    transport: ActorRef<ControlOrMessage<Arc<ServerMessage>>>,
     address: SocketAddr,
     pub is_connected: bool,
     pub connect_name: ConnectName,
@@ -45,10 +45,10 @@ pub struct Client {
 impl Client {
     pub fn new(
         address: SocketAddr,
-        transport: Recipient<ControlOrMessage<Arc<ServerMessage>>>,
+        transport: ActorRef<ControlOrMessage<Arc<ServerMessage>>>,
     ) -> Self {
         Self {
-            id: ClientId::from(transport.id()),
+            id: ClientId::from(transport.get_id()),
             transport,
             address,
             is_connected: false,
@@ -83,7 +83,7 @@ impl Client {
 
     pub async fn send_control_or_message(&self, message: ControlOrMessage<Arc<ServerMessage>>) {
         // TODO: handle overload situation, probably using timeout
-        self.transport.tell(message).await.ok();
+        self.transport.send_message(message).ok();
     }
 
     pub async fn close(&self) {

@@ -4,8 +4,7 @@ use std::time::Instant;
 use eyre::Result;
 use fnv::FnvHashMap;
 use itertools::Itertools;
-use kameo::Actor;
-use kameo::actor::ActorRef;
+use ractor::{Actor, ActorProcessingErr};
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
@@ -24,7 +23,9 @@ pub use client::{Client, ClientId};
 mod event;
 pub use event::Event;
 
-pub struct Server {
+pub struct Server;
+
+pub struct ServerState {
     multi_data: MultiData,
     config: config::General,
     // TODO: remove lock after moving to proper client ids
@@ -33,13 +34,15 @@ pub struct Server {
 }
 
 impl Actor for Server {
-    type Args = (config::General, MultiData);
-    type Error = eyre::Error;
+    type Msg = Event;
+    type State = ServerState;
+    type Arguments = (config::General, MultiData);
 
-    async fn on_start(
-        (config, multi_data): Self::Args,
-        _actor_ref: ActorRef<Self>,
-    ) -> Result<Self> {
+    async fn pre_start(
+        &self,
+        _myself: ractor::ActorRef<Self::Msg>,
+        (config, multi_data): Self::Arguments,
+    ) -> Result<Self::State, ActorProcessingErr> {
         let state = match State::try_load(&config.state_path)? {
             Some(state) => {
                 info!("Loaded existing state from {:?}", config.state_path);
@@ -51,16 +54,26 @@ impl Actor for Server {
             }
         };
 
-        Ok(Self {
-            clients: FnvHashMap::default(),
+        Ok(ServerState {
             multi_data,
             config,
+            clients: FnvHashMap::default(),
             state,
         })
     }
+
+    async fn handle(
+        &self,
+        _myself: ractor::ActorRef<Self::Msg>,
+        event: Event,
+        this: &mut Self::State,
+    ) -> Result<(), ActorProcessingErr> {
+        this.on_event(event).await;
+        Ok(())
+    }
 }
 
-impl Server {
+impl ServerState {
     fn get_key(&self, key: &str) -> Option<Value> {
         if let Some(key) = key.strip_prefix("_read_") {
             return self.get_special_key(key);
@@ -210,17 +223,5 @@ impl Server {
         } else {
             info!("Saved state successfuly after {elapsed:?}");
         }
-    }
-}
-
-impl kameo::prelude::Message<Event> for Server {
-    type Reply = ();
-
-    async fn handle(
-        &mut self,
-        event: Event,
-        _ctx: &mut kameo::prelude::Context<Self, Self::Reply>,
-    ) -> Self::Reply {
-        self.on_event(event).await;
     }
 }

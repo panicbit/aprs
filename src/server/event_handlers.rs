@@ -24,7 +24,7 @@ use crate::proto::server::{
 use crate::server::client::{Client, ClientId};
 use crate::server::event::Event;
 
-impl super::Server {
+impl super::ServerState {
     pub async fn on_event(&mut self, event: Event) {
         match event {
             Event::ClientAccepted(client) => self.on_client_accepted(client).await,

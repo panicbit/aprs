@@ -2,10 +2,10 @@ use std::net::Ipv4Addr;
 
 use aprs::config::{self, Config, General};
 use aprs::server::Server;
-use aprs::websocket_server::{self, WebsocketServer};
+use aprs::web_socket_server::WebSocketServer;
 use clap::Parser;
-use eyre::Result;
-use kameo::{Actor, mailbox};
+use eyre::{Context, Result};
+use ractor::Actor;
 use tokio::runtime::Runtime;
 use tracing::level_filters::LevelFilter;
 use tracing::{error, info};
@@ -43,19 +43,21 @@ pub fn run() -> Result<()> {
     };
 
     Runtime::new()?.block_on(async move {
-        let prepared_server = Server::prepare_with_mailbox(mailbox::bounded(10_000));
-        let server = prepared_server.actor_ref().clone();
+        let (server, server_handle) = Actor::spawn(None, Server, (config.general, game.multi_data))
+            .await
+            .context("failed to spawn Server actor")?;
 
-        let prepared_websocket_server = WebsocketServer::prepare();
-        let websocket_server = prepared_server.actor_ref();
-
-        server.link(websocket_server).await;
-
-        prepared_server.spawn((config.general, game.multi_data));
-        prepared_websocket_server.spawn((server.clone(), config.websocket));
+        let (_web_socket_server, _web_socket_server_handle) = Actor::spawn_linked(
+            None,
+            WebSocketServer,
+            (server.clone(), config.websocket),
+            server.get_cell(),
+        )
+        .await
+        .context("failed to spawn WebSocketServer actor")?;
 
         info!("Server started.");
-        server.wait_for_shutdown().await;
+        server_handle.await.context("server shutdown with error")?;
         info!("Server stopped.");
 
         Ok(())

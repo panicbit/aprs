@@ -1,11 +1,10 @@
 use bytes::Bytes;
 use std::ops;
-use std::sync::Arc;
 
 pub mod network_version;
 pub use network_version::NetworkVersion;
 
-use crate::proto::{client, server};
+use crate::proto::client;
 
 #[derive(Debug)]
 pub enum ControlOrMessage<M> {
@@ -33,6 +32,12 @@ pub enum Control {
     Ping(Ping),
     Pong(Pong),
     Close(Close),
+}
+
+impl Control {
+    pub fn is_close(&self) -> bool {
+        matches!(self, Self::Close(_))
+    }
 }
 
 impl From<Ping> for Control {

@@ -8,7 +8,7 @@ pub mod game;
 pub mod pickle;
 pub mod proto;
 pub mod server;
-pub mod websocket_server;
+pub mod web_socket_server;
 
 type FnvIndexMap<K, V> = IndexMap<K, V, FnvBuildHasher>;
 type FnvIndexSet<K> = IndexSet<K, FnvBuildHasher>;
