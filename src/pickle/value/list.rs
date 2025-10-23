@@ -1,6 +1,7 @@
 use std::fmt;
 
 use eyre::{ContextCompat, Result, bail};
+use parking_lot::RwLockReadGuard;
 
 use crate::pickle::value::Id;
 use crate::pickle::value::rw_arc::RwArc;
@@ -21,6 +22,10 @@ impl List {
 
     pub fn iter(&self) -> Iter {
         self.into_iter()
+    }
+
+    pub fn read(&self) -> ReadListGuard<'_> {
+        ReadListGuard::new(self)
     }
 
     pub fn len(&self) -> usize {
@@ -102,6 +107,31 @@ impl IntoIterator for &List {
 
     fn into_iter(self) -> Self::IntoIter {
         Iter::new(self.clone())
+    }
+}
+
+pub struct ReadListGuard<'a> {
+    list: RwLockReadGuard<'a, Vec<Value>>,
+}
+
+impl<'a> ReadListGuard<'a> {
+    fn new(list: &'a List) -> Self {
+        let list = list.0.read();
+
+        Self { list }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Value> {
+        self.list.iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a ReadListGuard<'a> {
+    type Item = &'a Value;
+    type IntoIter = std::slice::Iter<'a, Value>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.list.iter()
     }
 }
 

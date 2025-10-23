@@ -9,7 +9,7 @@ use super::Value;
 
 pub type Result<T> = std::result::Result<T, SerdeError>;
 
-impl<'de> Deserializer<'de> for Value {
+impl<'de> Deserializer<'de> for &Value {
     type Error = SerdeError;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
@@ -17,8 +17,8 @@ impl<'de> Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Dict(dict) => visitor.visit_map(MapDeserializer::new(dict.into_iter())),
-            Value::List(list) => visitor.visit_seq(SeqDeserializer::new(list.into_iter())),
+            Value::Dict(dict) => visitor.visit_map(MapDeserializer::new(dict.read().iter())),
+            Value::List(list) => visitor.visit_seq(SeqDeserializer::new(list.read().iter())),
             Value::Str(str) => visitor.visit_str(str.as_str()),
             Value::Number(number) => match *number.inner() {
                 N::I64(n) => visitor.visit_i64(n),
@@ -26,11 +26,11 @@ impl<'de> Deserializer<'de> for Value {
                 N::BigInt(ref n) => visitor.visit_string(n.to_string()),
                 N::F64(n) => visitor.visit_f64(n),
             },
-            Value::Bool(bool) => visitor.visit_bool(*bool),
-            Value::Tuple(tuple) => visitor.visit_seq(SeqDeserializer::new(tuple.into_iter())),
+            Value::Bool(bool) => visitor.visit_bool(**bool),
+            Value::Tuple(tuple) => visitor.visit_seq(SeqDeserializer::new(tuple.read().iter())),
             Value::Callable(callable) => visitor.visit_string(format!("{:?}", callable)),
             Value::None(_) => visitor.visit_none(),
-            Value::Set(set) => visitor.visit_seq(SeqDeserializer::new(set.into_iter())),
+            Value::Set(set) => visitor.visit_seq(SeqDeserializer::new(set.read().iter())),
         }
     }
 
@@ -46,7 +46,7 @@ impl<'de> Deserializer<'de> for Value {
         match self {
             Value::Dict(_) => self.deserialize_any(visitor),
             Value::List(_) => self.deserialize_any(visitor),
-            Value::Str(str) => StrDeserializer::new(&str).deserialize_enum(name, variants, visitor),
+            Value::Str(str) => StrDeserializer::new(str).deserialize_enum(name, variants, visitor),
             Value::Number(_) => self.deserialize_any(visitor),
             Value::Bool(_) => self.deserialize_any(visitor),
             Value::Tuple(_) => self.deserialize_any(visitor),
@@ -120,7 +120,7 @@ impl<'de> Deserializer<'de> for Value {
     }
 }
 
-impl IntoDeserializer<'_, SerdeError> for Value {
+impl IntoDeserializer<'_, SerdeError> for &Value {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {

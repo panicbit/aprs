@@ -1,7 +1,7 @@
-use std::{borrow::Borrow, sync::Arc};
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Deref;
+use std::{borrow::Borrow, sync::Arc};
 
 use eyre::{Error, Result};
 use serde::{Deserialize, Serialize};

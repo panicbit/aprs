@@ -1,7 +1,9 @@
 use core::fmt;
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
+use std::io::Read;
 use std::path::Path;
+use std::time::Instant;
 use std::{fs, ops};
 
 use bitflags::bitflags;
@@ -16,6 +18,7 @@ use sha1::{Digest, Sha1};
 
 mod multidata;
 pub use multidata::MultiData;
+use tracing::info;
 
 use crate::proto::common::NetworkVersion;
 use crate::{FnvIndexMap, pickle};
@@ -50,10 +53,16 @@ impl Game {
 
         let mut multi_data = ZlibDecoder::new(multi_data);
 
-        let multi_data = pickle::unpickle(&mut multi_data)?;
+        let unpickle_start = Instant::now();
+        let multi_data = pickle::unpickle(&mut multi_data).context("failed to unpickle")?;
+        let unpickle_time = unpickle_start.elapsed();
+        info!("Unpickling finished in {:?}", unpickle_time);
 
-        let multi_data = MultiData::deserialize(multi_data)
+        let deserialize_start = Instant::now();
+        let multi_data = MultiData::deserialize(&multi_data)
             .with_context(|| format!("failed to deserialize `{multi_data_filename}`"))?;
+        let deserialize_time = deserialize_start.elapsed();
+        info!("Deserializing finished in {:?}", deserialize_time);
 
         Ok(Game { multi_data })
     }

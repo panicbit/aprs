@@ -1,8 +1,9 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use eyre::{Context, ContextCompat, Error, Result, bail};
+use eyre::{ContextCompat, Error, Result, bail};
 
+use crate::pickle::value::list::ReadListGuard;
 use crate::pickle::value::{Id, List, Value, list};
 
 // TODO: replace List with Vec. Tuples are immutable, so the underlying lock is not needed.
@@ -34,6 +35,10 @@ impl Tuple {
 
     pub fn iter(&self) -> Iter {
         self.into_iter()
+    }
+
+    pub fn read(&self) -> ReadTupleGuard {
+        ReadTupleGuard::new(self)
     }
 }
 
@@ -218,6 +223,22 @@ impl IntoIterator for &Tuple {
 
     fn into_iter(self) -> Self::IntoIter {
         Iter::new(self.clone())
+    }
+}
+
+pub struct ReadTupleGuard<'a> {
+    list: ReadListGuard<'a>,
+}
+
+impl<'a> ReadTupleGuard<'a> {
+    fn new(tuple: &'a Tuple) -> Self {
+        let list = tuple.0.read();
+
+        Self { list }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Value> {
+        self.list.iter()
     }
 }
 

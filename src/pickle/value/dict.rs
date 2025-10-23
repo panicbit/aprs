@@ -2,6 +2,7 @@ use std::hash::{Hash, Hasher};
 use std::{cmp, fmt};
 
 use eyre::{Result, bail};
+use parking_lot::RwLockReadGuard;
 use tracing::error;
 
 use crate::FnvIndexMap;
@@ -53,6 +54,10 @@ impl Dict {
 
     pub fn values(&self) -> Values {
         Values::new(self.clone())
+    }
+
+    pub fn read(&self) -> ReadDictGuard {
+        ReadDictGuard::new(self)
     }
 }
 
@@ -145,6 +150,22 @@ impl Iterator for Iter {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, Some(self.max_len - self.index.min(self.max_len)))
+    }
+}
+
+pub struct ReadDictGuard<'a> {
+    dict: RwLockReadGuard<'a, FnvIndexMap<Element, Element>>,
+}
+
+impl<'a> ReadDictGuard<'a> {
+    fn new(dict: &'a Dict) -> Self {
+        let dict = dict.0.read();
+
+        Self { dict }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&Value, &Value)> {
+        self.dict.iter().map(|(k, v)| (&k.0, &v.0))
     }
 }
 

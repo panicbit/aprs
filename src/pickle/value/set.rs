@@ -2,6 +2,7 @@ use std::hash::{Hash, Hasher};
 use std::{cmp, fmt};
 
 use eyre::{Result, bail};
+use parking_lot::RwLockReadGuard;
 use tracing::error;
 
 use crate::FnvIndexSet;
@@ -52,6 +53,10 @@ impl Set {
 
     pub fn iter(&self) -> Iter {
         self.into_iter()
+    }
+
+    pub fn read(&self) -> ReadSetGuard {
+        ReadSetGuard::new(self)
     }
 }
 
@@ -104,6 +109,22 @@ impl IntoIterator for &Set {
 
     fn into_iter(self) -> Self::IntoIter {
         Iter::new(self.clone())
+    }
+}
+
+pub struct ReadSetGuard<'a> {
+    set: RwLockReadGuard<'a, FnvIndexSet<Element>>,
+}
+
+impl<'a> ReadSetGuard<'a> {
+    fn new(set: &'a Set) -> Self {
+        let set = set.0.read();
+
+        Self { set }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Value> {
+        self.set.iter().map(|v| &v.0)
     }
 }
 

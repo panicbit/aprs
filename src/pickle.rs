@@ -25,7 +25,7 @@ pub fn from_value<D>(value: Value) -> Result<D>
 where
     D: for<'de> Deserialize<'de>,
 {
-    let value = D::deserialize(value)?;
+    let value = D::deserialize(&value)?;
 
     Ok(value)
 }

@@ -1,5 +1,4 @@
 use std::net::Ipv4Addr;
-use std::sync::Arc;
 use std::time::Instant;
 
 use aprs::websocket_server::{Config, WebsocketServer};
