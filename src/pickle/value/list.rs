@@ -73,9 +73,9 @@ impl List {
     }
 
     fn append_list(&self, list: &List) -> Result<()> {
-        for value in list {
-            self.push(value);
-        }
+        let list = list.0.read().clone();
+
+        self.0.write().extend(list);
 
         Ok(())
     }
