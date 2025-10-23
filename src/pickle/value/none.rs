@@ -1,16 +1,13 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::sync::LazyLock;
-
-use dumpster::Trace;
-use dumpster::sync::Gc;
+use std::sync::{Arc, LazyLock};
 
 use crate::pickle::value::Id;
 
-static NONE: LazyLock<None> = LazyLock::new(|| None(Gc::new(())));
+static NONE: LazyLock<None> = LazyLock::new(|| None(Arc::new(())));
 
-#[derive(Clone, Trace)]
-pub struct None(Gc<()>);
+#[derive(Clone)]
+pub struct None(Arc<()>);
 
 impl None {
     pub fn new() -> Self {
@@ -18,7 +15,7 @@ impl None {
     }
 
     pub fn id(&self) -> Id {
-        Gc::as_ptr(&self.0).into()
+        Arc::as_ptr(&self.0).into()
     }
 }
 

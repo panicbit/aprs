@@ -1,8 +1,6 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use dumpster::Trace;
-use dumpster::sync::Gc;
 use eyre::{Result, bail};
 
 mod list;
@@ -41,10 +39,9 @@ mod serde_error;
 mod serialize;
 // mod serializer;
 
-mod rw_gc;
-mod traced;
+mod rw_arc;
 
-#[derive(Trace, Clone)]
+#[derive(Clone)]
 pub enum Value {
     Dict(Dict),
     List(List),
@@ -58,19 +55,19 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn id(&self) -> Id {
-        match self {
-            Value::Dict(dict) => dict.id(),
-            Value::List(list) => list.id(),
-            Value::Str(str) => str.id(),
-            Value::Number(number) => number.id(),
-            Value::Bool(bool) => bool.id(),
-            Value::Tuple(tuple) => tuple.id(),
-            Value::Callable(callable) => callable.id(),
-            Value::None(none) => none.id(),
-            Value::Set(set) => set.id(),
-        }
-    }
+    // pub fn id(&self) -> Id {
+    //     match self {
+    //         Value::Dict(dict) => dict.id(),
+    //         Value::List(list) => list.id(),
+    //         Value::Str(str) => str.id(),
+    //         Value::Number(number) => number.id(),
+    //         Value::Bool(bool) => bool.id(),
+    //         Value::Tuple(tuple) => tuple.id(),
+    //         Value::Callable(callable) => callable.id(),
+    //         Value::None(none) => none.id(),
+    //         Value::Set(set) => set.id(),
+    //     }
+    // }
 
     pub fn empty_dict() -> Self {
         Value::Dict(Dict::default())
@@ -445,25 +442,25 @@ impl PartialEq for Value {
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Id(*const ());
+pub struct Id(InnerId);
+
+impl Id {
+    pub fn new_number(n: u64) -> Self {
+        Self(InnerId::Number(n))
+    }
+}
 
 unsafe impl Send for Id {}
 unsafe impl Sync for Id {}
 
-impl<T: Trace + Send + Sync> From<&'_ Gc<T>> for Id {
-    fn from(value: &Gc<T>) -> Self {
-        Self::from(Gc::as_ptr(value))
-    }
-}
-
-impl<T: Trace + Send + Sync> From<Gc<T>> for Id {
-    fn from(value: Gc<T>) -> Self {
-        Self::from(Gc::as_ptr(&value))
-    }
-}
-
 impl<T: ?Sized> From<*const T> for Id {
     fn from(ptr: *const T) -> Self {
-        Self(ptr.cast::<()>())
+        Self(InnerId::Ptr(ptr.cast::<()>()))
     }
+}
+
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum InnerId {
+    Ptr(*const ()),
+    Number(u64),
 }

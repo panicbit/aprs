@@ -1,17 +1,14 @@
 use std::hash::{Hash, Hasher};
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::{fmt, ops};
-
-use dumpster::Trace;
-use dumpster::sync::Gc;
 
 use crate::pickle::value::Id;
 
-static FALSE: LazyLock<Bool> = LazyLock::new(|| Bool(Gc::new(false)));
-static TRUE: LazyLock<Bool> = LazyLock::new(|| Bool(Gc::new(true)));
+static FALSE: LazyLock<Bool> = LazyLock::new(|| Bool(Arc::new(false)));
+static TRUE: LazyLock<Bool> = LazyLock::new(|| Bool(Arc::new(true)));
 
-#[derive(Trace, Clone, PartialEq, Eq)]
-pub struct Bool(Gc<bool>);
+#[derive(Clone, PartialEq, Eq)]
+pub struct Bool(Arc<bool>);
 
 impl Bool {
     pub fn r#false() -> Self {
@@ -33,7 +30,7 @@ impl Bool {
     }
 
     pub fn id(&self) -> Id {
-        Gc::as_ptr(&self.0).into()
+        Arc::as_ptr(&self.0).into()
     }
 }
 

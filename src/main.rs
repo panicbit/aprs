@@ -1,4 +1,6 @@
 use std::net::Ipv4Addr;
+use std::sync::Arc;
+use std::time::Instant;
 
 use aprs::websocket_server::{Config, WebsocketServer};
 use clap::Parser;
@@ -29,7 +31,13 @@ fn main() {
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
+
+    info!("Loading world...");
+    let load_start = Instant::now();
     let game = Game::load(&cli.multiworld_path)?;
+    let load_time = load_start.elapsed();
+    info!("Loading finished in {load_time:?}");
+
     let config = Config {
         listen_address: (Ipv4Addr::UNSPECIFIED, 18283).into(),
         state_path: cli.multiworld_path.with_extension("aprs.state"),

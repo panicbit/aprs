@@ -1,25 +1,23 @@
-use std::borrow::Borrow;
+use std::{borrow::Borrow, sync::Arc};
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Deref;
 
 use eyre::{Error, Result};
-use dumpster::Trace;
-use dumpster::sync::Gc;
 use serde::{Deserialize, Serialize};
 
 use crate::pickle::value::{Id, Value};
 
-#[derive(Trace, PartialEq, Eq, Clone)]
-pub struct Str(Gc<String>);
+#[derive(PartialEq, Eq, Clone)]
+pub struct Str(Arc<String>);
 
 impl Str {
     pub fn new() -> Self {
-        Self(Gc::new(String::new()))
+        Self(Arc::new(String::new()))
     }
 
     pub fn id(&self) -> Id {
-        Gc::as_ptr(&self.0).into()
+        Arc::as_ptr(&self.0).into()
     }
 
     pub fn as_str(&self) -> &str {
@@ -41,13 +39,13 @@ impl Hash for Str {
 
 impl From<String> for Str {
     fn from(value: String) -> Self {
-        Self(Gc::new(value))
+        Self(Arc::new(value))
     }
 }
 
 impl From<&'_ str> for Str {
     fn from(value: &'_ str) -> Self {
-        Self(Gc::new(String::from(value)))
+        Self(Arc::new(String::from(value)))
     }
 }
 

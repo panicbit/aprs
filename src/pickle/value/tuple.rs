@@ -1,14 +1,13 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use dumpster::Trace;
 use eyre::{Context, ContextCompat, Error, Result, bail};
 
 use crate::pickle::value::{Id, List, Value, list};
 
 // TODO: replace List with Vec. Tuples are immutable, so the underlying lock is not needed.
 
-#[derive(Trace, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 
 pub struct Tuple(List);
 

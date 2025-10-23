@@ -1,23 +1,21 @@
 use std::hash::{Hash, Hasher};
 use std::{cmp, fmt};
 
-use dumpster::Trace;
 use eyre::{Result, bail};
 use tracing::error;
 
 use crate::FnvIndexSet;
 use crate::pickle::value::Id;
-use crate::pickle::value::rw_gc::RwGc;
-use crate::pickle::value::traced::Traced;
+use crate::pickle::value::rw_arc::RwArc;
 
 use super::Value;
 
-#[derive(Trace, Clone)]
-pub struct Set(RwGc<Traced<FnvIndexSet<Element>>>);
+#[derive(Clone)]
+pub struct Set(RwArc<FnvIndexSet<Element>>);
 
 impl Set {
     pub fn new() -> Self {
-        Self(RwGc::new(Traced(FnvIndexSet::default())))
+        Self(RwArc::new(FnvIndexSet::default()))
     }
 
     pub fn id(&self) -> Id {
@@ -149,7 +147,6 @@ impl Iterator for Iter {
     }
 }
 
-#[derive(Trace)]
 struct Element(Value);
 
 impl Hash for Element {

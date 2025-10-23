@@ -1,19 +1,18 @@
 use std::fmt;
 
-use dumpster::Trace;
 use eyre::{ContextCompat, Result, bail};
 
 use crate::pickle::value::Id;
-use crate::pickle::value::rw_gc::RwGc;
+use crate::pickle::value::rw_arc::RwArc;
 
 use super::Value;
 
-#[derive(Clone, Trace)]
-pub struct List(RwGc<Vec<Value>>);
+#[derive(Clone)]
+pub struct List(RwArc<Vec<Value>>);
 
 impl List {
     pub fn new() -> Self {
-        Self(RwGc::new(Vec::new()))
+        Self(RwArc::new(Vec::new()))
     }
 
     pub fn id(&self) -> Id {

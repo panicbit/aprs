@@ -1,8 +1,8 @@
 use std::hash::{Hash, Hasher};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::{f64, fmt};
 
-use dumpster::Trace;
-use dumpster::sync::Gc;
 use eyre::{Error, Result, bail};
 use num::{BigInt, FromPrimitive, ToPrimitive, Zero};
 
@@ -12,17 +12,19 @@ use super::Value;
 
 // TODO: ensure that all int types properly get represented as the smallest possible N type
 
-#[derive(Clone, PartialEq)]
-pub struct Number(Gc<N>);
+static ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Clone)]
+pub struct Number(N, u64);
 
 impl Number {
     // not public because construction of N needs to uphold its laws
     fn new(n: N) -> Self {
-        Self(Gc::new(n))
+        Self(n, ID_COUNTER.fetch_add(1, Ordering::SeqCst))
     }
 
     pub fn id(&self) -> Id {
-        Gc::as_ptr(&self.0).into()
+        Id::new_number(self.1).into()
     }
 
     pub fn inner(&self) -> &N {
@@ -36,44 +38,44 @@ impl Number {
     }
 
     pub fn is_i64(&self) -> bool {
-        matches!(*self.0, N::I64(_))
+        matches!(self.0, N::I64(_))
     }
 
     pub fn is_i128(&self) -> bool {
-        matches!(*self.0, N::I128(_))
+        matches!(self.0, N::I128(_))
     }
 
     pub fn is_big_int(&self) -> bool {
-        matches!(*self.0, N::BigInt(_))
+        matches!(self.0, N::BigInt(_))
     }
 
     pub fn is_f64(&self) -> bool {
-        matches!(*self.0, N::F64(_))
+        matches!(self.0, N::F64(_))
     }
 
     pub fn as_i64(&self) -> Option<i64> {
-        match *self.0 {
+        match self.0 {
             N::I64(n) => Some(n),
             _ => None,
         }
     }
 
     pub fn as_i128(&self) -> Option<i128> {
-        match *self.0 {
+        match self.0 {
             N::I128(n) => Some(n),
             _ => None,
         }
     }
 
     pub fn as_big_int(&self) -> Option<&BigInt> {
-        match &*self.0 {
+        match &self.0 {
             N::BigInt(n) => Some(n),
             _ => None,
         }
     }
 
     pub fn as_f64(&self) -> Option<f64> {
-        match *self.0 {
+        match self.0 {
             N::F64(n) => Some(n),
             _ => None,
         }
@@ -231,9 +233,9 @@ impl TryFrom<Value> for Number {
     }
 }
 
-unsafe impl Trace for Number {
-    fn accept<V: dumpster::Visitor>(&self, _visitor: &mut V) -> Result<(), ()> {
-        Ok(())
+impl PartialEq for Number {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
 
@@ -246,12 +248,6 @@ pub enum N {
     I128(i128),
     BigInt(BigInt),
     F64(f64),
-}
-
-unsafe impl Trace for N {
-    fn accept<V: dumpster::Visitor>(&self, _visitor: &mut V) -> Result<(), ()> {
-        Ok(())
-    }
 }
 
 impl From<i64> for N {

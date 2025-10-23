@@ -2,13 +2,12 @@ use std::sync::Arc;
 use std::{fmt, ptr};
 
 use eyre::{Context, Result};
-use dumpster::Trace;
 
 use crate::pickle::value::{Id, Tuple};
 
 use super::Value;
 
-/// Do not store GC references in a Callable or they will leak.
+/// Do not store Arc references in a Callable or they will leak.
 /// It's currently not possible to implement the `Trace` properly for it.
 #[derive(Clone)]
 #[expect(clippy::type_complexity)]
@@ -30,12 +29,6 @@ impl Callable {
 
     pub fn id(&self) -> Id {
         Id::from(Arc::as_ptr(&self.0))
-    }
-}
-
-unsafe impl Trace for Callable {
-    fn accept<V: dumpster::Visitor>(&self, _visitor: &mut V) -> Result<(), ()> {
-        Ok(())
     }
 }
 

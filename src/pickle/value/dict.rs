@@ -1,23 +1,21 @@
 use std::hash::{Hash, Hasher};
 use std::{cmp, fmt};
 
-use dumpster::Trace;
 use eyre::{Result, bail};
 use tracing::error;
 
 use crate::FnvIndexMap;
 use crate::pickle::value::Id;
-use crate::pickle::value::rw_gc::RwGc;
-use crate::pickle::value::traced::Traced;
+use crate::pickle::value::rw_arc::RwArc;
 
 use super::Value;
 
-#[derive(Clone, Trace)]
-pub struct Dict(RwGc<Traced<FnvIndexMap<Element, Element>>>);
+#[derive(Clone)]
+pub struct Dict(RwArc<FnvIndexMap<Element, Element>>);
 
 impl Dict {
     pub fn new() -> Self {
-        Self(RwGc::new(Traced(FnvIndexMap::default())))
+        Self(RwArc::new(FnvIndexMap::default()))
     }
 
     pub fn id(&self) -> Id {
@@ -186,7 +184,6 @@ impl Iterator for Values {
     }
 }
 
-#[derive(Trace)]
 struct Element(Value);
 
 impl Hash for Element {
