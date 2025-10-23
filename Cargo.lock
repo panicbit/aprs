@@ -113,6 +113,7 @@ dependencies = [
  "indexmap 2.10.0",
  "itertools",
  "levenshtein",
+ "litemap",
  "num",
  "parking_lot",
  "rmp-serde",
@@ -897,6 +898,15 @@ name = "linux-raw-sys"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd945864f07fe9f5371a27ad7b52a172b4b499999f1d97574c9fa68373937e12"
+
+[[package]]
+name = "litemap"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "241eaef5fd12c88705a01fc1066c48c4b36e0dd4377dcdc7ec3942cea7a69956"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "lock_api"

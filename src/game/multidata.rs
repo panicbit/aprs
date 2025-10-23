@@ -1,6 +1,7 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use litemap::LiteMap;
 use serde::Deserialize;
 use serde_with::{FromInto, serde_as};
 
@@ -25,7 +26,7 @@ pub struct MultiData {
     pub version: NetworkVersion,
     #[serde(rename = "datapackage")]
     pub data_package: Arc<BTreeMap<String, HashedGameData>>,
-    pub locations: BTreeMap<SlotId, BTreeMap<LocationId, LocationInfo>>,
+    pub locations: BTreeMap<SlotId, LiteMap<LocationId, LocationInfo>>,
     pub spheres: Vec<BTreeMap<SlotId, Vec<LocationId>>>,
     pub precollected_items: BTreeMap<SlotId, Vec<ItemId>>,
     #[serde(flatten)]
@@ -41,7 +42,7 @@ impl MultiData {
         self.slot_info.get(&slot)
     }
 
-    pub fn get_locations(&self, slot: SlotId) -> Option<&BTreeMap<LocationId, LocationInfo>> {
+    pub fn get_locations(&self, slot: SlotId) -> Option<&LiteMap<LocationId, LocationInfo>> {
         self.locations.get(&slot)
     }
 
