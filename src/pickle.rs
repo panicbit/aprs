@@ -280,7 +280,7 @@ where
     }
 
     pub fn load_mark(&mut self) -> Result<()> {
-        let stack = mem::replace(&mut self.stack, List::new());
+        let stack = mem::take(&mut self.stack);
 
         self.meta_stack.push(stack);
 
