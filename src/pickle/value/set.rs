@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 use std::{cmp, fmt};
 
 use eyre::{Result, bail};
-use parking_lot::RwLockReadGuard;
+use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 use tracing::error;
 
 use crate::FnvIndexSet;
@@ -57,6 +57,10 @@ impl Set {
 
     pub fn read(&self) -> ReadSetGuard {
         ReadSetGuard::new(self)
+    }
+
+    pub fn write(&self) -> WriteSetGuard {
+        WriteSetGuard::new(self)
     }
 }
 
@@ -125,6 +129,32 @@ impl<'a> ReadSetGuard<'a> {
 
     pub fn iter(&self) -> impl Iterator<Item = &Value> {
         self.set.iter().map(|v| &v.0)
+    }
+}
+
+pub struct WriteSetGuard<'a> {
+    set: RwLockWriteGuard<'a, FnvIndexSet<Element>>,
+}
+
+impl<'a> WriteSetGuard<'a> {
+    fn new(set: &'a Set) -> Self {
+        let set = set.0.write();
+
+        Self { set }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Value> {
+        self.set.iter().map(|v| &v.0)
+    }
+
+    pub fn insert(&mut self, key: Value) -> Result<()> {
+        if !key.is_hashable() {
+            bail!("key is not hashable: {key:?}");
+        }
+
+        self.set.insert(Element(key));
+
+        Ok(())
     }
 }
 

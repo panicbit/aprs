@@ -586,10 +586,11 @@ where
         let items = self.pop_mark()?;
         let set_obj = self.stack.last().context("empty stack")?;
         let set_obj = set_obj.as_set()?;
+        let mut set_obj = set_obj.write();
 
         // TODO: try to use `.add` method if not a set (e.g. class or dict)
-        for item in items {
-            set_obj.insert(item)?;
+        for item in &items.read() {
+            set_obj.insert(item.clone())?;
         }
 
         Ok(())
