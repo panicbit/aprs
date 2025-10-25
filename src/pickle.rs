@@ -185,8 +185,8 @@ impl<'a> Unframer<'a> {
 struct Unpickler<'a, FindClass> {
     unframer: Unframer<'a>,
     proto: u8,
-    stack: List,
-    meta_stack: Vec<List>,
+    stack: Vec<Value>,
+    meta_stack: Vec<Vec<Value>>,
     memo: Dict,
     number_cache: NumberCache,
     find_class: FindClass,
@@ -201,7 +201,7 @@ where
         Self {
             unframer: Unframer::new(data),
             proto: 0,
-            stack: List::new(),
+            stack: Vec::new(),
             meta_stack: Vec::new(),
             // TODO: memo probably needs to be an IndexMap
             memo: Dict::new(),
@@ -222,22 +222,22 @@ where
     }
 
     #[inline(never)]
-    fn pop_mark(&mut self) -> Result<List> {
-        let meta = self.pop_meta()?;
-        let stack = mem::replace(&mut self.stack, meta);
+    fn pop_mark(&mut self) -> Result<Vec<Value>> {
+        let new_stack = self.pop_meta()?;
+        let stack = mem::replace(&mut self.stack, new_stack);
 
         Ok(stack)
     }
 
     #[inline(never)]
-    fn pop_meta(&mut self) -> Result<List> {
+    fn pop_meta(&mut self) -> Result<Vec<Value>> {
         self.meta_stack
             .pop()
             .context("tried to pop meta with empty meta stack")
     }
 
     #[inline(never)]
-    pub fn last(&self) -> Result<Value> {
+    pub fn last(&self) -> Result<&Value> {
         let value = self
             .stack
             .last()
@@ -370,6 +370,7 @@ where
     #[inline(never)]
     pub fn load_appends(&mut self) -> Result<()> {
         let items = self.pop_mark()?;
+        // TODO: cast to list here? are non-list types supported?
         let list_obj = self.last()?;
 
         // TODO: use `.append` or `.extend` attributes of `list_obj`
@@ -470,10 +471,7 @@ where
             .context("tried to `setitems` on non-dict")?
             .write();
 
-        for (key, value) in items.read().iter().tuples() {
-            let key = key.clone();
-            let value = value.clone();
-
+        for (key, value) in items.into_iter().tuples() {
             dict.insert(key, value).context("load_setitems")?;
         }
 
@@ -608,8 +606,8 @@ where
         let mut set_obj = set_obj.write();
 
         // TODO: try to use `.add` method if not a set (e.g. class or dict)
-        for item in &items.read() {
-            set_obj.insert(item.clone())?;
+        for item in items {
+            set_obj.insert(item)?;
         }
 
         Ok(())
@@ -630,7 +628,7 @@ where
         // TODO: create single string type that also covers "binunicode"
         // TODO: custom global loading
 
-        let value = (self.find_class)(&module, &name).context("find class failed")?;
+        let value = (self.find_class)(module, name).context("find class failed")?;
         self.push(value);
 
         Ok(())

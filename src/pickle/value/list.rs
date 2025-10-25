@@ -65,11 +65,8 @@ impl List {
         })
     }
 
-    pub fn extend(&self, values: Value) -> Result<()> {
-        match values {
-            Value::List(values) => self.append_list(&values),
-            _ => bail!("can't extend List with {}", values.type_name()),
-        }
+    pub fn extend(&self, values: Vec<Value>) {
+        self.0.write().extend(values);
     }
 
     fn append_list(&self, list: &List) -> Result<()> {
@@ -84,6 +81,12 @@ impl List {
 impl Default for List {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl From<Vec<Value>> for List {
+    fn from(values: Vec<Value>) -> Self {
+        Self(RwArc::new(values))
     }
 }
 

@@ -92,11 +92,9 @@ impl Value {
         }
     }
 
-    pub fn extend(&self, value: impl Into<Value>) -> Result<()> {
-        let value = value.into();
-
+    pub fn extend(&self, value: Vec<Value>) -> Result<()> {
         match self {
-            Value::List(list) => list.extend(value),
+            Value::List(list) => Ok(list.extend(value)),
             _ => bail!("can't extend {}", self.type_name()),
         }
     }

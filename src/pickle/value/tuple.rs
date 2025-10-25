@@ -33,6 +33,12 @@ impl Tuple {
     }
 }
 
+impl From<Vec<Value>> for Tuple {
+    fn from(values: Vec<Value>) -> Self {
+        Self(values)
+    }
+}
+
 impl From<&List> for Tuple {
     fn from(list: &List) -> Self {
         list.read().iter().collect::<Tuple>()
