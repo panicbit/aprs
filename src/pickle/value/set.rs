@@ -1,26 +1,19 @@
-use std::hash::{Hash, Hasher};
-use std::{cmp, fmt};
+use std::fmt;
 
 use eyre::{Result, bail};
 use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
-use tracing::error;
 
 use crate::FnvIndexSet;
-use crate::pickle::value::Id;
 use crate::pickle::value::rw_arc::RwArc;
 
 use super::Value;
 
 #[derive(Clone)]
-pub struct Set(RwArc<FnvIndexSet<Element>>);
+pub struct Set(RwArc<FnvIndexSet<Value>>);
 
 impl Set {
     pub fn new() -> Self {
         Self(RwArc::new(FnvIndexSet::default()))
-    }
-
-    pub fn id(&self) -> Id {
-        self.0.id()
     }
 
     pub fn insert(&self, key: impl Into<Value>) -> Result<()> {
@@ -30,7 +23,7 @@ impl Set {
             bail!("key is not hashable: {key:?}");
         }
 
-        self.0.write().insert(Element(key));
+        self.0.write().insert(key);
 
         Ok(())
     }
@@ -39,16 +32,12 @@ impl Set {
         self.0.read().len()
     }
 
-    pub fn get(&self, key: Value) -> Option<Value> {
-        self.0
-            .read()
-            .get(&Element(key))
-            .map(|Element(value)| value)
-            .cloned()
+    pub fn get(&self, key: &Value) -> Option<Value> {
+        self.0.read().get(key).cloned()
     }
 
     pub fn contains(&self, key: Value) -> bool {
-        self.0.read().contains(&Element(key))
+        self.0.read().contains(&key)
     }
 
     pub fn iter(&self) -> Iter {
@@ -117,7 +106,7 @@ impl IntoIterator for &Set {
 }
 
 pub struct ReadSetGuard<'a> {
-    set: RwLockReadGuard<'a, FnvIndexSet<Element>>,
+    set: RwLockReadGuard<'a, FnvIndexSet<Value>>,
 }
 
 impl<'a> ReadSetGuard<'a> {
@@ -128,12 +117,12 @@ impl<'a> ReadSetGuard<'a> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Value> {
-        self.set.iter().map(|v| &v.0)
+        self.set.iter()
     }
 }
 
 pub struct WriteSetGuard<'a> {
-    set: RwLockWriteGuard<'a, FnvIndexSet<Element>>,
+    set: RwLockWriteGuard<'a, FnvIndexSet<Value>>,
 }
 
 impl<'a> WriteSetGuard<'a> {
@@ -144,7 +133,7 @@ impl<'a> WriteSetGuard<'a> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Value> {
-        self.set.iter().map(|v| &v.0)
+        self.set.iter()
     }
 
     pub fn insert(&mut self, key: Value) -> Result<()> {
@@ -152,7 +141,7 @@ impl<'a> WriteSetGuard<'a> {
             bail!("key is not hashable: {key:?}");
         }
 
-        self.set.insert(Element(key));
+        self.set.insert(key);
 
         Ok(())
     }
@@ -185,8 +174,7 @@ impl Iterator for Iter {
             return None;
         }
 
-        let Element(value) = vec.get_index(self.index)?;
-        let value = value.clone();
+        let value = vec.get_index(self.index)?.clone();
 
         self.index += 1;
 
@@ -197,22 +185,3 @@ impl Iterator for Iter {
         (0, Some(self.max_len - self.index.min(self.max_len)))
     }
 }
-
-struct Element(Value);
-
-impl Hash for Element {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0
-            .hash(state)
-            .unwrap_or_else(|err| error!("hash of unhashable value: {err}"));
-    }
-}
-
-impl cmp::PartialEq for Element {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-// This is a lie. All bets are off.
-impl cmp::Eq for Element {}

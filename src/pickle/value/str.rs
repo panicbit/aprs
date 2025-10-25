@@ -6,7 +6,7 @@ use std::{borrow::Borrow, sync::Arc};
 use eyre::{Error, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::pickle::value::{Id, Value};
+use crate::pickle::value::Value;
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct Str(Arc<String>);
@@ -14,10 +14,6 @@ pub struct Str(Arc<String>);
 impl Str {
     pub fn new() -> Self {
         Self(Arc::new(String::new()))
-    }
-
-    pub fn id(&self) -> Id {
-        Arc::as_ptr(&self.0).into()
     }
 
     pub fn as_str(&self) -> &str {

@@ -1,21 +1,12 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::sync::{Arc, LazyLock};
-
-use crate::pickle::value::Id;
-
-static NONE: LazyLock<None> = LazyLock::new(|| None(Arc::new(())));
 
 #[derive(Clone)]
-pub struct None(Arc<()>);
+pub struct None(());
 
 impl None {
-    pub fn new() -> Self {
-        NONE.clone()
-    }
-
-    pub fn id(&self) -> Id {
-        Arc::as_ptr(&self.0).into()
+    pub const fn new() -> Self {
+        None(())
     }
 }
 

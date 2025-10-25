@@ -2,8 +2,6 @@ use std::hash::{Hash, Hasher};
 use std::sync::{Arc, LazyLock};
 use std::{fmt, ops};
 
-use crate::pickle::value::Id;
-
 static FALSE: LazyLock<Bool> = LazyLock::new(|| Bool(Arc::new(false)));
 static TRUE: LazyLock<Bool> = LazyLock::new(|| Bool(Arc::new(true)));
 
@@ -27,10 +25,6 @@ impl Bool {
     #[expect(non_snake_case)]
     pub fn True() -> Self {
         TRUE.clone()
-    }
-
-    pub fn id(&self) -> Id {
-        Arc::as_ptr(&self.0).into()
     }
 }
 

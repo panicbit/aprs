@@ -1,12 +1,9 @@
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
 use std::{f64, fmt};
 
 use eyre::{Error, Result, bail};
 use num::{BigInt, FromPrimitive, ToPrimitive, Zero};
-
-use crate::pickle::value::Id;
 
 use super::Value;
 
@@ -21,10 +18,6 @@ impl Number {
     // not public because construction of N needs to uphold its laws
     fn new(n: N) -> Self {
         Self(n, ID_COUNTER.fetch_add(1, Ordering::SeqCst))
-    }
-
-    pub fn id(&self) -> Id {
-        Id::new_number(self.1).into()
     }
 
     pub fn inner(&self) -> &N {

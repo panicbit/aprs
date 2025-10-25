@@ -3,7 +3,7 @@ use std::{fmt, ptr};
 
 use eyre::{Context, Result};
 
-use crate::pickle::value::{Id, Tuple};
+use crate::pickle::value::Tuple;
 
 use super::Value;
 
@@ -26,16 +26,12 @@ impl Callable {
 
         (self.0)(&args)
     }
-
-    pub fn id(&self) -> Id {
-        Id::from(Arc::as_ptr(&self.0))
-    }
 }
 
 impl fmt::Debug for Callable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Callable")
-            .field(&format!("<Callable @ 0x{:016X?}>", self.id().0))
+            .field(&format!("<Callable @ {:016X?}>", Arc::as_ptr(&self.0)))
             .finish()
     }
 }

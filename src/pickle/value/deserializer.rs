@@ -27,7 +27,7 @@ impl<'de> Deserializer<'de> for &Value {
                 N::F64(n) => visitor.visit_f64(n),
             },
             Value::Bool(bool) => visitor.visit_bool(**bool),
-            Value::Tuple(tuple) => visitor.visit_seq(SeqDeserializer::new(tuple.read().iter())),
+            Value::Tuple(tuple) => visitor.visit_seq(SeqDeserializer::new(tuple.iter())),
             Value::Callable(callable) => visitor.visit_string(format!("{:?}", callable)),
             Value::None(_) => visitor.visit_none(),
             Value::Set(set) => visitor.visit_seq(SeqDeserializer::new(set.read().iter())),

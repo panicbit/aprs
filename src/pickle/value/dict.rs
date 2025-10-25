@@ -6,7 +6,6 @@ use parking_lot::RwLockReadGuard;
 use tracing::error;
 
 use crate::FnvIndexMap;
-use crate::pickle::value::Id;
 use crate::pickle::value::rw_arc::RwArc;
 
 use super::Value;
@@ -17,10 +16,6 @@ pub struct Dict(RwArc<FnvIndexMap<Element, Element>>);
 impl Dict {
     pub fn new() -> Self {
         Self(RwArc::new(FnvIndexMap::default()))
-    }
-
-    pub fn id(&self) -> Id {
-        self.0.id()
     }
 
     pub fn insert(&self, key: impl Into<Value>, value: impl Into<Value>) -> Result<()> {

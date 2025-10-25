@@ -3,7 +3,6 @@ use std::fmt;
 use eyre::{ContextCompat, Result, bail};
 use parking_lot::RwLockReadGuard;
 
-use crate::pickle::value::Id;
 use crate::pickle::value::rw_arc::RwArc;
 
 use super::Value;
@@ -14,10 +13,6 @@ pub struct List(RwArc<Vec<Value>>);
 impl List {
     pub fn new() -> Self {
         Self(RwArc::new(Vec::new()))
-    }
-
-    pub fn id(&self) -> Id {
-        self.0.id()
     }
 
     pub fn iter(&self) -> Iter {

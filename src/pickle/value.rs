@@ -16,6 +16,7 @@ mod number;
 pub use number::Number;
 
 mod tuple;
+use tracing::error;
 pub use tuple::Tuple;
 
 mod callable;
@@ -55,20 +56,6 @@ pub enum Value {
 }
 
 impl Value {
-    // pub fn id(&self) -> Id {
-    //     match self {
-    //         Value::Dict(dict) => dict.id(),
-    //         Value::List(list) => list.id(),
-    //         Value::Str(str) => str.id(),
-    //         Value::Number(number) => number.id(),
-    //         Value::Bool(bool) => bool.id(),
-    //         Value::Tuple(tuple) => tuple.id(),
-    //         Value::Callable(callable) => callable.id(),
-    //         Value::None(none) => none.id(),
-    //         Value::Set(set) => set.id(),
-    //     }
-    // }
-
     pub fn empty_dict() -> Self {
         Value::Dict(Dict::default())
     }
@@ -339,6 +326,12 @@ impl Default for Value {
     }
 }
 
+impl From<&Value> for Value {
+    fn from(value: &Value) -> Self {
+        value.clone()
+    }
+}
+
 impl From<&str> for Value {
     fn from(str: &str) -> Self {
         Self::str(str)
@@ -441,26 +434,12 @@ impl PartialEq for Value {
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Id(InnerId);
-
-impl Id {
-    pub fn new_number(n: u64) -> Self {
-        Self(InnerId::Number(n))
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.hash(state)
+            .unwrap_or_else(|err| error!("hash of unhashable value: {err}"));
     }
 }
 
-unsafe impl Send for Id {}
-unsafe impl Sync for Id {}
-
-impl<T: ?Sized> From<*const T> for Id {
-    fn from(ptr: *const T) -> Self {
-        Self(InnerId::Ptr(ptr.cast::<()>()))
-    }
-}
-
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum InnerId {
-    Ptr(*const ()),
-    Number(u64),
-}
+// This is a lie. All bets are off.
+impl Eq for Value {}

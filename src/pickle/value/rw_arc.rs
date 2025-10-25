@@ -4,8 +4,6 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
-use crate::pickle::value::Id;
-
 pub struct RwArc<T>(Arc<RwLock<T>>)
 where
     T: Send + Sync + 'static;
@@ -16,10 +14,6 @@ where
 {
     pub fn new(value: T) -> Self {
         Self(Arc::new(RwLock::new(value)))
-    }
-
-    pub fn id(&self) -> Id {
-        Arc::as_ptr(&self.0).into()
     }
 }
 

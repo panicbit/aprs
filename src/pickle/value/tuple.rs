@@ -1,24 +1,19 @@
-use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::{fmt, slice};
 
 use eyre::{ContextCompat, Error, Result, bail};
 
-use crate::pickle::value::list::ReadListGuard;
-use crate::pickle::value::{Id, List, Value, list};
+use crate::pickle::value::{List, Value};
 
-// TODO: replace List with Vec. Tuples are immutable, so the underlying lock is not needed.
+type Iter<'a> = slice::Iter<'a, Value>;
 
 #[derive(PartialEq, Clone)]
 
-pub struct Tuple(List);
+pub struct Tuple(Vec<Value>);
 
 impl Tuple {
-    pub fn id(&self) -> Id {
-        self.0.id()
-    }
-
     pub fn empty() -> Self {
-        Self(List::new())
+        Self(Vec::new())
     }
 
     pub fn is_hashable(&self) -> bool {
@@ -29,34 +24,30 @@ impl Tuple {
         self.0.len()
     }
 
-    pub fn get(&self, index: usize) -> Option<Value> {
+    pub fn get(&self, index: usize) -> Option<&Value> {
         self.0.get(index)
     }
 
     pub fn iter(&self) -> Iter {
         self.into_iter()
     }
-
-    pub fn read(&self) -> ReadTupleGuard {
-        ReadTupleGuard::new(self)
-    }
 }
 
 impl From<&List> for Tuple {
     fn from(list: &List) -> Self {
-        list.iter().collect::<Tuple>()
+        list.read().iter().collect::<Tuple>()
     }
 }
 
 impl From<List> for Tuple {
     fn from(list: List) -> Self {
-        list.iter().collect::<Tuple>()
+        list.read().iter().collect::<Tuple>()
     }
 }
 
 impl From<()> for Tuple {
     fn from(_: ()) -> Self {
-        let tuple = List::new();
+        let tuple = Vec::new();
 
         Self(tuple)
     }
@@ -64,34 +55,19 @@ impl From<()> for Tuple {
 
 impl From<(Value,)> for Tuple {
     fn from((v1,): (Value,)) -> Self {
-        let tuple = List::new();
-
-        tuple.push(v1);
-
-        Self(tuple)
+        Self(vec![v1])
     }
 }
 
 impl From<(Value, Value)> for Tuple {
     fn from((v1, v2): (Value, Value)) -> Self {
-        let tuple = List::new();
-
-        tuple.push(v1);
-        tuple.push(v2);
-
-        Self(tuple)
+        Self(vec![v1, v2])
     }
 }
 
 impl From<(Value, Value, Value)> for Tuple {
     fn from((v1, v2, v3): (Value, Value, Value)) -> Self {
-        let tuple = List::new();
-
-        tuple.push(v1);
-        tuple.push(v2);
-        tuple.push(v3);
-
-        Self(tuple)
+        Self(vec![v1, v2, v3])
     }
 }
 
@@ -100,9 +76,9 @@ where
     V: Into<Value>,
 {
     fn from_iter<I: IntoIterator<Item = V>>(iter: I) -> Self {
-        let list = iter.into_iter().collect::<List>();
+        let tuple = iter.into_iter().map(<_>::into).collect::<Vec<_>>();
 
-        Self(list)
+        Self(tuple)
     }
 }
 
@@ -126,7 +102,7 @@ where
             bail!("expected tuple of length 1");
         }
 
-        let v1 = tuple.get(0).context("BUG: tuple too short")?;
+        let v1 = tuple.get(0).context("BUG: tuple too short")?.clone();
         let v1 = V1::try_from(v1)?;
 
         Ok((v1,))
@@ -146,9 +122,9 @@ where
             bail!("expected tuple of length 2");
         }
 
-        let v1 = tuple.get(0).context("BUG: tuple too short")?;
+        let v1 = tuple.get(0).context("BUG: tuple too short")?.clone();
         let v1 = V1::try_from(v1)?;
-        let v2 = tuple.get(1).context("BUG: tuple too short")?;
+        let v2 = tuple.get(1).context("BUG: tuple too short")?.clone();
         let v2 = V2::try_from(v2)?;
 
         Ok((v1, v2))
@@ -169,11 +145,11 @@ where
             bail!("expected tuple of length 3");
         }
 
-        let v1 = tuple.get(0).context("BUG: tuple too short")?;
+        let v1 = tuple.get(0).context("BUG: tuple too short")?.clone();
         let v1 = V1::try_from(v1)?;
-        let v2 = tuple.get(1).context("BUG: tuple too short")?;
+        let v2 = tuple.get(1).context("BUG: tuple too short")?.clone();
         let v2 = V2::try_from(v2)?;
-        let v3 = tuple.get(2).context("BUG: tuple too short")?;
+        let v3 = tuple.get(2).context("BUG: tuple too short")?.clone();
         let v3 = V3::try_from(v3)?;
 
         Ok((v1, v2, v3))
@@ -195,74 +171,25 @@ where
             bail!("expected tuple of length 4");
         }
 
-        let v1 = tuple.get(0).context("BUG: tuple too short")?;
+        let v1 = tuple.get(0).context("BUG: tuple too short")?.clone();
         let v1 = V1::try_from(v1)?;
-        let v2 = tuple.get(1).context("BUG: tuple too short")?;
+        let v2 = tuple.get(1).context("BUG: tuple too short")?.clone();
         let v2 = V2::try_from(v2)?;
-        let v3 = tuple.get(2).context("BUG: tuple too short")?;
+        let v3 = tuple.get(2).context("BUG: tuple too short")?.clone();
         let v3 = V3::try_from(v3)?;
-        let v4 = tuple.get(3).context("BUG: tuple too short")?;
+        let v4 = tuple.get(3).context("BUG: tuple too short")?.clone();
         let v4 = V4::try_from(v4)?;
 
         Ok((v1, v2, v3, v4))
     }
 }
 
-impl IntoIterator for Tuple {
-    type Item = Value;
-    type IntoIter = Iter;
+impl<'a> IntoIterator for &'a Tuple {
+    type Item = &'a Value;
+    type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
-        Iter::new(self)
-    }
-}
-
-impl IntoIterator for &Tuple {
-    type Item = Value;
-    type IntoIter = Iter;
-
-    fn into_iter(self) -> Self::IntoIter {
-        Iter::new(self.clone())
-    }
-}
-
-pub struct ReadTupleGuard<'a> {
-    list: ReadListGuard<'a>,
-}
-
-impl<'a> ReadTupleGuard<'a> {
-    fn new(tuple: &'a Tuple) -> Self {
-        let list = tuple.0.read();
-
-        Self { list }
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &Value> {
-        self.list.iter()
-    }
-}
-
-pub struct Iter {
-    inner: list::Iter,
-}
-
-impl Iter {
-    fn new(tuple: Tuple) -> Self {
-        Self {
-            inner: tuple.0.iter(),
-        }
-    }
-}
-
-impl Iterator for Iter {
-    type Item = Value;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
+        self.0.iter()
     }
 }
 
