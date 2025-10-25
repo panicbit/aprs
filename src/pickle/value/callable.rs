@@ -7,8 +7,6 @@ use crate::pickle::value::Tuple;
 
 use super::Value;
 
-/// Do not store Arc references in a Callable or they will leak.
-/// It's currently not possible to implement the `Trace` properly for it.
 #[derive(Clone)]
 #[expect(clippy::type_complexity)]
 pub struct Callable(Arc<dyn Fn(&Tuple) -> Result<Value> + Send + Sync>);
