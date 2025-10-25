@@ -459,11 +459,11 @@ where
     #[inline(never)]
     pub fn load_setitems(&mut self) -> Result<()> {
         let items = self.pop_mark()?;
-        let dict = self
-            .last()?
+        let dict = self.last()?;
+        let mut dict = dict
             .as_dict()
-            .context("tried to `setitems` on non-dict")?;
-        let mut dict = dict.write();
+            .context("tried to `setitems` on non-dict")?
+            .write();
 
         for (key, value) in items.read().iter().tuples() {
             let key = key.clone();

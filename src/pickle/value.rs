@@ -103,9 +103,9 @@ impl Value {
 
     // TODO: move conversions to TryFrom impls
 
-    pub fn as_dict(&self) -> Result<Dict> {
+    pub fn as_dict(&self) -> Result<&Dict> {
         match self {
-            Value::Dict(dict) => Ok(dict.clone()),
+            Value::Dict(dict) => Ok(dict),
             _ => bail!("{} is not a Dict", self.type_name()),
         }
     }
@@ -312,11 +312,7 @@ impl Value {
         let this = self.as_dict()?;
         let dict = dict.as_dict()?;
 
-        for (key, value) in dict {
-            this.insert(key, value)?;
-        }
-
-        Ok(())
+        this.update(&dict)
     }
 }
 

@@ -10,8 +10,8 @@ impl Serialize for Value {
         S: serde::Serializer,
     {
         match self {
-            Value::List(list) => ser.collect_seq(list),
-            Value::Dict(dict) => ser.collect_map(dict),
+            Value::List(list) => ser.collect_seq(list.read().iter()),
+            Value::Dict(dict) => ser.collect_map(dict.read().iter()),
             Value::Str(str) => ser.serialize_str(str),
             Value::Number(number) => match *number.inner() {
                 N::I64(n) => ser.serialize_i64(n),
@@ -29,7 +29,7 @@ impl Serialize for Value {
             Value::Tuple(tuple) => ser.collect_seq(tuple),
             Value::Callable(callable) => ser.serialize_str(&format!("{callable:?}")),
             Value::None(_) => ser.serialize_none(),
-            Value::Set(set) => ser.collect_seq(set),
+            Value::Set(set) => ser.collect_seq(set.read().iter()),
         }
     }
 }

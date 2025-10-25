@@ -16,6 +16,10 @@ where
         Self(Arc::new(RwLock::new(value)))
     }
 
+    pub fn same_as(&self, other: &Self) -> bool {
+        Arc::as_ptr(&self.0) == Arc::as_ptr(&other.0)
+    }
+
     pub fn as_ptr(&self) -> *const RwLock<T> {
         Arc::as_ptr(&self.0)
     }
