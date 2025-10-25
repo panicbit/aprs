@@ -51,10 +51,19 @@ impl Game {
             "unsupported format version `{format_version}`"
         );
 
-        let mut multi_data = ZlibDecoder::new(multi_data);
+        let decompression_start = Instant::now();
+        let multi_data = {
+            let mut data = Vec::new();
+            ZlibDecoder::new(multi_data)
+                .read_to_end(&mut data)
+                .context("failed to decompress multi data")?;
+            data
+        };
+        let decompression_time = decompression_start.elapsed();
+        info!("Decompression finished in {:?}", decompression_time);
 
         let unpickle_start = Instant::now();
-        let multi_data = pickle::unpickle(&mut multi_data).context("failed to unpickle")?;
+        let multi_data = pickle::unpickle(&multi_data).context("failed to unpickle")?;
         let unpickle_time = unpickle_start.elapsed();
         info!("Unpickling finished in {:?}", unpickle_time);
 

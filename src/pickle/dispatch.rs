@@ -1,12 +1,9 @@
-use std::io::Read;
-
 use eyre::{Result, bail};
 
 use super::{Value, op};
 
-impl<R, FindClass> super::Unpickler<R, FindClass>
+impl<'a, FindClass> super::Unpickler<'a, FindClass>
 where
-    R: Read,
     FindClass: FnMut(&str, &str) -> Result<Value>,
 {
     pub fn dispatch(&mut self, op: u8) -> Result<()> {

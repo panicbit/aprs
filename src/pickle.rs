@@ -1,7 +1,6 @@
 // This module and its submodules is based on:
 // https://github.com/python/cpython/blob/a3990df6121880e8c67824a101bb1316de232898/Lib/pickle.py#L306
 
-use std::io::{Cursor, Read};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
@@ -30,8 +29,8 @@ where
     Ok(value)
 }
 
-pub fn unpickle<R: Read>(reader: &mut R) -> Result<Value> {
-    Unpickler::new(reader, |module, name| {
+pub fn unpickle(data: &[u8]) -> Result<Value> {
+    Unpickler::new(data, |module, name| {
         debug!("Trying to locate {module}.{name}");
 
         Ok(match (module, name) {
@@ -82,100 +81,81 @@ pub fn unpickle<R: Read>(reader: &mut R) -> Result<Value> {
     .load()
 }
 
-struct Unframer<R> {
-    reader: R,
-    current_frame: Option<Cursor<Vec<u8>>>,
+struct Unframer<'a> {
+    data: &'a [u8],
+    current_frame: Option<&'a [u8]>,
 }
 
-impl<R> Unframer<R>
-where
-    R: Read,
-{
-    fn new(reader: R) -> Self {
+impl<'a> Unframer<'a> {
+    fn new(data: &'a [u8]) -> Self {
         Self {
-            reader,
+            data,
             current_frame: None,
         }
     }
 
-    fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+    fn read_exact(&mut self, len: usize) -> Result<&'a [u8]> {
         if self.current_frame_is_finished() {
             self.current_frame = None;
         }
 
         if let Some(current_frame) = &mut self.current_frame {
-            current_frame
-                .read_exact(buf)
-                .context("pickle exhausted before end of frame")
+            let (data, new_current_frame) = current_frame
+                .split_at_checked(len)
+                .context("pickle exhausted before end of frame")?;
+
+            *current_frame = new_current_frame;
+
+            Ok(data)
         } else {
-            self.reader
-                .read_exact(buf)
-                .context("pickle exhausted before end of stream")
+            let (data, new_data) = self
+                .data
+                .split_at_checked(len)
+                .context("pickle exhausted before end of stream")?;
+
+            self.data = new_data;
+
+            Ok(data)
         }
     }
 
-    fn read_vec(&mut self, len: usize) -> Result<Vec<u8>> {
-        let mut buf = vec![0; len];
-
-        self.read_exact(&mut buf)?;
-
-        Ok(buf)
-    }
-
     fn read_byte(&mut self) -> Result<u8> {
-        let buf = &mut [0];
+        let data = self.read_exact(1)?;
 
-        self.read_exact(buf)?;
-
-        Ok(buf[0])
+        Ok(data[0])
     }
 
     fn read_u16(&mut self) -> Result<u16> {
-        let mut buf = [0; 2];
-
-        self.read_exact(&mut buf)?;
-
-        let value = u16::from_le_bytes(buf);
+        let data = self.read_exact(2)?;
+        let value = u16::from_le_bytes(data.try_into().unwrap());
 
         Ok(value)
     }
 
     fn read_u32(&mut self) -> Result<u32> {
-        let mut buf = [0; 4];
-
-        self.read_exact(&mut buf)?;
-
-        let value = u32::from_le_bytes(buf);
+        let data = self.read_exact(4)?;
+        let value = u32::from_le_bytes(data.try_into().unwrap());
 
         Ok(value)
     }
 
     fn read_i32(&mut self) -> Result<i32> {
-        let mut buf = [0; 4];
-
-        self.read_exact(&mut buf)?;
-
-        let value = i32::from_le_bytes(buf);
+        let data = self.read_exact(4)?;
+        let value = i32::from_le_bytes(data.try_into().unwrap());
 
         Ok(value)
     }
 
     fn read_u64(&mut self) -> Result<u64> {
-        let mut buf = [0; 8];
-
-        self.read_exact(&mut buf)?;
-
-        let value = u64::from_le_bytes(buf);
+        let data = self.read_exact(8)?;
+        let value = u64::from_le_bytes(data.try_into().unwrap());
 
         Ok(value)
     }
 
     fn read_f64(&mut self) -> Result<f64> {
-        let mut buf = [0; 8];
-
-        self.read_exact(&mut buf)?;
-
-        let value = f64::from_be_bytes(buf);
+        let data = self.read_exact(8)?;
+        let value = f64::from_le_bytes(data.try_into().unwrap());
 
         Ok(value)
     }
@@ -185,12 +165,7 @@ where
             return true;
         };
 
-        // Casting to u64 should be fine.
-        // If the buffer size were to exceed a u64,
-        // then `Cursor::position()` and would run into issues as well.
-        let frame_len = current_frame.get_ref().len() as u64;
-
-        current_frame.position() == frame_len
+        current_frame.is_empty()
     }
 
     fn load_frame(&mut self, frame_size: u64) -> Result<()> {
@@ -199,16 +174,16 @@ where
         }
 
         let frame_size = usize::try_from(frame_size).context("frame size exceeds pointer width")?;
-        let frame = self.read_vec(frame_size)?;
+        let frame = self.read_exact(frame_size)?;
 
-        self.current_frame = Some(Cursor::new(frame));
+        self.current_frame = Some(frame);
 
         Ok(())
     }
 }
 
-struct Unpickler<R, FindClass> {
-    unframer: Unframer<R>,
+struct Unpickler<'a, FindClass> {
+    unframer: Unframer<'a>,
     proto: u8,
     stack: List,
     meta_stack: Vec<List>,
@@ -218,14 +193,13 @@ struct Unpickler<R, FindClass> {
     result: Option<Value>,
 }
 
-impl<R, FindClass> Unpickler<R, FindClass>
+impl<'a, FindClass> Unpickler<'a, FindClass>
 where
-    R: Read,
     FindClass: FnMut(&str, &str) -> Result<Value>,
 {
-    fn new(reader: R, find_class: FindClass) -> Self {
+    fn new(data: &'a [u8], find_class: FindClass) -> Self {
         Self {
-            unframer: Unframer::new(reader),
+            unframer: Unframer::new(data),
             proto: 0,
             stack: List::new(),
             meta_stack: Vec::new(),
@@ -348,8 +322,8 @@ where
     pub fn load_binunicode(&mut self) -> Result<()> {
         let len = self.read_u32()?;
         let len = usize::try_from(len)?;
-        let value = self.read_vec(len)?;
-        let value = String::from_utf8(value)?;
+        let value = self.read_exact(len)?;
+        let value = str::from_utf8(value)?;
         let value = Value::str(value);
 
         self.push(value);
@@ -553,7 +527,7 @@ where
     pub fn load_long1(&mut self) -> Result<()> {
         let len = self.read_byte()?;
         let len = usize::from(len);
-        let bytes = self.read_vec(len)?;
+        let bytes = self.read_exact(len)?;
         let n = Number::from_signed_bytes_le(&bytes);
         let n = Value::Number(n);
 
@@ -565,9 +539,9 @@ where
     pub fn load_short_binunicode(&mut self) -> Result<()> {
         let len = self.read_byte()?;
         let len = usize::from(len);
-        let value = self.read_vec(len)?;
+        let value = self.read_exact(len)?;
         // TODO: this might be too strict, python uses `surrogatepass` error handler
-        let value = String::from_utf8(value).context("invalid BinUnicode")?;
+        let value = str::from_utf8(value).context("invalid BinUnicode")?;
         let value = Str::from(value);
         let value = Value::Str(value);
 
@@ -633,21 +607,15 @@ where
     }
 }
 
-impl<R, FindClass> Deref for Unpickler<R, FindClass>
-where
-    R: Read,
-{
-    type Target = Unframer<R>;
+impl<'a, FindClass> Deref for Unpickler<'a, FindClass> {
+    type Target = Unframer<'a>;
 
     fn deref(&self) -> &Self::Target {
         &self.unframer
     }
 }
 
-impl<R, FindClass> DerefMut for Unpickler<R, FindClass>
-where
-    R: Read,
-{
+impl<'a, FindClass> DerefMut for Unpickler<'a, FindClass> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.unframer
     }
