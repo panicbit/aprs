@@ -1,30 +1,26 @@
 use std::hash::{Hash, Hasher};
-use std::sync::{Arc, LazyLock};
 use std::{fmt, ops};
 
-static FALSE: LazyLock<Bool> = LazyLock::new(|| Bool(Arc::new(false)));
-static TRUE: LazyLock<Bool> = LazyLock::new(|| Bool(Arc::new(true)));
-
 #[derive(Clone, PartialEq, Eq)]
-pub struct Bool(Arc<bool>);
+pub struct Bool(bool);
 
 impl Bool {
-    pub fn r#false() -> Self {
-        FALSE.clone()
+    pub const fn r#false() -> Self {
+        Bool(false)
     }
 
-    pub fn r#true() -> Self {
-        TRUE.clone()
-    }
-
-    #[expect(non_snake_case)]
-    pub fn False() -> Self {
-        FALSE.clone()
+    pub const fn r#true() -> Self {
+        Bool(true)
     }
 
     #[expect(non_snake_case)]
-    pub fn True() -> Self {
-        TRUE.clone()
+    pub const fn False() -> Self {
+        Self::r#false()
+    }
+
+    #[expect(non_snake_case)]
+    pub const fn True() -> Self {
+        Self::r#true()
     }
 }
 
@@ -44,15 +40,12 @@ impl Hash for Bool {
 
 impl fmt::Debug for Bool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Bool").field(self.0.as_ref()).finish()
+        f.debug_tuple("Bool").field(&self.0).finish()
     }
 }
 
 impl From<bool> for Bool {
     fn from(value: bool) -> Self {
-        match value {
-            true => Bool::r#true(),
-            false => Bool::r#false(),
-        }
+        Bool(value)
     }
 }
