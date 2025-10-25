@@ -384,7 +384,7 @@ where
 
         let value = self
             .memo
-            .get(index.clone())
+            .get(&index)
             .with_context(|| anyhow!("Memo value not found at index {index:?}"))?;
 
         self.push(value);
@@ -399,7 +399,7 @@ where
 
         let value = self
             .memo
-            .get(index.clone())
+            .get(&index)
             .with_context(|| anyhow!("Memo value not found at index {index:?}"))?;
 
         self.push(value);
@@ -463,8 +463,12 @@ where
             .last()?
             .as_dict()
             .context("tried to `setitems` on non-dict")?;
+        let mut dict = dict.write();
 
-        for (key, value) in items.iter().tuples() {
+        for (key, value) in items.read().iter().tuples() {
+            let key = key.clone();
+            let value = value.clone();
+
             dict.insert(key, value).context("load_setitems")?;
         }
 

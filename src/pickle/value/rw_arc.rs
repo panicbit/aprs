@@ -15,6 +15,10 @@ where
     pub fn new(value: T) -> Self {
         Self(Arc::new(RwLock::new(value)))
     }
+
+    pub fn as_ptr(&self) -> *const RwLock<T> {
+        Arc::as_ptr(&self.0)
+    }
 }
 
 impl<T> Deref for RwArc<T>

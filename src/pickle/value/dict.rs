@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 use std::{cmp, fmt};
 
 use eyre::{Result, bail};
-use parking_lot::RwLockReadGuard;
+use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 use tracing::error;
 
 use crate::FnvIndexMap;
@@ -11,7 +11,7 @@ use crate::pickle::value::rw_arc::RwArc;
 use super::Value;
 
 #[derive(Clone)]
-pub struct Dict(RwArc<FnvIndexMap<Element, Element>>);
+pub struct Dict(RwArc<FnvIndexMap<Value, Value>>);
 
 impl Dict {
     pub fn new() -> Self {
@@ -26,7 +26,7 @@ impl Dict {
             bail!("key is not hashable: {key:#?}");
         }
 
-        self.0.write().insert(Element(key), Element(value));
+        self.0.write().insert(key, value);
 
         Ok(())
     }
@@ -35,12 +35,8 @@ impl Dict {
         self.0.read().len()
     }
 
-    pub fn get(&self, key: impl Into<Value>) -> Option<Value> {
-        self.0
-            .read()
-            .get(&Element(key.into()))
-            .map(|Element(value)| value)
-            .cloned()
+    pub fn get(&self, key: &Value) -> Option<Value> {
+        self.0.read().get(key).cloned()
     }
 
     pub fn iter(&self) -> Iter {
@@ -54,22 +50,29 @@ impl Dict {
     pub fn read(&self) -> ReadDictGuard {
         ReadDictGuard::new(self)
     }
+
+    pub fn write(&self) -> WriteDictGuard {
+        WriteDictGuard::new(self)
+    }
 }
 
 impl PartialEq for Dict {
     fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
+        let this = self.read();
+        let other = other.read();
+
+        if this.len() != other.len() {
             return false;
         }
 
-        for (key, value) in self {
+        for (key, value) in this.iter() {
             if other.get(key) != Some(value) {
                 return false;
             }
         }
 
-        for (key, value) in other {
-            if self.get(key) != Some(value) {
+        for (key, value) in other.iter() {
+            if this.get(key) != Some(value) {
                 return false;
             }
         }
@@ -135,7 +138,7 @@ impl Iterator for Iter {
             return None;
         }
 
-        let (Element(key), Element(value)) = map.get_index(self.index)?;
+        let (key, value) = map.get_index(self.index)?;
         let value = (key.clone(), value.clone());
 
         self.index += 1;
@@ -149,7 +152,7 @@ impl Iterator for Iter {
 }
 
 pub struct ReadDictGuard<'a> {
-    dict: RwLockReadGuard<'a, FnvIndexMap<Element, Element>>,
+    dict: RwLockReadGuard<'a, FnvIndexMap<Value, Value>>,
 }
 
 impl<'a> ReadDictGuard<'a> {
@@ -160,7 +163,37 @@ impl<'a> ReadDictGuard<'a> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&Value, &Value)> {
-        self.dict.iter().map(|(k, v)| (&k.0, &v.0))
+        self.dict.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.dict.len()
+    }
+
+    pub fn get(&self, key: &Value) -> Option<&Value> {
+        self.dict.get(key)
+    }
+}
+
+pub struct WriteDictGuard<'a> {
+    dict: RwLockWriteGuard<'a, FnvIndexMap<Value, Value>>,
+}
+
+impl<'a> WriteDictGuard<'a> {
+    fn new(dict: &'a Dict) -> Self {
+        let dict = dict.0.write();
+
+        Self { dict }
+    }
+
+    pub fn insert(&mut self, key: Value, value: Value) -> Result<()> {
+        if !key.is_hashable() {
+            bail!("key is not hashable: {key:#?}");
+        }
+
+        self.dict.insert(key, value);
+
+        Ok(())
     }
 }
 
@@ -192,7 +225,7 @@ impl Iterator for Values {
         }
 
         let (_, value) = vec.get_index(self.index)?;
-        let value = value.0.clone();
+        let value = value.clone();
 
         self.index += 1;
 
