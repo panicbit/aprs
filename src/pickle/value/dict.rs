@@ -34,10 +34,6 @@ impl Dict {
         self.0.read().len()
     }
 
-    pub fn get(&self, key: &Value) -> Option<Value> {
-        self.0.read().get(key).cloned()
-    }
-
     pub fn read(&self) -> ReadDictGuard<'_> {
         ReadDictGuard::new(self)
     }

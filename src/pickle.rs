@@ -384,8 +384,10 @@ where
 
         let value = self
             .memo
+            .read()
             .get(&index)
-            .with_context(|| anyhow!("Memo value not found at index {index:?}"))?;
+            .with_context(|| anyhow!("Memo value not found at index {index:?}"))?
+            .clone();
 
         self.push(value);
 
@@ -399,8 +401,10 @@ where
 
         let value = self
             .memo
+            .read()
             .get(&index)
-            .with_context(|| anyhow!("Memo value not found at index {index:?}"))?;
+            .with_context(|| anyhow!("Memo value not found at index {index:?}"))?
+            .clone();
 
         self.push(value);
 
