@@ -9,7 +9,8 @@ use itertools::Itertools;
 use serde::Deserialize;
 use tracing::debug;
 
-use crate::pickle::value::{Dict, List, Number, NumberCache, Str, Tuple};
+use crate::FnvIndexMap;
+use crate::pickle::value::{Dict, Number, NumberCache, Str, Tuple};
 use crate::proto::server::print_json::HintStatus;
 
 pub mod value;
@@ -187,7 +188,7 @@ struct Unpickler<'a, FindClass> {
     proto: u8,
     stack: Vec<Value>,
     meta_stack: Vec<Vec<Value>>,
-    memo: Dict,
+    memo: FnvIndexMap<Value, Value>,
     number_cache: NumberCache,
     find_class: FindClass,
     result: Option<Value>,
@@ -203,8 +204,7 @@ where
             proto: 0,
             stack: Vec::new(),
             meta_stack: Vec::new(),
-            // TODO: memo probably needs to be an IndexMap
-            memo: Dict::new(),
+            memo: FnvIndexMap::default(),
             number_cache: NumberCache::new(),
             find_class,
             result: None,
@@ -386,7 +386,6 @@ where
 
         let value = self
             .memo
-            .read()
             .get(&index)
             .with_context(|| anyhow!("Memo value not found at index {index:?}"))?
             .clone();
@@ -403,7 +402,6 @@ where
 
         let value = self
             .memo
-            .read()
             .get(&index)
             .with_context(|| anyhow!("Memo value not found at index {index:?}"))?
             .clone();
@@ -640,7 +638,9 @@ where
         let key = self.number_cache.get_usize(key);
         let value = self.last().context("load_memoize")?;
 
-        self.memo.insert(key, value)
+        self.memo.insert(key, value.clone());
+
+        Ok(())
     }
 
     #[inline(never)]
