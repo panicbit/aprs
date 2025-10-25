@@ -110,37 +110,37 @@ impl Value {
         }
     }
 
-    pub fn as_list(&self) -> Result<List> {
+    pub fn as_list(&self) -> Result<&List> {
         match self {
-            Value::List(list) => Ok(list.clone()),
+            Value::List(list) => Ok(list),
             _ => bail!("{} is not a List", self.type_name()),
         }
     }
 
-    pub fn as_str(&self) -> Result<Str> {
+    pub fn as_str(&self) -> Result<&Str> {
         match self {
-            Value::Str(str) => Ok(str.clone()),
+            Value::Str(str) => Ok(str),
             _ => bail!("{} is not a Str", self.type_name()),
         }
     }
 
-    pub fn as_number(&self) -> Result<Number> {
+    pub fn as_number(&self) -> Result<&Number> {
         match self {
-            Value::Number(number) => Ok(number.clone()),
+            Value::Number(number) => Ok(number),
             _ => bail!("{} is not a Number", self.type_name()),
         }
     }
 
-    pub fn as_tuple(&self) -> Result<Tuple> {
+    pub fn as_tuple(&self) -> Result<&Tuple> {
         match self {
-            Value::Tuple(tuple) => Ok(tuple.clone()),
+            Value::Tuple(tuple) => Ok(tuple),
             _ => bail!("{} is not a Tuple", self.type_name()),
         }
     }
 
-    pub fn as_callable(&self) -> Result<Callable> {
+    pub fn as_callable(&self) -> Result<&Callable> {
         match self {
-            Value::Callable(callable) => Ok(callable.clone()),
+            Value::Callable(callable) => Ok(callable),
             _ => bail!("{} is not a Callable", self.type_name()),
         }
     }

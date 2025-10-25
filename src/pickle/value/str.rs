@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 use std::{borrow::Borrow, sync::Arc};
 
-use eyre::{Error, Result};
+use eyre::{Error, Result, bail};
 use serde::{Deserialize, Serialize};
 
 use crate::pickle::value::Value;
@@ -49,7 +49,11 @@ impl TryFrom<Value> for Str {
     type Error = Error;
 
     fn try_from(value: Value) -> Result<Self> {
-        value.as_str()
+        if let Value::Str(str) = value {
+            Ok(str)
+        } else {
+            bail!("{} is not a Str", value.type_name())
+        }
     }
 }
 

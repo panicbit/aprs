@@ -219,7 +219,11 @@ impl TryFrom<Value> for Number {
     type Error = Error;
 
     fn try_from(value: Value) -> Result<Self> {
-        value.as_number()
+        if let Value::Number(number) = value {
+            Ok(number)
+        } else {
+            bail!("{} is not a Number", value.type_name())
+        }
     }
 }
 

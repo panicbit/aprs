@@ -284,7 +284,8 @@ where
             .context("tied to load reduce args with empty stack")?;
         let callable = self
             .pop()
-            .context("tried to load reduce with too small stack")?
+            .context("tried to load reduce with too small stack")?;
+        let callable = callable
             .as_callable()
             .context("tried to reduce with a non-callable")?;
 
@@ -616,14 +617,12 @@ where
 
     #[inline(never)]
     pub fn load_stack_global(&mut self) -> Result<()> {
-        let name = self
-            .pop()
-            .context("stack global pop from empty stack")?
-            .as_str()
-            .context("stack global name is not a str")?;
+        let name = self.pop().context("stack global pop from empty stack")?;
+        let name = name.as_str().context("stack global name is not a str")?;
         let module = self
             .pop()
-            .context("stack global pop from too small stack")?
+            .context("stack global pop from too small stack")?;
+        let module = module
             .as_str()
             .context("stack global module is not a str")?;
 
