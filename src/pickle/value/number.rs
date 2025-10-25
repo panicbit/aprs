@@ -1,5 +1,4 @@
 use std::hash::{Hash, Hasher};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::{f64, fmt};
 
 use eyre::{Error, Result, bail};
@@ -9,15 +8,13 @@ use super::Value;
 
 // TODO: ensure that all int types properly get represented as the smallest possible N type
 
-static ID_COUNTER: AtomicU64 = AtomicU64::new(0);
-
 #[derive(Clone)]
-pub struct Number(N, u64);
+pub struct Number(N);
 
 impl Number {
     // not public because construction of N needs to uphold its laws
     fn new(n: N) -> Self {
-        Self(n, ID_COUNTER.fetch_add(1, Ordering::SeqCst))
+        Self(n)
     }
 
     pub fn inner(&self) -> &N {
