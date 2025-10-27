@@ -49,6 +49,9 @@ version = "0.7.0"
 git = "http://github.com/panicbit/serde-value"
 branch = "128_bit_int_support"
 
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = "0.6"
+
 [profile.dev.package."*"]
 opt-level = 2
 
