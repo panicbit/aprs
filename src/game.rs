@@ -65,7 +65,7 @@ impl Game {
 
         let unpickle_start = Instant::now();
         let multi_data =
-            pickle::unpickle::<storage::Arc>(&multi_data).context("failed to unpickle")?;
+            pickle::unpickle::<storage::Rc>(&multi_data).context("failed to unpickle")?;
         let unpickle_time = unpickle_start.elapsed();
         info!("Unpickling finished in {:?}", unpickle_time);
 

@@ -10,11 +10,11 @@ type Iter<'a, S> = slice::Iter<'a, Value<S>>;
 
 #[derive(PartialEq, Clone)]
 
-pub struct Tuple<S: Storage>(Vec<Value<S>>);
+pub struct Tuple<S: Storage>(S::ReadOnly<Vec<Value<S>>>);
 
 impl<S: Storage> Tuple<S> {
     pub fn empty() -> Self {
-        Self(Vec::new())
+        Self(S::new_read_only(Vec::new()))
     }
 
     pub fn is_hashable(&self) -> bool {
@@ -32,11 +32,15 @@ impl<S: Storage> Tuple<S> {
     pub fn iter(&self) -> Iter<S> {
         self.into_iter()
     }
+
+    pub fn as_slice(&self) -> &[Value<S>] {
+        &self.0
+    }
 }
 
 impl<S: Storage> From<Vec<Value<S>>> for Tuple<S> {
     fn from(values: Vec<Value<S>>) -> Self {
-        Self(values)
+        Self(S::new_read_only(values))
     }
 }
 
@@ -54,27 +58,25 @@ impl<S: Storage> From<List<S>> for Tuple<S> {
 
 impl<S: Storage> From<()> for Tuple<S> {
     fn from(_: ()) -> Self {
-        let tuple = Vec::new();
-
-        Self(tuple)
+        Self::from(Vec::new())
     }
 }
 
 impl<S: Storage> From<(Value<S>,)> for Tuple<S> {
     fn from((v1,): (Value<S>,)) -> Self {
-        Self(vec![v1])
+        Self::from(vec![v1])
     }
 }
 
 impl<S: Storage> From<(Value<S>, Value<S>)> for Tuple<S> {
     fn from((v1, v2): (Value<S>, Value<S>)) -> Self {
-        Self(vec![v1, v2])
+        Self::from(vec![v1, v2])
     }
 }
 
 impl<S: Storage> From<(Value<S>, Value<S>, Value<S>)> for Tuple<S> {
     fn from((v1, v2, v3): (Value<S>, Value<S>, Value<S>)) -> Self {
-        Self(vec![v1, v2, v3])
+        Self::from(vec![v1, v2, v3])
     }
 }
 
@@ -83,15 +85,15 @@ where
     V: Into<Value<S>>,
 {
     fn from_iter<I: IntoIterator<Item = V>>(iter: I) -> Self {
-        let tuple = iter.into_iter().map(<_>::into).collect::<Vec<_>>();
+        let vec = iter.into_iter().map(<_>::into).collect::<Vec<_>>();
 
-        Self(tuple)
+        Self::from(vec)
     }
 }
 
 impl<S: Storage> Hash for Tuple<S> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        for value in &self.0 {
+        for value in self.0.iter() {
             value.hash(state).ok();
         }
     }

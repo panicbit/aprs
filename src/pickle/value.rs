@@ -434,7 +434,7 @@ impl<S: Storage> PartialEq for Value<S> {
             (Value::Bool(v1), Value::Bool(v2)) => v1 == v2,
             (Value::Number(v1), Value::Bool(v2)) => v1 == &Number::from(**v2),
             (Value::Bool(v1), Value::Number(v2)) => v2 == &Number::from(**v1),
-            (Value::Tuple(v1), Value::Tuple(v2)) => v1 == v2,
+            (Value::Tuple(v1), Value::Tuple(v2)) => v1.as_slice() == v2.as_slice(),
             (Value::Tuple(_), _) => false,
             (_, Value::Tuple(_)) => false,
             (Value::Callable(v1), Value::Callable(v2)) => v1 == v2,
