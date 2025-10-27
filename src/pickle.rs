@@ -11,7 +11,7 @@ use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::FnvIndexMap;
-use crate::pickle::value::{Dict, Number, NumberCache, Storage, Str, Tuple};
+use crate::pickle::value::{Dict, Number, Storage, Str, Tuple};
 use crate::proto::server::print_json::HintStatus;
 
 pub mod value;
@@ -191,7 +191,6 @@ struct Unpickler<'a, FindClass, S: Storage> {
     stack: Vec<Value<S>>,
     meta_stack: Vec<Vec<Value<S>>>,
     memo: FnvIndexMap<Value<S>, Value<S>>,
-    number_cache: NumberCache<S>,
     find_class: FindClass,
     result: Option<Value<S>>,
 }
@@ -207,7 +206,6 @@ where
             stack: Vec::new(),
             meta_stack: Vec::new(),
             memo: FnvIndexMap::default(),
-            number_cache: NumberCache::new(),
             find_class,
             result: None,
         }
@@ -301,7 +299,7 @@ where
     #[inline(never)]
     pub fn load_binint(&mut self) -> Result<()> {
         let value = self.read_i32()?;
-        let value = self.number_cache.get_i32(value);
+        let value = Value::Number(value.into());
 
         self.stack.push(value);
 
@@ -311,7 +309,7 @@ where
     #[inline(never)]
     pub fn load_binint1(&mut self) -> Result<()> {
         let value = self.read_byte()?;
-        let value = self.number_cache.get_u8(value);
+        let value = Value::Number(value.into());
 
         self.stack.push(value);
 
@@ -321,7 +319,7 @@ where
     #[inline(never)]
     pub fn load_binint2(&mut self) -> Result<()> {
         let value = self.read_u16()?;
-        let value = self.number_cache.get_u16(value);
+        let value = Value::Number(value.into());
 
         self.stack.push(value);
 
@@ -384,7 +382,7 @@ where
     #[inline(never)]
     pub fn load_binget(&mut self) -> Result<()> {
         let index = self.read_byte()?;
-        let index = self.number_cache.get_u8(index);
+        let index = Value::Number(index.into());
 
         let value = self
             .memo
@@ -400,7 +398,7 @@ where
     #[inline(never)]
     pub fn load_long_binget(&mut self) -> Result<()> {
         let index = self.read_u32()?;
-        let index = self.number_cache.get_u32(index);
+        let index = Value::Number(index.into());
 
         let value = self
             .memo
@@ -637,7 +635,7 @@ where
     #[inline(never)]
     pub fn load_memoize(&mut self) -> Result<()> {
         let key = self.memo.len();
-        let key = self.number_cache.get_usize(key);
+        let key = Value::Number(key.into());
         let value = self.last().context("load_memoize")?;
 
         self.memo.insert(key, value.clone());

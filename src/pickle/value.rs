@@ -9,9 +9,6 @@ pub use list::List;
 mod dict;
 pub use dict::Dict;
 
-mod number_cache;
-pub use number_cache::NumberCache;
-
 mod number;
 pub use number::Number;
 
