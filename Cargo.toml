@@ -10,7 +10,7 @@ byteorder = "1.5.0"
 bytes = { version = "1.10.1", features = ["serde"] }
 chrono = "0.4.41"
 clap = { version = "4.5.41", features = ["derive"] }
-flate2 = { version = "1.1.2", features = ["zlib-rs"] }
+flate2 = { version = "1.1.2" }
 fnv = "1.0.7"
 format_serde_error = "0.3.0"
 futures = "0.3.31"
