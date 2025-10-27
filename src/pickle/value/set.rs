@@ -1,6 +1,7 @@
 use std::fmt;
 
 use eyre::{Result, bail};
+use tracing::warn;
 
 use crate::FnvIndexSet;
 use crate::pickle::value::storage::Storage;
@@ -143,6 +144,20 @@ impl<'a, S: Storage> WriteSetGuard<'a, S> {
         self.set.insert(key);
 
         Ok(())
+    }
+
+    pub fn extend(&mut self, items: impl IntoIterator<Item = Value<S>>) {
+        let items = items.into_iter().filter(|item| {
+            if !item.is_hashable() {
+                warn!("set item is not hashable: {item:#?}");
+
+                return false;
+            }
+
+            true
+        });
+
+        self.set.extend(items);
     }
 }
 

@@ -1,6 +1,7 @@
 use std::fmt;
 
 use eyre::{Result, bail};
+use tracing::warn;
 
 use crate::FnvIndexMap;
 use crate::pickle::value::storage::{SameAs, Storage};
@@ -143,5 +144,19 @@ impl<'a, S: Storage> WriteDictGuard<'a, S> {
         self.dict.insert(key, value);
 
         Ok(())
+    }
+
+    pub fn extend(&mut self, items: impl IntoIterator<Item = (Value<S>, Value<S>)>) {
+        let items = items.into_iter().filter(|(key, _)| {
+            if !key.is_hashable() {
+                warn!("dict key is not hashable: {key:#?}");
+
+                return false;
+            }
+
+            true
+        });
+
+        self.dict.extend(items);
     }
 }

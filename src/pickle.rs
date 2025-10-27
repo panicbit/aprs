@@ -468,10 +468,9 @@ where
             .as_dict()
             .context("tried to `setitems` on non-dict")?
             .write();
+        let items = items.into_iter().tuples::<(_, _)>();
 
-        for (key, value) in items.into_iter().tuples() {
-            dict.insert(key, value).context("load_setitems")?;
-        }
+        dict.extend(items);
 
         Ok(())
     }
@@ -600,13 +599,12 @@ where
     pub fn load_additems(&mut self) -> Result<()> {
         let items = self.pop_mark()?;
         let set_obj = self.stack.last().context("empty stack")?;
-        let set_obj = set_obj.as_set()?;
-        let mut set_obj = set_obj.write();
+        let set_obj = set_obj
+            .as_set()
+            .context("tried to add items to a non-set value")?;
 
         // TODO: try to use `.add` method if not a set (e.g. class or dict)
-        for item in items {
-            set_obj.insert(item)?;
-        }
+        set_obj.write().extend(items);
 
         Ok(())
     }
