@@ -2,11 +2,14 @@ use std::hash::{Hash, Hasher};
 use std::{fmt, slice};
 
 use eyre::{ContextCompat, Error, Result, bail};
+use smallvec::{SmallVec, smallvec};
 
 use crate::pickle::value::storage::Storage;
 use crate::pickle::value::{List, Value};
 
 type Iter<'a, S> = slice::Iter<'a, Value<S>>;
+
+type Vec<T> = SmallVec<[T; 3]>;
 
 #[derive(PartialEq, Clone)]
 
@@ -64,19 +67,19 @@ impl<S: Storage> From<()> for Tuple<S> {
 
 impl<S: Storage> From<(Value<S>,)> for Tuple<S> {
     fn from((v1,): (Value<S>,)) -> Self {
-        Self::from(vec![v1])
+        Self::from(smallvec![v1])
     }
 }
 
 impl<S: Storage> From<(Value<S>, Value<S>)> for Tuple<S> {
     fn from((v1, v2): (Value<S>, Value<S>)) -> Self {
-        Self::from(vec![v1, v2])
+        Self::from(smallvec![v1, v2])
     }
 }
 
 impl<S: Storage> From<(Value<S>, Value<S>, Value<S>)> for Tuple<S> {
     fn from((v1, v2, v3): (Value<S>, Value<S>, Value<S>)) -> Self {
-        Self::from(vec![v1, v2, v3])
+        Self::from(smallvec![v1, v2, v3])
     }
 }
 

@@ -7,6 +7,7 @@ use std::ops::{Deref, DerefMut};
 use eyre::{Context, ContextCompat, Result, anyhow, bail};
 use itertools::Itertools;
 use serde::Deserialize;
+use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::FnvIndexMap;
@@ -434,7 +435,7 @@ where
     #[inline(never)]
     pub fn load_tuple(&mut self) -> Result<()> {
         let items = self.pop_mark()?;
-        let tuple = Value::tuple(items);
+        let tuple = Value::tuple(SmallVec::from(items));
 
         self.push(tuple);
 
