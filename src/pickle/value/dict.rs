@@ -64,6 +64,12 @@ where
     }
 }
 
+impl<S: Storage> From<Map<S>> for Dict<S> {
+    fn from(value: Map<S>) -> Self {
+        Self(S::new_read_write(value))
+    }
+}
+
 impl<S: Storage> PartialEq for Dict<S> {
     fn eq(&self, other: &Self) -> bool {
         let this = self.read();
