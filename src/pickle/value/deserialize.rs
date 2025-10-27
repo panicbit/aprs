@@ -204,13 +204,14 @@ impl<'de, S: Storage> de::Visitor<'de> for ValueVisitor<S> {
     where
         A: de::SeqAccess<'de>,
     {
-        let list = List::new();
+        let size_hint = seq.size_hint().unwrap_or(0);
+        let mut list = Vec::with_capacity(size_hint);
 
         while let Some(value) = seq.next_element::<Value<S>>()? {
             list.push(value);
         }
 
-        Ok(Value::List(list))
+        Ok(Value::List(list.into()))
     }
 
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
