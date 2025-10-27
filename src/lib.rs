@@ -1,6 +1,8 @@
 #![allow(clippy::let_and_return)]
 
-use fnv::FnvBuildHasher;
+use std::hash::BuildHasherDefault;
+
+use hashers::fx_hash::FxHasher;
 use indexmap::{IndexMap, IndexSet};
 
 pub mod game;
@@ -9,5 +11,6 @@ pub mod proto;
 pub mod server;
 pub mod websocket_server;
 
-type FnvIndexMap<K, V> = IndexMap<K, V, FnvBuildHasher>;
-type FnvIndexSet<K> = IndexSet<K, FnvBuildHasher>;
+type Hasher = FxHasher;
+type FnvIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<Hasher>>;
+type FnvIndexSet<K> = IndexSet<K, BuildHasherDefault<Hasher>>;
