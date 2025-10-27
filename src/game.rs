@@ -20,6 +20,7 @@ mod multidata;
 pub use multidata::MultiData;
 use tracing::info;
 
+use crate::pickle::value::storage;
 use crate::proto::common::NetworkVersion;
 use crate::{FnvIndexMap, pickle};
 
@@ -63,7 +64,8 @@ impl Game {
         info!("Decompression finished in {:?}", decompression_time);
 
         let unpickle_start = Instant::now();
-        let multi_data = pickle::unpickle(&multi_data).context("failed to unpickle")?;
+        let multi_data =
+            pickle::unpickle::<storage::Arc>(&multi_data).context("failed to unpickle")?;
         let unpickle_time = unpickle_start.elapsed();
         info!("Unpickling finished in {:?}", unpickle_time);
 

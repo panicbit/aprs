@@ -2,6 +2,7 @@ use serde::de::value::{MapDeserializer, SeqDeserializer, StrDeserializer};
 use serde::de::{IntoDeserializer, Visitor};
 use serde::{Deserializer, forward_to_deserialize_any};
 
+use crate::pickle::value::Storage;
 use crate::pickle::value::number::N;
 use crate::pickle::value::serde_error::SerdeError;
 
@@ -9,7 +10,7 @@ use super::Value;
 
 pub type Result<T> = std::result::Result<T, SerdeError>;
 
-impl<'de> Deserializer<'de> for &Value {
+impl<'de, S: Storage> Deserializer<'de> for &Value<S> {
     type Error = SerdeError;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
@@ -120,7 +121,7 @@ impl<'de> Deserializer<'de> for &Value {
     }
 }
 
-impl IntoDeserializer<'_, SerdeError> for &Value {
+impl<S: Storage> IntoDeserializer<'_, SerdeError> for &Value<S> {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {

@@ -1,23 +1,26 @@
 use std::fmt;
 
 use eyre::{Result, bail};
-use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 
-use crate::{FnvIndexMap, pickle::value::rw_arc::RwArc};
+use crate::FnvIndexMap;
+use crate::pickle::value::storage::{SameAs, Storage};
 
 use super::Value;
 
-type Map = FnvIndexMap<Value, Value>;
+type Map<S> = FnvIndexMap<Value<S>, Value<S>>;
 
 #[derive(Clone)]
-pub struct Dict(RwArc<Map>);
+pub struct Dict<S: Storage>(S::ReadWrite<Map<S>>);
 
-impl Dict {
+impl<S> Dict<S>
+where
+    S: Storage,
+{
     pub fn new() -> Self {
-        Self(RwArc::new(Map::default()))
+        Self(S::new_read_write(Map::default()))
     }
 
-    pub fn insert(&self, key: impl Into<Value>, value: impl Into<Value>) -> Result<()> {
+    pub fn insert(&self, key: impl Into<Value<S>>, value: impl Into<Value<S>>) -> Result<()> {
         let key = key.into();
         let value = value.into();
 
@@ -25,24 +28,24 @@ impl Dict {
             bail!("key is not hashable: {key:#?}");
         }
 
-        self.0.write().insert(key, value);
+        S::write(&self.0).insert(key, value);
 
         Ok(())
     }
 
     pub fn len(&self) -> usize {
-        self.0.read().len()
+        S::read(&self.0).len()
     }
 
-    pub fn read(&self) -> ReadDictGuard<'_> {
+    pub fn read(&self) -> ReadDictGuard<'_, S> {
         ReadDictGuard::new(self)
     }
 
-    pub fn write(&self) -> WriteDictGuard<'_> {
+    pub fn write(&self) -> WriteDictGuard<'_, S> {
         WriteDictGuard::new(self)
     }
 
-    pub fn update(&self, other: &Dict) -> Result<()> {
+    pub fn update(&self, other: &Dict<S>) -> Result<()> {
         if self.0.same_as(&other.0) {
             return Ok(());
         }
@@ -60,7 +63,7 @@ impl Dict {
     }
 }
 
-impl PartialEq for Dict {
+impl<S: Storage> PartialEq for Dict<S> {
     fn eq(&self, other: &Self) -> bool {
         let this = self.read();
         let other = other.read();
@@ -85,30 +88,30 @@ impl PartialEq for Dict {
     }
 }
 
-impl Default for Dict {
+impl<S: Storage> Default for Dict<S> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl fmt::Debug for Dict {
+impl<S: Storage> fmt::Debug for Dict<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.read().iter()).finish()
     }
 }
 
-pub struct ReadDictGuard<'a> {
-    dict: RwLockReadGuard<'a, Map>,
+pub struct ReadDictGuard<'a, S: Storage> {
+    dict: S::Read<'a, Map<S>>,
 }
 
-impl<'a> ReadDictGuard<'a> {
-    fn new(dict: &'a Dict) -> Self {
-        let dict = dict.0.read();
+impl<'a, S: Storage> ReadDictGuard<'a, S> {
+    fn new(dict: &'a Dict<S>) -> Self {
+        let dict = S::read(&dict.0);
 
         Self { dict }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&Value, &Value)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&Value<S>, &Value<S>)> {
         self.dict.iter()
     }
 
@@ -116,23 +119,23 @@ impl<'a> ReadDictGuard<'a> {
         self.dict.len()
     }
 
-    pub fn get(&self, key: &Value) -> Option<&Value> {
+    pub fn get(&self, key: &Value<S>) -> Option<&Value<S>> {
         self.dict.get(key)
     }
 }
 
-pub struct WriteDictGuard<'a> {
-    dict: RwLockWriteGuard<'a, Map>,
+pub struct WriteDictGuard<'a, S: Storage> {
+    dict: S::Write<'a, Map<S>>,
 }
 
-impl<'a> WriteDictGuard<'a> {
-    fn new(dict: &'a Dict) -> Self {
-        let dict = dict.0.write();
+impl<'a, S: Storage> WriteDictGuard<'a, S> {
+    fn new(dict: &'a Dict<S>) -> Self {
+        let dict = S::write(&dict.0);
 
         Self { dict }
     }
 
-    pub fn insert(&mut self, key: Value, value: Value) -> Result<()> {
+    pub fn insert(&mut self, key: Value<S>, value: Value<S>) -> Result<()> {
         if !key.is_hashable() {
             bail!("key is not hashable: {key:#?}");
         }

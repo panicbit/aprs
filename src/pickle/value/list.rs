@@ -1,61 +1,60 @@
 use std::fmt;
 
-use eyre::{ContextCompat, Result, bail};
-use parking_lot::RwLockReadGuard;
+use eyre::{ContextCompat, Result};
 
-use crate::pickle::value::rw_arc::RwArc;
+use crate::pickle::value::storage::Storage;
 
 use super::Value;
 
 #[derive(Clone)]
-pub struct List(RwArc<Vec<Value>>);
+pub struct List<S: Storage>(S::ReadWrite<Vec<Value<S>>>);
 
-impl List {
+impl<S: Storage> List<S> {
     pub fn new() -> Self {
-        Self(RwArc::new(Vec::new()))
+        Self(S::new_read_write(Vec::new()))
     }
 
-    pub fn iter(&self) -> Iter {
+    pub fn iter(&self) -> Iter<S> {
         self.into_iter()
     }
 
-    pub fn read(&self) -> ReadListGuard<'_> {
+    pub fn read(&self) -> ReadListGuard<'_, S> {
         ReadListGuard::new(self)
     }
 
     pub fn len(&self) -> usize {
-        self.0.read().len()
+        S::read(&self.0).len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.0.read().is_empty()
+        S::read(&self.0).is_empty()
     }
 
-    pub fn last(&self) -> Option<Value> {
-        self.0.read().last().cloned()
+    pub fn last(&self) -> Option<Value<S>> {
+        S::read(&self.0).last().cloned()
     }
 
-    pub fn push(&self, value: Value) {
-        self.0.write().push(value);
+    pub fn push(&self, value: Value<S>) {
+        S::write(&self.0).push(value);
     }
 
-    pub fn pop(&self) -> Option<Value> {
-        self.0.write().pop()
+    pub fn pop(&self) -> Option<Value<S>> {
+        S::write(&self.0).pop()
     }
 
-    pub fn get<I>(&self, index: I) -> I::Output<Option<Value>>
+    pub fn get<I>(&self, index: I) -> I::Output<Option<Value<S>>>
     where
         I: ListIndex,
     {
-        index.map(|index| self.0.read().get(index).cloned())
+        index.map(|index| S::read(&self.0).get(index).cloned())
     }
 
-    pub fn remove<I>(&self, index: I) -> I::Output<Option<Value>>
+    pub fn remove<I>(&self, index: I) -> I::Output<Option<Value<S>>>
     where
         I: ListIndex,
     {
         index.map(|index| {
-            let mut list = self.0.write();
+            let mut list = S::write(&self.0);
 
             if index >= list.len() {
                 return None;
@@ -65,82 +64,82 @@ impl List {
         })
     }
 
-    pub fn extend(&self, values: Vec<Value>) {
-        self.0.write().extend(values);
+    pub fn extend(&self, values: Vec<Value<S>>) {
+        S::write(&self.0).extend(values);
     }
 
-    fn append_list(&self, list: &List) -> Result<()> {
-        let list = list.0.read().clone();
+    fn append_list(&self, list: &List<S>) -> Result<()> {
+        let list = S::read(&list.0).clone();
 
-        self.0.write().extend(list);
+        S::write(&self.0).extend(list);
 
         Ok(())
     }
 }
 
-impl Default for List {
+impl<S: Storage> Default for List<S> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl From<Vec<Value>> for List {
-    fn from(values: Vec<Value>) -> Self {
-        Self(RwArc::new(values))
+impl<S: Storage> From<Vec<Value<S>>> for List<S> {
+    fn from(values: Vec<Value<S>>) -> Self {
+        Self(S::new_read_write(values))
     }
 }
 
-impl IntoIterator for List {
-    type Item = Value;
-    type IntoIter = Iter;
+impl<S: Storage> IntoIterator for List<S> {
+    type Item = Value<S>;
+    type IntoIter = Iter<S>;
 
     fn into_iter(self) -> Self::IntoIter {
         Iter::new(self)
     }
 }
 
-impl IntoIterator for &List {
-    type Item = Value;
-    type IntoIter = Iter;
+impl<S: Storage> IntoIterator for &List<S> {
+    type Item = Value<S>;
+    type IntoIter = Iter<S>;
 
     fn into_iter(self) -> Self::IntoIter {
         Iter::new(self.clone())
     }
 }
 
-pub struct ReadListGuard<'a> {
-    list: RwLockReadGuard<'a, Vec<Value>>,
+pub struct ReadListGuard<'a, S: Storage> {
+    list: S::Read<'a, Vec<Value<S>>>,
 }
 
-impl<'a> ReadListGuard<'a> {
-    fn new(list: &'a List) -> Self {
-        let list = list.0.read();
+impl<'a, S: Storage> ReadListGuard<'a, S> {
+    fn new(list: &'a List<S>) -> Self {
+        let list = S::read(&list.0);
 
         Self { list }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Value> {
+    pub fn iter(&self) -> impl Iterator<Item = &Value<S>> {
         self.list.iter()
     }
 }
 
-impl<'a> IntoIterator for &'a ReadListGuard<'a> {
-    type Item = &'a Value;
-    type IntoIter = std::slice::Iter<'a, Value>;
+impl<'a, S: Storage> IntoIterator for &'a ReadListGuard<'a, S> {
+    type Item = &'a Value<S>;
+    type IntoIter = std::slice::Iter<'a, Value<S>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.list.iter()
     }
 }
 
-pub struct Iter {
-    list: List,
+pub struct Iter<S: Storage> {
+    list: List<S>,
     index: usize,
     max_len: usize,
 }
 
-impl Iter {
-    fn new(list: List) -> Self {
+impl<S: Storage> Iter<S> {
+    fn new(list: List<S>) -> Self {
         Iter {
             max_len: list.len(),
             list,
@@ -149,11 +148,11 @@ impl Iter {
     }
 }
 
-impl Iterator for Iter {
-    type Item = Value;
+impl<S: Storage> Iterator for Iter<S> {
+    type Item = Value<S>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let vec = self.list.0.read();
+        let vec = S::read(&self.list.0);
 
         // This prevents appending a list to itself from ending up in an endless loop
         if self.index >= self.max_len {
@@ -172,9 +171,9 @@ impl Iterator for Iter {
     }
 }
 
-impl<V> FromIterator<V> for List
+impl<V, S: Storage> FromIterator<V> for List<S>
 where
-    V: Into<Value>,
+    V: Into<Value<S>>,
 {
     fn from_iter<I: IntoIterator<Item = V>>(iter: I) -> Self {
         // TODO: consider iterator size_hint
@@ -190,13 +189,13 @@ where
     }
 }
 
-impl fmt::Debug for List {
+impl<S: Storage> fmt::Debug for List<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
 }
 
-impl PartialEq for List {
+impl<S: Storage> PartialEq for List<S> {
     fn eq(&self, other: &Self) -> bool {
         self.iter().zip(other).all(|(v1, v2)| v1 == v2)
     }
@@ -221,7 +220,7 @@ impl ListIndex for usize {
     }
 }
 
-impl ListIndex for Value {
+impl<S: Storage> ListIndex for Value<S> {
     type Output<T> = Result<T>;
 
     fn map<F, T>(self, f: F) -> Self::Output<T>
@@ -234,7 +233,7 @@ impl ListIndex for Value {
     }
 }
 
-impl ListIndex for &Value {
+impl<S: Storage> ListIndex for &Value<S> {
     type Output<T> = Result<T>;
 
     fn map<F, T>(self, f: F) -> Self::Output<T>

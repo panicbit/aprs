@@ -7,9 +7,9 @@ use serde_with::{FromInto, serde_as};
 
 use crate::game::{
     ConnectName, GameData, HashedGameData, ItemId, LocationId, LocationInfo, MinimumVersions,
-    NetworkSlot, PickledVersion, SeedName, ServerOptions, SlotId, SlotName, TeamAndSlot,
+    NetworkSlot, PickledVersion, SeedName, ServerOptions, SlotId, TeamAndSlot,
 };
-use crate::pickle::Value;
+use crate::pickle::value::ArcValue;
 use crate::proto::common::NetworkVersion;
 
 #[serde_as]
@@ -17,7 +17,7 @@ use crate::proto::common::NetworkVersion;
 // #[serde(deny_unknown_fields)]
 pub struct MultiData {
     pub slot_info: Arc<BTreeMap<SlotId, NetworkSlot>>,
-    pub slot_data: Arc<BTreeMap<SlotId, Value>>,
+    pub slot_data: Arc<BTreeMap<SlotId, ArcValue>>,
     pub connect_names: BTreeMap<ConnectName, TeamAndSlot>,
     pub seed_name: SeedName,
     pub minimum_versions: MinimumVersions,
@@ -30,7 +30,7 @@ pub struct MultiData {
     pub spheres: Vec<BTreeMap<SlotId, Vec<LocationId>>>,
     pub precollected_items: BTreeMap<SlotId, Vec<ItemId>>,
     #[serde(flatten)]
-    pub rest: BTreeMap<String, Value>,
+    pub rest: BTreeMap<String, ArcValue>,
 }
 
 impl MultiData {

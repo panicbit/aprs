@@ -11,6 +11,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::game::{LocationId, TeamAndSlot};
 use crate::pickle::Value;
+use crate::pickle::value::storage;
 use crate::proto::client::{
     Bounce, ClientStatus, Connect, Get, GetDataPackage, LocationChecks, LocationScouts,
     Message as ClientMessage, Messages as ClientMessages, Say, Set, SetNotify, SetOperation,
@@ -24,6 +25,8 @@ use crate::proto::server::{
 };
 use crate::server::client::Client;
 use crate::server::event::Event;
+
+type S = storage::Arc;
 
 impl super::Server {
     pub async fn on_event(&mut self, event: Event) {
@@ -408,7 +411,7 @@ impl super::Server {
         let original_value = self.state.data_storage_get(&key).unwrap_or(default);
         let mut value = original_value.clone();
 
-        fn handle_op(current: Value, operation: SetOperation) -> Result<Value> {
+        fn handle_op(current: Value<S>, operation: SetOperation) -> Result<Value<S>> {
             Ok(match operation {
                 SetOperation::Default => current,
                 SetOperation::Replace(value) => value,

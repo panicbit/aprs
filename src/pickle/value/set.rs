@@ -1,65 +1,64 @@
 use std::fmt;
 
 use eyre::{Result, bail};
-use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 
 use crate::FnvIndexSet;
-use crate::pickle::value::rw_arc::RwArc;
+use crate::pickle::value::storage::Storage;
 
 use super::Value;
 
 #[derive(Clone)]
-pub struct Set(RwArc<FnvIndexSet<Value>>);
+pub struct Set<S: Storage>(S::ReadWrite<FnvIndexSet<Value<S>>>);
 
-impl Set {
+impl<S: Storage> Set<S> {
     pub fn new() -> Self {
-        Self(RwArc::new(FnvIndexSet::default()))
+        Self(S::new_read_write(FnvIndexSet::default()))
     }
 
-    pub fn insert(&self, key: impl Into<Value>) -> Result<()> {
+    pub fn insert(&self, key: impl Into<Value<S>>) -> Result<()> {
         let key = key.into();
 
         if !key.is_hashable() {
             bail!("key is not hashable: {key:?}");
         }
 
-        self.0.write().insert(key);
+        S::write(&self.0).insert(key);
 
         Ok(())
     }
 
     pub fn len(&self) -> usize {
-        self.0.read().len()
+        S::read(&self.0).len()
     }
 
-    pub fn get(&self, key: &Value) -> Option<Value> {
-        self.0.read().get(key).cloned()
+    pub fn get(&self, key: &Value<S>) -> Option<Value<S>> {
+        S::read(&self.0).get(key).cloned()
     }
 
-    pub fn contains(&self, key: Value) -> bool {
-        self.0.read().contains(&key)
+    pub fn contains(&self, key: Value<S>) -> bool {
+        S::read(&self.0).contains(&key)
     }
 
-    pub fn iter(&self) -> Iter {
+    pub fn iter(&self) -> Iter<S> {
         self.into_iter()
     }
 
-    pub fn read(&self) -> ReadSetGuard {
+    pub fn read(&self) -> ReadSetGuard<S> {
         ReadSetGuard::new(self)
     }
 
-    pub fn write(&self) -> WriteSetGuard {
+    pub fn write(&self) -> WriteSetGuard<S> {
         WriteSetGuard::new(self)
     }
 }
 
-impl Default for Set {
+impl<S: Storage> Default for Set<S> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl PartialEq for Set {
+impl<S: Storage> PartialEq for Set<S> {
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
             return false;
@@ -81,62 +80,62 @@ impl PartialEq for Set {
     }
 }
 
-impl fmt::Debug for Set {
+impl<S: Storage> fmt::Debug for Set<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self).finish()
     }
 }
 
-impl IntoIterator for Set {
-    type Item = Value;
-    type IntoIter = Iter;
+impl<S: Storage> IntoIterator for Set<S> {
+    type Item = Value<S>;
+    type IntoIter = Iter<S>;
 
     fn into_iter(self) -> Self::IntoIter {
         Iter::new(self)
     }
 }
 
-impl IntoIterator for &Set {
-    type Item = Value;
-    type IntoIter = Iter;
+impl<S: Storage> IntoIterator for &Set<S> {
+    type Item = Value<S>;
+    type IntoIter = Iter<S>;
 
     fn into_iter(self) -> Self::IntoIter {
         Iter::new(self.clone())
     }
 }
 
-pub struct ReadSetGuard<'a> {
-    set: RwLockReadGuard<'a, FnvIndexSet<Value>>,
+pub struct ReadSetGuard<'a, S: Storage> {
+    set: S::Read<'a, FnvIndexSet<Value<S>>>,
 }
 
-impl<'a> ReadSetGuard<'a> {
-    fn new(set: &'a Set) -> Self {
-        let set = set.0.read();
+impl<'a, S: Storage> ReadSetGuard<'a, S> {
+    fn new(set: &'a Set<S>) -> Self {
+        let set = S::read(&set.0);
 
         Self { set }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Value> {
+    pub fn iter(&self) -> impl Iterator<Item = &Value<S>> {
         self.set.iter()
     }
 }
 
-pub struct WriteSetGuard<'a> {
-    set: RwLockWriteGuard<'a, FnvIndexSet<Value>>,
+pub struct WriteSetGuard<'a, S: Storage> {
+    set: S::Write<'a, FnvIndexSet<Value<S>>>,
 }
 
-impl<'a> WriteSetGuard<'a> {
-    fn new(set: &'a Set) -> Self {
-        let set = set.0.write();
+impl<'a, S: Storage> WriteSetGuard<'a, S> {
+    fn new(set: &'a Set<S>) -> Self {
+        let set = S::write(&set.0);
 
         Self { set }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Value> {
+    pub fn iter(&self) -> impl Iterator<Item = &Value<S>> {
         self.set.iter()
     }
 
-    pub fn insert(&mut self, key: Value) -> Result<()> {
+    pub fn insert(&mut self, key: Value<S>) -> Result<()> {
         if !key.is_hashable() {
             bail!("key is not hashable: {key:?}");
         }
@@ -147,14 +146,14 @@ impl<'a> WriteSetGuard<'a> {
     }
 }
 
-pub struct Iter {
-    set: Set,
+pub struct Iter<S: Storage> {
+    set: Set<S>,
     index: usize,
     max_len: usize,
 }
 
-impl Iter {
-    fn new(set: Set) -> Self {
+impl<S: Storage> Iter<S> {
+    fn new(set: Set<S>) -> Self {
         Self {
             max_len: set.len(),
             set,
@@ -163,11 +162,11 @@ impl Iter {
     }
 }
 
-impl Iterator for Iter {
-    type Item = Value;
+impl<S: Storage> Iterator for Iter<S> {
+    type Item = Value<S>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let vec = self.set.0.read();
+        let vec = S::read(&self.set.0);
 
         // This prevents appending a set to itself from ending up in an endless loop
         if self.index >= self.max_len {

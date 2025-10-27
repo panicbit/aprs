@@ -4,6 +4,8 @@ use std::{f64, fmt};
 use eyre::{Error, Result, bail};
 use num::{BigInt, FromPrimitive, ToPrimitive, Zero};
 
+use crate::pickle::value::storage::Storage;
+
 use super::Value;
 
 // TODO: ensure that all int types properly get represented as the smallest possible N type
@@ -215,10 +217,10 @@ impl From<f64> for Number {
     }
 }
 
-impl TryFrom<Value> for Number {
+impl<S: Storage> TryFrom<Value<S>> for Number {
     type Error = Error;
 
-    fn try_from(value: Value) -> Result<Self> {
+    fn try_from(value: Value<S>) -> Result<Self> {
         if let Value::Number(number) = value {
             Ok(number)
         } else {

@@ -3,15 +3,16 @@ use std::{fmt, slice};
 
 use eyre::{ContextCompat, Error, Result, bail};
 
+use crate::pickle::value::storage::Storage;
 use crate::pickle::value::{List, Value};
 
-type Iter<'a> = slice::Iter<'a, Value>;
+type Iter<'a, S> = slice::Iter<'a, Value<S>>;
 
 #[derive(PartialEq, Clone)]
 
-pub struct Tuple(Vec<Value>);
+pub struct Tuple<S: Storage>(Vec<Value<S>>);
 
-impl Tuple {
+impl<S: Storage> Tuple<S> {
     pub fn empty() -> Self {
         Self(Vec::new())
     }
@@ -24,34 +25,34 @@ impl Tuple {
         self.0.len()
     }
 
-    pub fn get(&self, index: usize) -> Option<&Value> {
+    pub fn get(&self, index: usize) -> Option<&Value<S>> {
         self.0.get(index)
     }
 
-    pub fn iter(&self) -> Iter {
+    pub fn iter(&self) -> Iter<S> {
         self.into_iter()
     }
 }
 
-impl From<Vec<Value>> for Tuple {
-    fn from(values: Vec<Value>) -> Self {
+impl<S: Storage> From<Vec<Value<S>>> for Tuple<S> {
+    fn from(values: Vec<Value<S>>) -> Self {
         Self(values)
     }
 }
 
-impl From<&List> for Tuple {
-    fn from(list: &List) -> Self {
-        list.read().iter().collect::<Tuple>()
+impl<S: Storage> From<&List<S>> for Tuple<S> {
+    fn from(list: &List<S>) -> Self {
+        list.read().iter().collect::<Tuple<S>>()
     }
 }
 
-impl From<List> for Tuple {
-    fn from(list: List) -> Self {
-        list.read().iter().collect::<Tuple>()
+impl<S: Storage> From<List<S>> for Tuple<S> {
+    fn from(list: List<S>) -> Self {
+        list.read().iter().collect::<Tuple<S>>()
     }
 }
 
-impl From<()> for Tuple {
+impl<S: Storage> From<()> for Tuple<S> {
     fn from(_: ()) -> Self {
         let tuple = Vec::new();
 
@@ -59,27 +60,27 @@ impl From<()> for Tuple {
     }
 }
 
-impl From<(Value,)> for Tuple {
-    fn from((v1,): (Value,)) -> Self {
+impl<S: Storage> From<(Value<S>,)> for Tuple<S> {
+    fn from((v1,): (Value<S>,)) -> Self {
         Self(vec![v1])
     }
 }
 
-impl From<(Value, Value)> for Tuple {
-    fn from((v1, v2): (Value, Value)) -> Self {
+impl<S: Storage> From<(Value<S>, Value<S>)> for Tuple<S> {
+    fn from((v1, v2): (Value<S>, Value<S>)) -> Self {
         Self(vec![v1, v2])
     }
 }
 
-impl From<(Value, Value, Value)> for Tuple {
-    fn from((v1, v2, v3): (Value, Value, Value)) -> Self {
+impl<S: Storage> From<(Value<S>, Value<S>, Value<S>)> for Tuple<S> {
+    fn from((v1, v2, v3): (Value<S>, Value<S>, Value<S>)) -> Self {
         Self(vec![v1, v2, v3])
     }
 }
 
-impl<V> FromIterator<V> for Tuple
+impl<V, S: Storage> FromIterator<V> for Tuple<S>
 where
-    V: Into<Value>,
+    V: Into<Value<S>>,
 {
     fn from_iter<I: IntoIterator<Item = V>>(iter: I) -> Self {
         let tuple = iter.into_iter().map(<_>::into).collect::<Vec<_>>();
@@ -88,7 +89,7 @@ where
     }
 }
 
-impl Hash for Tuple {
+impl<S: Storage> Hash for Tuple<S> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for value in &self.0 {
             value.hash(state).ok();
@@ -96,14 +97,14 @@ impl Hash for Tuple {
     }
 }
 
-impl<V1> TryFrom<&'_ Tuple> for (V1,)
+impl<V1, S: Storage> TryFrom<&'_ Tuple<S>> for (V1,)
 where
-    V1: TryFrom<Value>,
+    V1: TryFrom<Value<S>>,
     Error: From<V1::Error>,
 {
     type Error = Error;
 
-    fn try_from(tuple: &Tuple) -> Result<Self> {
+    fn try_from(tuple: &Tuple<S>) -> Result<Self> {
         if tuple.len() != 1 {
             bail!("expected tuple of length 1");
         }
@@ -115,15 +116,15 @@ where
     }
 }
 
-impl<V1, V2> TryFrom<&'_ Tuple> for (V1, V2)
+impl<V1, V2, S: Storage> TryFrom<&'_ Tuple<S>> for (V1, V2)
 where
-    V1: TryFrom<Value>,
-    V2: TryFrom<Value>,
+    V1: TryFrom<Value<S>>,
+    V2: TryFrom<Value<S>>,
     Error: From<V1::Error> + From<V2::Error>,
 {
     type Error = Error;
 
-    fn try_from(tuple: &Tuple) -> Result<Self> {
+    fn try_from(tuple: &Tuple<S>) -> Result<Self> {
         if tuple.len() != 2 {
             bail!("expected tuple of length 2");
         }
@@ -137,16 +138,16 @@ where
     }
 }
 
-impl<V1, V2, V3> TryFrom<&'_ Tuple> for (V1, V2, V3)
+impl<V1, V2, V3, S: Storage> TryFrom<&'_ Tuple<S>> for (V1, V2, V3)
 where
-    V1: TryFrom<Value>,
-    V2: TryFrom<Value>,
-    V3: TryFrom<Value>,
+    V1: TryFrom<Value<S>>,
+    V2: TryFrom<Value<S>>,
+    V3: TryFrom<Value<S>>,
     Error: From<V1::Error> + From<V2::Error> + From<V3::Error>,
 {
     type Error = Error;
 
-    fn try_from(tuple: &Tuple) -> Result<Self> {
+    fn try_from(tuple: &Tuple<S>) -> Result<Self> {
         if tuple.len() != 3 {
             bail!("expected tuple of length 3");
         }
@@ -162,17 +163,17 @@ where
     }
 }
 
-impl<V1, V2, V3, V4> TryFrom<&'_ Tuple> for (V1, V2, V3, V4)
+impl<V1, V2, V3, V4, S: Storage> TryFrom<&'_ Tuple<S>> for (V1, V2, V3, V4)
 where
-    V1: TryFrom<Value>,
-    V2: TryFrom<Value>,
-    V3: TryFrom<Value>,
-    V4: TryFrom<Value>,
+    V1: TryFrom<Value<S>>,
+    V2: TryFrom<Value<S>>,
+    V3: TryFrom<Value<S>>,
+    V4: TryFrom<Value<S>>,
     Error: From<V1::Error> + From<V2::Error> + From<V3::Error> + From<V4::Error>,
 {
     type Error = Error;
 
-    fn try_from(tuple: &Tuple) -> Result<Self> {
+    fn try_from(tuple: &Tuple<S>) -> Result<Self> {
         if tuple.len() != 4 {
             bail!("expected tuple of length 4");
         }
@@ -190,16 +191,16 @@ where
     }
 }
 
-impl<'a> IntoIterator for &'a Tuple {
-    type Item = &'a Value;
-    type IntoIter = Iter<'a>;
+impl<'a, S: Storage> IntoIterator for &'a Tuple<S> {
+    type Item = &'a Value<S>;
+    type IntoIter = Iter<'a, S>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
     }
 }
 
-impl fmt::Debug for Tuple {
+impl<S: Storage> fmt::Debug for Tuple<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut tuple = f.debug_tuple("");
 

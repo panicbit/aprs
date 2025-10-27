@@ -7,12 +7,14 @@ use tokio::sync::mpsc::Sender;
 use tracing::error;
 
 use crate::game::{ConnectName, ItemId, SlotId, SlotName, TeamId};
-use crate::pickle::value::Str;
+use crate::pickle::value::{Str, storage};
 use crate::proto;
 use crate::proto::client::ItemsHandling;
 use crate::proto::common::{Close, Control, ControlOrMessage};
 use crate::proto::server::NetworkItem;
 use crate::proto::server::{Message as ServerMessage, ReceivedItems};
+
+type S = storage::Arc;
 
 #[derive(Clone)]
 pub struct Client {
@@ -25,7 +27,7 @@ pub struct Client {
     pub team_id: TeamId,
     pub tags: FnvHashSet<String>,
     pub game: String,
-    pub wants_updates_for_keys: FnvHashSet<Str>,
+    pub wants_updates_for_keys: FnvHashSet<Str<S>>,
     starting_inventory: FnvHashSet<ItemId>,
     items_handling: ItemsHandling,
     next_slot_item_index: usize,

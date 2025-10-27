@@ -1,10 +1,12 @@
 use eyre::{Result, bail};
 
+use crate::pickle::value::Storage;
+
 use super::{Value, op};
 
-impl<'a, FindClass> super::Unpickler<'a, FindClass>
+impl<'a, FindClass, S: Storage> super::Unpickler<'a, FindClass, S>
 where
-    FindClass: FnMut(&str, &str) -> Result<Value>,
+    FindClass: FnMut(&str, &str) -> Result<Value<S>>,
 {
     pub fn dispatch(&mut self, op: u8) -> Result<()> {
         match op {

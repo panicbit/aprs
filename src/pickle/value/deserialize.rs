@@ -1,23 +1,24 @@
 use std::fmt;
+use std::marker::PhantomData;
 
 use serde::{Deserialize, de};
 
 use crate::pickle::Value;
-use crate::pickle::value::{Dict, List};
+use crate::pickle::value::{Dict, List, Storage};
 
-impl<'de> Deserialize<'de> for Value {
+impl<'de, S: Storage> Deserialize<'de> for Value<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_any(ValueVisitor)
+        deserializer.deserialize_any(ValueVisitor(PhantomData))
     }
 }
 
-struct ValueVisitor;
+struct ValueVisitor<S>(PhantomData<S>);
 
-impl<'de> de::Visitor<'de> for ValueVisitor {
-    type Value = Value;
+impl<'de, S: Storage> de::Visitor<'de> for ValueVisitor<S> {
+    type Value = Value<S>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Value")
@@ -151,7 +152,7 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
             .iter()
             .copied()
             .map(|byte| Value::number(byte))
-            .collect::<List>();
+            .collect::<List<S>>();
 
         Ok(Value::List(list))
     }
@@ -205,7 +206,7 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
     {
         let list = List::new();
 
-        while let Some(value) = seq.next_element::<Value>()? {
+        while let Some(value) = seq.next_element::<Value<S>>()? {
             list.push(value);
         }
 
@@ -218,7 +219,7 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
     {
         let dict = Dict::new();
 
-        while let Some((key, value)) = map.next_entry::<Value, Value>()? {
+        while let Some((key, value)) = map.next_entry::<Value<S>, Value<S>>()? {
             dict.insert(key, value).map_err(de::Error::custom)?;
         }
 

@@ -1,8 +1,6 @@
 use std::borrow::Cow;
-use std::fs;
 use std::fs::File;
 use std::io;
-use std::io::Write;
 use std::path::Path;
 
 use eyre::ContextCompat;
@@ -17,12 +15,15 @@ use tracing::warn;
 use crate::game::{LocationId, MultiData, SlotId, TeamId};
 use crate::pickle::Value;
 use crate::pickle::value::Str;
+use crate::pickle::value::storage;
 use crate::proto::server::NetworkItem;
+
+type S = storage::Arc;
 
 #[derive(Deserialize, Serialize)]
 pub struct State {
     slot_states: FnvHashMap<SlotId, SlotState>,
-    data_storage: FnvHashMap<Str, Value>,
+    data_storage: FnvHashMap<Str<S>, Value<S>>,
 }
 
 impl State {
@@ -71,15 +72,15 @@ impl State {
         self.slot_states.get_mut(&slot)
     }
 
-    pub fn data_storage_get(&self, key: &str) -> Option<Value> {
+    pub fn data_storage_get(&self, key: &str) -> Option<Value<S>> {
         self.data_storage.get(key).cloned()
     }
 
-    pub fn data_storage_set(&mut self, key: Str, value: impl Into<Value>) {
+    pub fn data_storage_set(&mut self, key: Str<S>, value: impl Into<Value<S>>) {
         self.data_storage.insert(key, value.into());
     }
 
-    pub fn get_hints(&self, team: TeamId, slot: SlotId) -> Option<Value> {
+    pub fn get_hints(&self, team: TeamId, slot: SlotId) -> Option<Value<S>> {
         // TODO: implement get hints
         warn!("TODO: implement get_hints");
         None

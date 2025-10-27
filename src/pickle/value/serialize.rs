@@ -1,10 +1,11 @@
 use serde::Serialize;
 
 use crate::pickle::Value;
+use crate::pickle::value::Storage;
 
 use super::number::N;
 
-impl Serialize for Value {
+impl<ST: Storage> Serialize for Value<ST> {
     fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

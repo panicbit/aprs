@@ -10,7 +10,7 @@ use tokio::sync::mpsc::Receiver;
 use tracing::{debug, error, info, warn};
 
 use crate::game::{MultiData, SlotId, TeamId};
-use crate::pickle::Value;
+use crate::pickle::value::ArcValue;
 use crate::proto::server::{Message, NetworkPlayer};
 use crate::server::state::State;
 
@@ -74,7 +74,7 @@ impl Server {
         }
     }
 
-    fn get_key(&self, key: &str) -> Option<Value> {
+    fn get_key(&self, key: &str) -> Option<ArcValue> {
         if let Some(key) = key.strip_prefix("_read_") {
             return self.get_special_key(key);
         }
@@ -82,7 +82,7 @@ impl Server {
         self.state.data_storage_get(key)
     }
 
-    fn get_special_key(&self, key: &str) -> Option<Value> {
+    fn get_special_key(&self, key: &str) -> Option<ArcValue> {
         if let Some(key) = key.strip_prefix("hints_") {
             return self.get_hints(key);
         }
@@ -112,27 +112,27 @@ impl Server {
         None
     }
 
-    fn get_item_name_groups(&self, key: &str) -> Option<Value> {
+    fn get_item_name_groups(&self, key: &str) -> Option<ArcValue> {
         warn!("TODO: implement get_item_name_groups");
         None
     }
 
-    fn get_location_name_groups(&self, key: &str) -> Option<Value> {
+    fn get_location_name_groups(&self, key: &str) -> Option<ArcValue> {
         warn!("TODO: implement get_location_name_groups");
         None
     }
 
-    fn get_client_status(&self, key: &str) -> Option<Value> {
+    fn get_client_status(&self, key: &str) -> Option<ArcValue> {
         warn!("TODO: implement get_client_status");
         None
     }
 
-    fn get_race_mode(&self, key: &str) -> Option<Value> {
+    fn get_race_mode(&self, key: &str) -> Option<ArcValue> {
         warn!("TODO: implement get_race_mode");
         None
     }
 
-    fn get_hints(&self, key: &str) -> Option<Value> {
+    fn get_hints(&self, key: &str) -> Option<ArcValue> {
         let (team, slot) = key.split_once("_")?;
         let team = team.parse::<i64>().map(TeamId).ok()?;
         let slot = slot.parse::<i64>().map(SlotId).ok()?;
@@ -142,7 +142,7 @@ impl Server {
         Some(hints)
     }
 
-    fn get_slot_data(&self, key: &str) -> Option<Value> {
+    fn get_slot_data(&self, key: &str) -> Option<ArcValue> {
         let slot = key.parse::<i64>().map(SlotId).ok()?;
 
         self.multi_data.slot_data.get(&slot).cloned()

@@ -10,7 +10,7 @@ use serde::Deserialize;
 use tracing::debug;
 
 use crate::FnvIndexMap;
-use crate::pickle::value::{Dict, Number, NumberCache, Str, Tuple};
+use crate::pickle::value::{Dict, Number, NumberCache, Storage, Str, Tuple};
 use crate::proto::server::print_json::HintStatus;
 
 pub mod value;
@@ -21,23 +21,24 @@ mod op;
 
 const HIGHEST_PROTOCOL: u8 = 5;
 
-pub fn from_value<D>(value: Value) -> Result<D>
+pub fn from_value<D, S>(value: Value<S>) -> Result<D>
 where
     D: for<'de> Deserialize<'de>,
+    S: Storage,
 {
     let value = D::deserialize(&value)?;
 
     Ok(value)
 }
 
-pub fn unpickle(data: &[u8]) -> Result<Value> {
+pub fn unpickle<S: Storage>(data: &[u8]) -> Result<Value<S>> {
     Unpickler::new(data, |module, name| {
         debug!("Trying to locate {module}.{name}");
 
         Ok(match (module, name) {
             ("NetUtils", "NetworkSlot") => Value::callable(|args| {
                 let (name, game, r#type, group_members) =
-                    <(Str, Str, Number, Value)>::try_from(args)?;
+                    <(Str<S>, Str<S>, Number, Value<S>)>::try_from(args)?;
 
                 let dict = Dict::new();
 
@@ -183,20 +184,20 @@ impl<'a> Unframer<'a> {
     }
 }
 
-struct Unpickler<'a, FindClass> {
+struct Unpickler<'a, FindClass, S: Storage> {
     unframer: Unframer<'a>,
     proto: u8,
-    stack: Vec<Value>,
-    meta_stack: Vec<Vec<Value>>,
-    memo: FnvIndexMap<Value, Value>,
-    number_cache: NumberCache,
+    stack: Vec<Value<S>>,
+    meta_stack: Vec<Vec<Value<S>>>,
+    memo: FnvIndexMap<Value<S>, Value<S>>,
+    number_cache: NumberCache<S>,
     find_class: FindClass,
-    result: Option<Value>,
+    result: Option<Value<S>>,
 }
 
-impl<'a, FindClass> Unpickler<'a, FindClass>
+impl<'a, FindClass, S: Storage> Unpickler<'a, FindClass, S>
 where
-    FindClass: FnMut(&str, &str) -> Result<Value>,
+    FindClass: FnMut(&str, &str) -> Result<Value<S>>,
 {
     fn new(data: &'a [u8], find_class: FindClass) -> Self {
         Self {
@@ -212,17 +213,17 @@ where
     }
 
     #[inline(never)]
-    fn push(&mut self, value: Value) {
+    fn push(&mut self, value: Value<S>) {
         self.stack.push(value);
     }
 
     #[inline(never)]
-    fn pop(&mut self) -> Option<Value> {
+    fn pop(&mut self) -> Option<Value<S>> {
         self.stack.pop()
     }
 
     #[inline(never)]
-    fn pop_mark(&mut self) -> Result<Vec<Value>> {
+    fn pop_mark(&mut self) -> Result<Vec<Value<S>>> {
         let new_stack = self.pop_meta()?;
         let stack = mem::replace(&mut self.stack, new_stack);
 
@@ -230,14 +231,14 @@ where
     }
 
     #[inline(never)]
-    fn pop_meta(&mut self) -> Result<Vec<Value>> {
+    fn pop_meta(&mut self) -> Result<Vec<Value<S>>> {
         self.meta_stack
             .pop()
             .context("tried to pop meta with empty meta stack")
     }
 
     #[inline(never)]
-    pub fn last(&self) -> Result<&Value> {
+    pub fn last(&self) -> Result<&Value<S>> {
         let value = self
             .stack
             .last()
@@ -247,7 +248,7 @@ where
     }
 
     #[inline(never)]
-    pub fn load(mut self) -> Result<Value> {
+    pub fn load(mut self) -> Result<Value<S>> {
         loop {
             let op = self.read_byte().context("read op")?;
 
@@ -651,7 +652,7 @@ where
     }
 }
 
-impl<'a, FindClass> Deref for Unpickler<'a, FindClass> {
+impl<'a, FindClass, S: Storage> Deref for Unpickler<'a, FindClass, S> {
     type Target = Unframer<'a>;
 
     fn deref(&self) -> &Self::Target {
@@ -659,7 +660,7 @@ impl<'a, FindClass> Deref for Unpickler<'a, FindClass> {
     }
 }
 
-impl<'a, FindClass> DerefMut for Unpickler<'a, FindClass> {
+impl<'a, FindClass, S: Storage> DerefMut for Unpickler<'a, FindClass, S> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.unframer
     }
