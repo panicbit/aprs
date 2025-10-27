@@ -18,7 +18,7 @@ impl<ST: Storage> Serialize for Value<ST> {
                 N::I64(n) => ser.serialize_i64(n),
                 N::I128(n) => ser.serialize_i128(n),
                 N::BigInt(ref n) => {
-                    if let Ok(n) = u128::try_from(n) {
+                    if let Ok(n) = u128::try_from(&**n) {
                         ser.serialize_u128(n)
                     } else {
                         ser.serialize_str(&n.to_string())

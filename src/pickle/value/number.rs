@@ -1,4 +1,5 @@
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 use std::{f64, fmt};
 
 use eyre::{Error, Result, bail};
@@ -242,7 +243,7 @@ impl PartialEq for Number {
 pub enum N {
     I64(i64),
     I128(i128),
-    BigInt(BigInt),
+    BigInt(Arc<BigInt>),
     F64(f64),
 }
 
@@ -278,7 +279,7 @@ impl From<u128> for N {
             return N::from(n);
         }
 
-        N::BigInt(n.into())
+        N::BigInt(Arc::new(n.into()))
     }
 }
 
@@ -298,7 +299,7 @@ impl From<BigInt> for N {
             return N::from(n);
         }
 
-        N::BigInt(n)
+        N::BigInt(Arc::new(n))
     }
 }
 
@@ -367,7 +368,7 @@ impl fmt::Debug for Number {
 enum Pair {
     I64(i64, i64),
     I128(i128, i128),
-    BigInt(BigInt, BigInt),
+    BigInt(Arc<BigInt>, Arc<BigInt>),
     F64(f64, f64),
 }
 
@@ -376,14 +377,14 @@ impl Pair {
         match (a.inner().clone(), b.inner().clone()) {
             (N::I64(a), N::I64(b)) => Self::I64(a, b),
             (N::I64(a), N::I128(b)) => Self::I128(a as i128, b),
-            (N::I64(a), N::BigInt(b)) => Self::BigInt(a.into(), b),
+            (N::I64(a), N::BigInt(b)) => Self::BigInt(Arc::new(a.into()), b),
             (N::I64(a), N::F64(b)) => Self::F64(a as f64, b),
             (N::I128(a), N::I64(b)) => Self::I128(a, b.into()),
             (N::I128(a), N::I128(b)) => Self::I128(a, b),
-            (N::I128(a), N::BigInt(b)) => Self::BigInt(a.into(), b),
+            (N::I128(a), N::BigInt(b)) => Self::BigInt(Arc::new(a.into()), b),
             (N::I128(a), N::F64(b)) => Self::F64(a as f64, b),
-            (N::BigInt(a), N::I64(b)) => Self::BigInt(a, b.into()),
-            (N::BigInt(a), N::I128(b)) => Self::BigInt(a, b.into()),
+            (N::BigInt(a), N::I64(b)) => Self::BigInt(a, Arc::new(b.into())),
+            (N::BigInt(a), N::I128(b)) => Self::BigInt(a, Arc::new(b.into())),
             (N::BigInt(a), N::BigInt(b)) => Self::BigInt(a, b),
             (N::BigInt(a), N::F64(b)) => Self::F64(a.to_f64().unwrap_or(f64::NAN), b),
             (N::F64(a), N::I64(b)) => Self::F64(a, b as f64),
@@ -402,8 +403,8 @@ impl Pair {
             Self::I128(a, b) => a
                 .checked_add(b)
                 .map(Number::from)
-                .unwrap_or_else(|| Self::BigInt(a.into(), b.into()).add()),
-            Self::BigInt(a, b) => Number::from(a + b),
+                .unwrap_or_else(|| Self::BigInt(Arc::new(a.into()), Arc::new(b.into())).add()),
+            Self::BigInt(a, b) => Number::from(&*a + &*b),
             Self::F64(a, b) => Number::from(a + b),
         }
     }
@@ -414,11 +415,10 @@ impl Pair {
                 .checked_sub(b)
                 .map(Number::from)
                 .unwrap_or_else(|| Self::I128(a as i128, b as i128).sub()),
-            Self::I128(a, b) => a
-                .checked_sub(b)
-                .map(Number::from)
-                .unwrap_or_else(|| Self::BigInt(BigInt::from(a), BigInt::from(b)).sub()),
-            Self::BigInt(a, b) => Number::from(a - b),
+            Self::I128(a, b) => a.checked_sub(b).map(Number::from).unwrap_or_else(|| {
+                Self::BigInt(Arc::new(BigInt::from(a)), Arc::new(BigInt::from(b))).sub()
+            }),
+            Self::BigInt(a, b) => Number::from(&*a - &*b),
             Self::F64(a, b) => Number::from(a - b),
         }
     }
@@ -429,11 +429,10 @@ impl Pair {
                 .checked_mul(b)
                 .map(Number::from)
                 .unwrap_or_else(|| Self::I128(a as i128, b as i128).mul()),
-            Self::I128(a, b) => a
-                .checked_mul(b)
-                .map(Number::from)
-                .unwrap_or_else(|| Self::BigInt(BigInt::from(a), BigInt::from(b)).mul()),
-            Self::BigInt(a, b) => Number::from(a * b),
+            Self::I128(a, b) => a.checked_mul(b).map(Number::from).unwrap_or_else(|| {
+                Self::BigInt(Arc::new(BigInt::from(a)), Arc::new(BigInt::from(b))).mul()
+            }),
+            Self::BigInt(a, b) => Number::from(&*a * &*b),
             Self::F64(a, b) => Number::from(a * b),
         }
     }
@@ -457,7 +456,7 @@ impl Pair {
         Ok(match self {
             Pair::I64(a, b) => (a | b).into(),
             Pair::I128(a, b) => (a | b).into(),
-            Pair::BigInt(a, b) => (a | b).into(),
+            Pair::BigInt(a, b) => (&*a | &*b).into(),
             Pair::F64(_, _) => bail!("can't OR floats"),
         })
     }
@@ -466,7 +465,7 @@ impl Pair {
         Ok(match self {
             Pair::I64(a, b) => (a & b).into(),
             Pair::I128(a, b) => (a & b).into(),
-            Pair::BigInt(a, b) => (a & b).into(),
+            Pair::BigInt(a, b) => (&*a & &*b).into(),
             Pair::F64(_, _) => bail!("can't AND floats"),
         })
     }
