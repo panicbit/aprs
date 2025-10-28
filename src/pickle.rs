@@ -211,17 +211,14 @@ where
         }
     }
 
-    #[inline(never)]
     fn push(&mut self, value: Value<S>) {
         self.stack.push(value);
     }
 
-    #[inline(never)]
     fn pop(&mut self) -> Option<Value<S>> {
         self.stack.pop()
     }
 
-    #[inline(never)]
     fn pop_mark(&mut self) -> Result<Vec<Value<S>>> {
         let new_stack = self.pop_meta()?;
         let stack = mem::replace(&mut self.stack, new_stack);
@@ -229,14 +226,12 @@ where
         Ok(stack)
     }
 
-    #[inline(never)]
     fn pop_meta(&mut self) -> Result<Vec<Value<S>>> {
         self.meta_stack
             .pop()
             .context("tried to pop meta with empty meta stack")
     }
 
-    #[inline(never)]
     pub fn last(&self) -> Result<&Value<S>> {
         let value = self
             .stack
@@ -246,7 +241,6 @@ where
         Ok(value)
     }
 
-    #[inline(never)]
     pub fn load(mut self) -> Result<Value<S>> {
         loop {
             let op = self.read_byte().context("read op")?;
@@ -259,7 +253,6 @@ where
         }
     }
 
-    #[inline(never)]
     pub fn load_mark(&mut self) -> Result<()> {
         let stack = mem::take(&mut self.stack);
 
@@ -268,7 +261,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_stop(&mut self) -> Result<()> {
         let value = self.pop().context("empty stack")?;
 
@@ -277,7 +269,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_reduce(&mut self) -> Result<()> {
         let args = self
             .pop()
@@ -296,7 +287,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_binint(&mut self) -> Result<()> {
         let value = self.read_i32()?;
         let value = Value::Number(value.into());
@@ -306,7 +296,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_binint1(&mut self) -> Result<()> {
         let value = self.read_byte()?;
         let value = Value::Number(value.into());
@@ -316,7 +305,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_binint2(&mut self) -> Result<()> {
         let value = self.read_u16()?;
         let value = Value::Number(value.into());
@@ -326,14 +314,12 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_none(&mut self) -> Result<()> {
         self.stack.push(Value::none());
 
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_binunicode(&mut self) -> Result<()> {
         let len = self.read_u32()?;
         let len = usize::try_from(len)?;
@@ -346,7 +332,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_append(&mut self) -> Result<()> {
         let value = self.pop().context("stack is empty")?;
         let list = self.last().context("stack too small")?;
@@ -358,7 +343,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_empty_dict(&mut self) -> Result<()> {
         let value = Value::empty_dict();
 
@@ -367,7 +351,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_appends(&mut self) -> Result<()> {
         let items = self.pop_mark()?;
         // TODO: cast to list here? are non-list types supported?
@@ -379,7 +362,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_binget(&mut self) -> Result<()> {
         let index = self.read_byte()?;
         let index = Value::Number(index.into());
@@ -395,7 +377,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_long_binget(&mut self) -> Result<()> {
         let index = self.read_u32()?;
         let index = Value::Number(index.into());
@@ -411,14 +392,12 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_empty_list(&mut self) -> Result<()> {
         self.stack.push(Value::empty_list());
 
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_setitem(&mut self) -> Result<()> {
         let value = self.pop().context("empty stack")?;
         let key = self.pop().context("empty stack")?;
@@ -430,7 +409,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_tuple(&mut self) -> Result<()> {
         let items = self.pop_mark()?;
         let tuple = Value::tuple(SmallVec::from(items));
@@ -440,7 +418,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_newobj(&mut self) -> Result<()> {
         let args = self.pop().context("empty stack")?;
         let class = self.pop().context("empty stack")?;
@@ -453,14 +430,12 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn empty_tuple(&mut self) -> Result<()> {
         self.stack.push(Value::empty_tuple());
 
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_setitems(&mut self) -> Result<()> {
         let items = self.pop_mark()?;
         let dict = self.last()?;
@@ -475,7 +450,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_binfloat(&mut self) -> Result<()> {
         let value = self.read_f64()?;
         let value = Value::from(value);
@@ -485,7 +459,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_proto(&mut self) -> Result<()> {
         let proto = self.read_byte()?;
 
@@ -498,7 +471,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_tuple1(&mut self) -> Result<()> {
         let v1 = self
             .pop()
@@ -511,7 +483,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_tuple2(&mut self) -> Result<()> {
         let v2 = self
             .pop()
@@ -527,7 +498,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_tuple3(&mut self) -> Result<()> {
         let v3 = self
             .pop()
@@ -546,21 +516,18 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_newtrue(&mut self) -> Result<()> {
         self.push(Value::True());
 
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_newfalse(&mut self) -> Result<()> {
         self.push(Value::False());
 
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_long1(&mut self) -> Result<()> {
         let len = self.read_byte()?;
         let len = usize::from(len);
@@ -573,7 +540,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_short_binunicode(&mut self) -> Result<()> {
         let len = self.read_byte()?;
         let len = usize::from(len);
@@ -588,14 +554,12 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_empty_set(&mut self) -> Result<()> {
         self.push(Value::empty_set());
 
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_additems(&mut self) -> Result<()> {
         let items = self.pop_mark()?;
         let set_obj = self.stack.last().context("empty stack")?;
@@ -609,7 +573,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_stack_global(&mut self) -> Result<()> {
         let name = self.pop().context("stack global pop from empty stack")?;
         let name = name.as_str().context("stack global name is not a str")?;
@@ -630,7 +593,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_memoize(&mut self) -> Result<()> {
         let key = self.memo.len();
         let key = Value::Number(key.into());
@@ -641,7 +603,6 @@ where
         Ok(())
     }
 
-    #[inline(never)]
     pub fn load_frame(&mut self) -> Result<()> {
         let frame_size = self.read_u64()?;
 
