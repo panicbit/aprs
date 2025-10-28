@@ -2,8 +2,8 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
-use std::rc;
 use std::sync;
+use std::{ptr, rc};
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
@@ -77,13 +77,19 @@ pub trait SameAs {
 
 impl<T: ?Sized> SameAs for rc::Rc<T> {
     fn same_as(&self, other: &Self) -> bool {
-        rc::Rc::as_ptr(self) == rc::Rc::as_ptr(other)
+        let a = rc::Rc::as_ptr(self);
+        let b = rc::Rc::as_ptr(other);
+
+        ptr::addr_eq(a, b)
     }
 }
 
 impl<T: ?Sized> SameAs for sync::Arc<T> {
     fn same_as(&self, other: &Self) -> bool {
-        sync::Arc::as_ptr(self) == sync::Arc::as_ptr(other)
+        let a = sync::Arc::as_ptr(self);
+        let b = sync::Arc::as_ptr(other);
+
+        ptr::addr_eq(a, b)
     }
 }
 
