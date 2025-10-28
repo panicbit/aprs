@@ -4,7 +4,7 @@ use eyre::{Result, bail};
 use tracing::warn;
 
 use crate::FnvIndexSet;
-use crate::pickle::value::storage::Storage;
+use crate::pickle::value::storage::{SameAs, Storage};
 
 use super::Value;
 
@@ -28,20 +28,12 @@ impl<S: Storage> Set<S> {
         Ok(())
     }
 
-    pub fn len(&self) -> usize {
-        S::read(&self.0).len()
-    }
-
     pub fn get(&self, key: &Value<S>) -> Option<Value<S>> {
         S::read(&self.0).get(key).cloned()
     }
 
     pub fn contains(&self, key: Value<S>) -> bool {
         S::read(&self.0).contains(&key)
-    }
-
-    pub fn iter(&self) -> Iter<S> {
-        self.into_iter()
     }
 
     pub fn read(&self) -> ReadSetGuard<S> {
@@ -61,47 +53,20 @@ impl<S: Storage> Default for Set<S> {
 
 impl<S: Storage> PartialEq for Set<S> {
     fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            return false;
+        if self.0.same_as(&other.0) {
+            return true;
         }
 
-        for key in self {
-            if !other.contains(key) {
-                return false;
-            }
-        }
+        let this = self.read();
+        let other = other.read();
 
-        for key in other {
-            if !self.contains(key) {
-                return false;
-            }
-        }
-
-        true
+        *this.set == *other.set
     }
 }
 
 impl<S: Storage> fmt::Debug for Set<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_set().entries(self).finish()
-    }
-}
-
-impl<S: Storage> IntoIterator for Set<S> {
-    type Item = Value<S>;
-    type IntoIter = Iter<S>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        Iter::new(self)
-    }
-}
-
-impl<S: Storage> IntoIterator for &Set<S> {
-    type Item = Value<S>;
-    type IntoIter = Iter<S>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        Iter::new(self.clone())
+        f.debug_set().entries(self.read().iter()).finish()
     }
 }
 
@@ -118,6 +83,10 @@ impl<'a, S: Storage> ReadSetGuard<'a, S> {
 
     pub fn iter(&self) -> impl Iterator<Item = &Value<S>> {
         self.set.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.set.len()
     }
 }
 
@@ -158,44 +127,5 @@ impl<'a, S: Storage> WriteSetGuard<'a, S> {
         });
 
         self.set.extend(items);
-    }
-}
-
-pub struct Iter<S: Storage> {
-    set: Set<S>,
-    index: usize,
-    max_len: usize,
-}
-
-impl<S: Storage> Iter<S> {
-    fn new(set: Set<S>) -> Self {
-        Self {
-            max_len: set.len(),
-            set,
-            index: 0,
-        }
-    }
-}
-
-impl<S: Storage> Iterator for Iter<S> {
-    type Item = Value<S>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let vec = S::read(&self.set.0);
-
-        // This prevents appending a set to itself from ending up in an endless loop
-        if self.index >= self.max_len {
-            return None;
-        }
-
-        let value = vec.get_index(self.index)?.clone();
-
-        self.index += 1;
-
-        Some(value)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(self.max_len - self.index.min(self.max_len)))
     }
 }
