@@ -2,9 +2,9 @@ use serde::de::value::{MapDeserializer, SeqDeserializer, StrDeserializer};
 use serde::de::{IntoDeserializer, Visitor};
 use serde::{Deserializer, forward_to_deserialize_any};
 
-use crate::pickle::value::Storage;
 use crate::pickle::value::number::N;
 use crate::pickle::value::serde_error::SerdeError;
+use crate::pickle::value::{Storage, dict, set};
 
 use super::Value;
 
@@ -122,6 +122,102 @@ impl<'de, S: Storage> Deserializer<'de> for &Value<S> {
 }
 
 impl<S: Storage> IntoDeserializer<'_, SerdeError> for &Value<S> {
+    type Deserializer = Self;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        self
+    }
+}
+
+impl<'de, S: Storage> Deserializer<'de> for dict::Key<'_, S> {
+    type Error = SerdeError;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            dict::Key::Value(value) => value.deserialize_any(visitor),
+            dict::Key::Int64(n) => visitor.visit_i64(n),
+        }
+    }
+
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
+
+    fn deserialize_tuple_struct<V>(
+        self,
+        _name: &'static str,
+        _len: usize,
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_map(visitor)
+    }
+
+    forward_to_deserialize_any! {
+        enum option
+        bool i8 i16 i32 i64 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf unit unit_struct seq struct
+        map identifier ignored_any tuple
+    }
+}
+
+impl<S: Storage> IntoDeserializer<'_, SerdeError> for dict::Key<'_, S> {
+    type Deserializer = Self;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        self
+    }
+}
+
+impl<'de, S: Storage> Deserializer<'de> for set::Item<'_, S> {
+    type Error = SerdeError;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            set::Item::Value(value) => value.deserialize_any(visitor),
+            set::Item::Int64(n) => visitor.visit_i64(n),
+        }
+    }
+
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
+
+    fn deserialize_tuple_struct<V>(
+        self,
+        _name: &'static str,
+        _len: usize,
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_map(visitor)
+    }
+
+    forward_to_deserialize_any! {
+        enum option
+        bool i8 i16 i32 i64 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf unit unit_struct seq struct
+        map identifier ignored_any tuple
+    }
+}
+
+impl<S: Storage> IntoDeserializer<'_, SerdeError> for set::Item<'_, S> {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {

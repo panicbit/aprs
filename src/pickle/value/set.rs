@@ -4,36 +4,27 @@ use eyre::{Result, bail};
 use tracing::warn;
 
 use crate::FnvIndexSet;
+use crate::pickle::value::Number;
+use crate::pickle::value::number::N;
 use crate::pickle::value::storage::{SameAs, Storage};
 
 use super::Value;
 
 #[derive(Clone)]
-pub struct Set<S: Storage>(S::ReadWrite<FnvIndexSet<Value<S>>>);
+pub struct Set<S: Storage>(S::ReadWrite<Inner<S>>);
+
+#[derive(PartialEq)]
+struct Inner<S: Storage> {
+    value_set: FnvIndexSet<Value<S>>,
+    int_set: FnvIndexSet<i64>,
+}
 
 impl<S: Storage> Set<S> {
     pub fn new() -> Self {
-        Self(S::new_read_write(FnvIndexSet::default()))
-    }
-
-    pub fn insert(&self, key: impl Into<Value<S>>) -> Result<()> {
-        let key = key.into();
-
-        if !key.is_hashable() {
-            bail!("key is not hashable: {key:?}");
-        }
-
-        S::write(&self.0).insert(key);
-
-        Ok(())
-    }
-
-    pub fn get(&self, key: &Value<S>) -> Option<Value<S>> {
-        S::read(&self.0).get(key).cloned()
-    }
-
-    pub fn contains(&self, key: Value<S>) -> bool {
-        S::read(&self.0).contains(&key)
+        Self(S::new_read_write(Inner {
+            value_set: <_>::default(),
+            int_set: <_>::default(),
+        }))
     }
 
     pub fn read(&self) -> ReadSetGuard<S> {
@@ -42,6 +33,46 @@ impl<S: Storage> Set<S> {
 
     pub fn write(&self) -> WriteSetGuard<S> {
         WriteSetGuard::new(self)
+    }
+}
+
+impl<S: Storage> Inner<S> {
+    fn insert(&mut self, key: impl Into<Value<S>>) -> Result<()> {
+        let key = key.into();
+
+        if !key.is_hashable() {
+            bail!("set key is not hashable: {key:?}");
+        }
+
+        match key {
+            Value::Number(Number(N::I64(key))) => {
+                self.int_set.insert(key);
+            }
+            _ => {
+                self.value_set.insert(key);
+            }
+        };
+
+        Ok(())
+    }
+
+    fn iter(&self) -> impl Iterator<Item = Item<S>> {
+        let value_set = self.value_set.iter().map(Item::Value);
+        let int_set = self.int_set.iter().copied().map(Item::Int64);
+
+        value_set.chain(int_set)
+    }
+
+    fn len(&self) -> usize {
+        self.value_set.len()
+    }
+
+    fn extend(&mut self, items: impl IntoIterator<Item = Value<S>>) {
+        for item in items.into_iter() {
+            if let Err(err) = self.insert(item) {
+                warn!("{err}");
+            }
+        }
     }
 }
 
@@ -60,7 +91,7 @@ impl<S: Storage> PartialEq for Set<S> {
         let this = self.read();
         let other = other.read();
 
-        *this.set == *other.set
+        *this.inner == *other.inner
     }
 }
 
@@ -71,61 +102,60 @@ impl<S: Storage> fmt::Debug for Set<S> {
 }
 
 pub struct ReadSetGuard<'a, S: Storage> {
-    set: S::Read<'a, FnvIndexSet<Value<S>>>,
+    inner: S::Read<'a, Inner<S>>,
 }
 
 impl<'a, S: Storage> ReadSetGuard<'a, S> {
     fn new(set: &'a Set<S>) -> Self {
         let set = S::read(&set.0);
 
-        Self { set }
+        Self { inner: set }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Value<S>> {
-        self.set.iter()
+    pub fn iter(&self) -> impl Iterator<Item = Item<S>> {
+        self.inner.iter()
     }
 
     pub fn len(&self) -> usize {
-        self.set.len()
+        self.inner.len()
     }
 }
 
 pub struct WriteSetGuard<'a, S: Storage> {
-    set: S::Write<'a, FnvIndexSet<Value<S>>>,
+    inner: S::Write<'a, Inner<S>>,
 }
 
 impl<'a, S: Storage> WriteSetGuard<'a, S> {
     fn new(set: &'a Set<S>) -> Self {
-        let set = S::write(&set.0);
+        let inner = S::write(&set.0);
 
-        Self { set }
+        Self { inner }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Value<S>> {
-        self.set.iter()
+    pub fn iter(&self) -> impl Iterator<Item = Item<S>> {
+        self.inner.iter()
     }
 
     pub fn insert(&mut self, key: Value<S>) -> Result<()> {
-        if !key.is_hashable() {
-            bail!("key is not hashable: {key:?}");
-        }
-
-        self.set.insert(key);
-
-        Ok(())
+        self.inner.insert(key)
     }
 
     pub fn extend(&mut self, items: impl IntoIterator<Item = Value<S>>) {
-        let items = items.into_iter().filter(|item| {
-            if !item.is_hashable() {
-                warn!("set item is not hashable: {item:#?}");
+        self.inner.extend(items)
+    }
+}
 
-                return false;
-            }
+#[derive(Clone, Debug)]
+pub enum Item<'a, S: Storage> {
+    Value(&'a Value<S>),
+    Int64(i64),
+}
 
-            true
-        });
-
-        self.set.extend(items);
+impl<S: Storage> From<Item<'_, S>> for Value<S> {
+    fn from(key: Item<'_, S>) -> Self {
+        match key {
+            Item::Value(value) => value.clone(),
+            Item::Int64(value) => Value::Number(value.into()),
+        }
     }
 }

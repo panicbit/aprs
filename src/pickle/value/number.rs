@@ -12,7 +12,7 @@ use super::Value;
 // TODO: ensure that all int types properly get represented as the smallest possible N type
 
 #[derive(Clone)]
-pub struct Number(N);
+pub struct Number(pub(crate) N);
 
 impl Number {
     // not public because construction of N needs to uphold its laws

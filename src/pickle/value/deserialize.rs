@@ -6,7 +6,7 @@ use serde::{Deserialize, de};
 
 use crate::FnvIndexMap;
 use crate::pickle::Value;
-use crate::pickle::value::{List, Storage};
+use crate::pickle::value::{Dict, List, Storage};
 
 impl<'de, S: Storage> Deserialize<'de> for Value<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -220,11 +220,14 @@ impl<'de, S: Storage> de::Visitor<'de> for ValueVisitor<S> {
     where
         A: de::MapAccess<'de>,
     {
-        let size_hint = map.size_hint().unwrap_or(0);
-        let mut dict = FnvIndexMap::with_capacity_and_hasher(size_hint, BuildHasherDefault::new());
+        let dict = Dict::new();
 
-        while let Some((key, value)) = map.next_entry::<Value<S>, Value<S>>()? {
-            dict.insert(key, value);
+        {
+            let mut dict = dict.write();
+
+            while let Some((key, value)) = map.next_entry::<Value<S>, Value<S>>()? {
+                dict.insert(key, value);
+            }
         }
 
         Ok(Value::Dict(dict.into()))

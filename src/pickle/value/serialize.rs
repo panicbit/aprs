@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::pickle::Value;
-use crate::pickle::value::Storage;
+use crate::pickle::value::{Storage, dict, set};
 
 use super::number::N;
 
@@ -31,6 +31,30 @@ impl<ST: Storage> Serialize for Value<ST> {
             Value::Callable(callable) => ser.serialize_str(&format!("{callable:?}")),
             Value::None(_) => ser.serialize_none(),
             Value::Set(set) => ser.collect_seq(set.read().iter()),
+        }
+    }
+}
+
+impl<ST: Storage> Serialize for dict::Key<'_, ST> {
+    fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            dict::Key::Value(value) => value.serialize(ser),
+            dict::Key::Int64(n) => ser.serialize_i64(*n),
+        }
+    }
+}
+
+impl<ST: Storage> Serialize for set::Item<'_, ST> {
+    fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            set::Item::Value(value) => value.serialize(ser),
+            set::Item::Int64(n) => ser.serialize_i64(*n),
         }
     }
 }

@@ -43,11 +43,14 @@ pub fn unpickle<S: Storage>(data: &[u8]) -> Result<Value<S>> {
 
                 let dict = Dict::new();
 
-                dict.insert("__class", "NetworkSlot")?;
-                dict.insert("name", name)?;
-                dict.insert("game", game)?;
-                dict.insert("type", r#type)?;
-                dict.insert("group_members", group_members)?;
+                {
+                    let mut dict = dict.write();
+                    dict.insert("__class", "NetworkSlot")?;
+                    dict.insert("name", name)?;
+                    dict.insert("game", game)?;
+                    dict.insert("type", r#type)?;
+                    dict.insert("group_members", group_members)?;
+                }
 
                 Ok(dict.into())
             }),
@@ -404,7 +407,7 @@ where
         let dict = self.last().context("empty stack")?;
         let dict = dict.as_dict()?;
 
-        dict.insert(key, value)?;
+        dict.write().insert(key, value)?;
 
         Ok(())
     }

@@ -4,34 +4,30 @@ use eyre::{Result, bail};
 use tracing::warn;
 
 use crate::FnvIndexMap;
+use crate::pickle::value::Number;
+use crate::pickle::value::number::N;
 use crate::pickle::value::storage::{SameAs, Storage};
 
 use super::Value;
 
-type Map<S> = FnvIndexMap<Value<S>, Value<S>>;
-
 #[derive(Clone)]
-pub struct Dict<S: Storage>(S::ReadWrite<Map<S>>);
+pub struct Dict<S: Storage>(S::ReadWrite<Inner<S>>);
+
+#[derive(PartialEq, Eq)]
+struct Inner<S: Storage> {
+    value_dict: FnvIndexMap<Value<S>, Value<S>>,
+    int_dict: FnvIndexMap<i64, Value<S>>,
+}
 
 impl<S> Dict<S>
 where
     S: Storage,
 {
     pub fn new() -> Self {
-        Self(S::new_read_write(Map::default()))
-    }
-
-    pub fn insert(&self, key: impl Into<Value<S>>, value: impl Into<Value<S>>) -> Result<()> {
-        let key = key.into();
-        let value = value.into();
-
-        if !key.is_hashable() {
-            bail!("key is not hashable: {key:#?}");
-        }
-
-        S::write(&self.0).insert(key, value);
-
-        Ok(())
+        Self(S::new_read_write(Inner {
+            value_dict: <_>::default(),
+            int_dict: <_>::default(),
+        }))
     }
 
     pub fn len(&self) -> usize {
@@ -54,7 +50,7 @@ where
         let mut this = self.write();
 
         for (key, value) in other.read().iter() {
-            let key = key.clone();
+            let key = Value::from(key);
             let value = value.clone();
 
             this.insert(key, value)?;
@@ -64,9 +60,54 @@ where
     }
 }
 
-impl<S: Storage> From<Map<S>> for Dict<S> {
-    fn from(value: Map<S>) -> Self {
-        Self(S::new_read_write(value))
+impl<S: Storage> Inner<S> {
+    fn len(&self) -> usize {
+        self.value_dict.len() + self.int_dict.len()
+    }
+
+    fn get(&self, key: &Value<S>) -> Option<&Value<S>> {
+        match &key {
+            Value::Number(Number(N::I64(key))) => self.int_dict.get(key),
+            _ => self.value_dict.get(key),
+        }
+    }
+
+    fn iter(&self) -> impl Iterator<Item = (Key<S>, &Value<S>)> {
+        let value_iter = self
+            .value_dict
+            .iter()
+            .map(|(key, value)| (Key::Value(key), value));
+        let int_iter = self
+            .int_dict
+            .iter()
+            .map(|(key, value)| (Key::Int64(*key), value));
+
+        value_iter.chain(int_iter)
+    }
+
+    fn insert(&mut self, key: impl Into<Value<S>>, value: impl Into<Value<S>>) -> Result<()> {
+        let key = key.into();
+
+        if !key.is_hashable() {
+            bail!("dict key is not hashable: {key:#?}");
+        }
+
+        let value = value.into();
+
+        match key {
+            Value::Number(Number(N::I64(key))) => self.int_dict.insert(key.into(), value),
+            _ => self.value_dict.insert(key, value),
+        };
+
+        Ok(())
+    }
+
+    fn extend(&mut self, items: impl IntoIterator<Item = (Value<S>, Value<S>)>) {
+        for (key, value) in items.into_iter() {
+            if let Err(err) = self.insert(key, value) {
+                warn!("{err}");
+            }
+        }
     }
 }
 
@@ -79,7 +120,7 @@ impl<S: Storage> PartialEq for Dict<S> {
         let this = self.read();
         let other = other.read();
 
-        *this.dict == *other.dict
+        *this.inner == *other.inner
     }
 }
 
@@ -96,61 +137,60 @@ impl<S: Storage> fmt::Debug for Dict<S> {
 }
 
 pub struct ReadDictGuard<'a, S: Storage> {
-    dict: S::Read<'a, Map<S>>,
+    inner: S::Read<'a, Inner<S>>,
 }
 
 impl<'a, S: Storage> ReadDictGuard<'a, S> {
     fn new(dict: &'a Dict<S>) -> Self {
-        let dict = S::read(&dict.0);
+        let inner = S::read(&dict.0);
 
-        Self { dict }
+        Self { inner }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&Value<S>, &Value<S>)> {
-        self.dict.iter()
+    pub fn iter(&self) -> impl Iterator<Item = (Key<S>, &Value<S>)> {
+        self.inner.iter()
     }
 
     pub fn len(&self) -> usize {
-        self.dict.len()
+        self.inner.len()
     }
 
     pub fn get(&self, key: &Value<S>) -> Option<&Value<S>> {
-        self.dict.get(key)
+        self.inner.get(key)
     }
 }
 
 pub struct WriteDictGuard<'a, S: Storage> {
-    dict: S::Write<'a, Map<S>>,
+    inner: S::Write<'a, Inner<S>>,
 }
 
 impl<'a, S: Storage> WriteDictGuard<'a, S> {
     fn new(dict: &'a Dict<S>) -> Self {
-        let dict = S::write(&dict.0);
+        let inner = S::write(&dict.0);
 
-        Self { dict }
+        Self { inner }
     }
 
-    pub fn insert(&mut self, key: Value<S>, value: Value<S>) -> Result<()> {
-        if !key.is_hashable() {
-            bail!("key is not hashable: {key:#?}");
-        }
-
-        self.dict.insert(key, value);
-
-        Ok(())
+    pub fn insert(&mut self, key: impl Into<Value<S>>, value: impl Into<Value<S>>) -> Result<()> {
+        self.inner.insert(key, value)
     }
 
     pub fn extend(&mut self, items: impl IntoIterator<Item = (Value<S>, Value<S>)>) {
-        let items = items.into_iter().filter(|(key, _)| {
-            if !key.is_hashable() {
-                warn!("dict key is not hashable: {key:#?}");
+        self.inner.extend(items);
+    }
+}
 
-                return false;
-            }
+#[derive(Clone, Debug)]
+pub enum Key<'a, S: Storage> {
+    Value(&'a Value<S>),
+    Int64(i64),
+}
 
-            true
-        });
-
-        self.dict.extend(items);
+impl<S: Storage> From<Key<'_, S>> for Value<S> {
+    fn from(key: Key<'_, S>) -> Self {
+        match key {
+            Key::Value(value) => value.clone(),
+            Key::Int64(value) => Value::Number(value.into()),
+        }
     }
 }
