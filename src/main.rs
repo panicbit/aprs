@@ -44,6 +44,10 @@ pub fn run() -> Result<()> {
     let load_time = load_start.elapsed();
     info!("Loading finished in {load_time:?}");
 
+    if cli.only_load {
+        return Ok(());
+    }
+
     let config = Config {
         listen_address: (Ipv4Addr::UNSPECIFIED, 18283).into(),
         state_path: cli.multiworld_path.with_extension("aprs.state"),
