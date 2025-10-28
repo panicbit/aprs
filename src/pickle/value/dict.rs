@@ -72,26 +72,14 @@ impl<S: Storage> From<Map<S>> for Dict<S> {
 
 impl<S: Storage> PartialEq for Dict<S> {
     fn eq(&self, other: &Self) -> bool {
+        if self.0.same_as(&other.0) {
+            return true;
+        }
+
         let this = self.read();
         let other = other.read();
 
-        if this.len() != other.len() {
-            return false;
-        }
-
-        for (key, value) in this.iter() {
-            if other.get(key) != Some(value) {
-                return false;
-            }
-        }
-
-        for (key, value) in other.iter() {
-            if this.get(key) != Some(value) {
-                return false;
-            }
-        }
-
-        true
+        *this.dict == *other.dict
     }
 }
 
