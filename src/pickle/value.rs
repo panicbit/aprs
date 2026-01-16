@@ -217,7 +217,7 @@ impl<S: Storage> Value<S> {
     pub fn to_usize(&self) -> Option<usize> {
         match self {
             Value::Number(number) => number.to_usize(),
-            _ => None,
+            _ => Option::None,
         }
     }
 }
