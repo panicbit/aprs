@@ -34,6 +34,10 @@ where
         S::read(&self.0).len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        S::read(&self.0).is_empty()
+    }
+
     pub fn read(&self) -> ReadDictGuard<'_, S> {
         ReadDictGuard::new(self)
     }
@@ -63,6 +67,10 @@ where
 impl<S: Storage> Inner<S> {
     fn len(&self) -> usize {
         self.value_dict.len() + self.int_dict.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     fn get(&self, key: &Value<S>) -> Option<&Value<S>> {

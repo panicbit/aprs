@@ -28,6 +28,10 @@ impl<S: Storage> Tuple<S> {
         self.0.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     pub fn get(&self, index: usize) -> Option<&Value<S>> {
         self.0.get(index)
     }
