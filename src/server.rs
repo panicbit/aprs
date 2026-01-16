@@ -112,22 +112,22 @@ impl Server {
         None
     }
 
-    fn get_item_name_groups(&self, key: &str) -> Option<ArcValue> {
+    fn get_item_name_groups(&self, _key: &str) -> Option<ArcValue> {
         warn!("TODO: implement get_item_name_groups");
         None
     }
 
-    fn get_location_name_groups(&self, key: &str) -> Option<ArcValue> {
+    fn get_location_name_groups(&self, _key: &str) -> Option<ArcValue> {
         warn!("TODO: implement get_location_name_groups");
         None
     }
 
-    fn get_client_status(&self, key: &str) -> Option<ArcValue> {
+    fn get_client_status(&self, _key: &str) -> Option<ArcValue> {
         warn!("TODO: implement get_client_status");
         None
     }
 
-    fn get_race_mode(&self, key: &str) -> Option<ArcValue> {
+    fn get_race_mode(&self, _key: &str) -> Option<ArcValue> {
         warn!("TODO: implement get_race_mode");
         None
     }

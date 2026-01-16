@@ -27,11 +27,11 @@ impl<S: Storage> Set<S> {
         }))
     }
 
-    pub fn read(&self) -> ReadSetGuard<S> {
+    pub fn read(&self) -> ReadSetGuard<'_, S> {
         ReadSetGuard::new(self)
     }
 
-    pub fn write(&self) -> WriteSetGuard<S> {
+    pub fn write(&self) -> WriteSetGuard<'_, S> {
         WriteSetGuard::new(self)
     }
 }
@@ -56,7 +56,7 @@ impl<S: Storage> Inner<S> {
         Ok(())
     }
 
-    fn iter(&self) -> impl Iterator<Item = Item<S>> {
+    fn iter(&self) -> impl Iterator<Item = Item<'_, S>> {
         let value_set = self.value_set.iter().map(Item::Value);
         let int_set = self.int_set.iter().copied().map(Item::Int64);
 
@@ -112,7 +112,7 @@ impl<'a, S: Storage> ReadSetGuard<'a, S> {
         Self { inner: set }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = Item<S>> {
+    pub fn iter(&self) -> impl Iterator<Item = Item<'_, S>> {
         self.inner.iter()
     }
 
@@ -132,7 +132,7 @@ impl<'a, S: Storage> WriteSetGuard<'a, S> {
         Self { inner }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = Item<S>> {
+    pub fn iter(&self) -> impl Iterator<Item = Item<'_, S>> {
         self.inner.iter()
     }
 

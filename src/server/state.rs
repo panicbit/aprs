@@ -80,7 +80,7 @@ impl State {
         self.data_storage.insert(key, value.into());
     }
 
-    pub fn get_hints(&self, team: TeamId, slot: SlotId) -> Option<Value<S>> {
+    pub fn get_hints(&self, _team: TeamId, _slot: SlotId) -> Option<Value<S>> {
         // TODO: implement get hints
         warn!("TODO: implement get_hints");
         None

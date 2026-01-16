@@ -32,7 +32,7 @@ impl<S: Storage> Tuple<S> {
         self.0.get(index)
     }
 
-    pub fn iter(&self) -> Iter<S> {
+    pub fn iter(&self) -> Iter<'_, S> {
         self.into_iter()
     }
 

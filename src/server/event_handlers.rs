@@ -175,8 +175,8 @@ impl super::Server {
             password,
             game,
             name: connect_name,
-            uuid,
-            version,
+            uuid: _,
+            version: _,
             items_handling,
             tags,
             slot_data,
@@ -186,8 +186,8 @@ impl super::Server {
         // - version (skip if tags are appropriate)
 
         // the password must match if one is required
-        if let Some(client_password) = &self.multi_data.server_options.client_password {
-            if Some(client_password) != password.as_ref() {
+        if let Some(client_password) = &self.multi_data.server_options.client_password
+            && Some(client_password) != password.as_ref() {
                 client
                     .lock()
                     .await
@@ -195,7 +195,6 @@ impl super::Server {
                     .await;
                 return Ok(());
             }
-        }
 
         // the requested slot name must exist
         let Some(team_and_slot) = self.multi_data.connect_names.get(&connect_name) else {
@@ -485,7 +484,7 @@ impl super::Server {
     ) {
         let LocationScouts {
             locations,
-            create_as_hint,
+            create_as_hint: _,
         } = location_scouts;
         let slot = client.lock().await.slot_id;
 
@@ -618,7 +617,7 @@ impl super::Server {
         client: &Mutex<Client>,
         get_data_package: &GetDataPackage,
     ) {
-        let GetDataPackage { games } = get_data_package;
+        let GetDataPackage { games: _ } = get_data_package;
 
         let client = client.lock().await;
 

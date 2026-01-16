@@ -94,7 +94,10 @@ impl<S: Storage> Value<S> {
 
     pub fn extend(&self, value: Vec<Value<S>>) -> Result<()> {
         match self {
-            Value::List(list) => Ok(list.extend(value)),
+            Value::List(list) => {
+                list.extend(value);
+                Ok(())
+            }
             _ => bail!("can't extend {}", self.type_name()),
         }
     }
@@ -248,7 +251,7 @@ impl<S: Storage> Value<S> {
     //     }
     // }
 
-    fn r#mod(&self, rhs: &Value<S>) -> Result<Value<S>> {
+    fn r#mod(&self, _rhs: &Value<S>) -> Result<Value<S>> {
         todo!()
     }
 
@@ -260,11 +263,11 @@ impl<S: Storage> Value<S> {
         Ok(Self::Number(self.as_number()?.ceil()))
     }
 
-    fn max(&self, rhs: &Value<S>) -> Result<Value<S>> {
+    fn max(&self, _rhs: &Value<S>) -> Result<Value<S>> {
         todo!()
     }
 
-    fn min(&self, rhs: &Value<S>) -> Result<Value<S>> {
+    fn min(&self, _rhs: &Value<S>) -> Result<Value<S>> {
         todo!()
     }
 
@@ -284,19 +287,19 @@ impl<S: Storage> Value<S> {
         }
     }
 
-    fn xor(&self, rhs: &Value<S>) -> Result<Value<S>> {
+    fn xor(&self, _rhs: &Value<S>) -> Result<Value<S>> {
         todo!()
     }
 
-    fn left_shift(&self, rhs: &Value<S>) -> Result<Value<S>> {
+    fn left_shift(&self, _rhs: &Value<S>) -> Result<Value<S>> {
         todo!()
     }
 
-    fn right_shift(&self, rhs: &Value<S>) -> Result<Value<S>> {
+    fn right_shift(&self, _rhs: &Value<S>) -> Result<Value<S>> {
         todo!()
     }
 
-    fn remove(&self, rhs: &Value<S>) -> Result<Value<S>> {
+    fn remove(&self, _rhs: &Value<S>) -> Result<Value<S>> {
         todo!()
     }
 
@@ -310,7 +313,7 @@ impl<S: Storage> Value<S> {
         let this = self.as_dict()?;
         let dict = dict.as_dict()?;
 
-        this.update(&dict)
+        this.update(dict)
     }
 }
 

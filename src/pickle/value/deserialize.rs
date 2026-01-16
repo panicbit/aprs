@@ -1,10 +1,8 @@
 use std::fmt;
-use std::hash::BuildHasherDefault;
 use std::marker::PhantomData;
 
 use serde::{Deserialize, de};
 
-use crate::FnvIndexMap;
 use crate::pickle::Value;
 use crate::pickle::value::{Dict, List, Storage};
 
@@ -230,6 +228,6 @@ impl<'de, S: Storage> de::Visitor<'de> for ValueVisitor<S> {
             }
         }
 
-        Ok(Value::Dict(dict.into()))
+        Ok(Value::Dict(dict))
     }
 }

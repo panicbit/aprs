@@ -83,6 +83,12 @@ impl Game {
 #[serde(transparent)]
 pub struct ConnectName(pub String);
 
+impl Default for ConnectName {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConnectName {
     pub fn new() -> Self {
         Self(String::new())
@@ -122,6 +128,12 @@ impl fmt::Display for ConnectName {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(transparent)]
 pub struct SlotName(pub String);
+
+impl Default for SlotName {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl SlotName {
     pub fn new() -> Self {

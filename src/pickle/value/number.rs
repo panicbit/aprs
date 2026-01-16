@@ -305,11 +305,10 @@ impl From<BigInt> for N {
 
 impl From<f32> for N {
     fn from(n: f32) -> Self {
-        if n.fract().is_zero() {
-            if let Some(n) = BigInt::from_f32(n) {
+        if n.fract().is_zero()
+            && let Some(n) = BigInt::from_f32(n) {
                 return N::from(n);
             }
-        }
 
         N::F64(n.into())
     }
@@ -317,11 +316,10 @@ impl From<f32> for N {
 
 impl From<f64> for N {
     fn from(n: f64) -> Self {
-        if n.fract().is_zero() {
-            if let Some(n) = BigInt::from_f64(n) {
+        if n.fract().is_zero()
+            && let Some(n) = BigInt::from_f64(n) {
                 return N::from(n);
             }
-        }
 
         N::F64(n)
     }

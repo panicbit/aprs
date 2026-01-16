@@ -72,7 +72,7 @@ impl<S: Storage> Inner<S> {
         }
     }
 
-    fn iter(&self) -> impl Iterator<Item = (Key<S>, &Value<S>)> {
+    fn iter(&self) -> impl Iterator<Item = (Key<'_, S>, &Value<S>)> {
         let value_iter = self
             .value_dict
             .iter()
@@ -95,7 +95,7 @@ impl<S: Storage> Inner<S> {
         let value = value.into();
 
         match key {
-            Value::Number(Number(N::I64(key))) => self.int_dict.insert(key.into(), value),
+            Value::Number(Number(N::I64(key))) => self.int_dict.insert(key, value),
             _ => self.value_dict.insert(key, value),
         };
 
@@ -147,7 +147,7 @@ impl<'a, S: Storage> ReadDictGuard<'a, S> {
         Self { inner }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (Key<S>, &Value<S>)> {
+    pub fn iter(&self) -> impl Iterator<Item = (Key<'_, S>, &Value<S>)> {
         self.inner.iter()
     }
 

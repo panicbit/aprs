@@ -1,11 +1,10 @@
 use bytes::Bytes;
 use std::ops;
-use std::sync::Arc;
 
 pub mod network_version;
 pub use network_version::NetworkVersion;
 
-use crate::proto::{client, server};
+use crate::proto::client;
 
 pub enum ControlOrMessage<M> {
     Control(Control),

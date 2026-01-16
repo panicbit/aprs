@@ -1,9 +1,7 @@
-use std::default;
 
 use bitflags::bitflags;
-use uuid::Uuid;
 
-use crate::game::{ConnectName, SlotName};
+use crate::game::ConnectName;
 use crate::proto::client::Deserialize;
 use crate::proto::common::NetworkVersion;
 use crate::proto::u128_uuid;

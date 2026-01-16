@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::{fmt, ptr};
+use std::fmt;
 
 use eyre::{Context, Result};
 
@@ -23,7 +23,7 @@ impl<S: Storage> Callable<S> {
     pub fn call(&self, args: Value<S>) -> Result<Value<S>> {
         let args = args.as_tuple().context("call with non-tuple value")?;
 
-        (self.0)(&args)
+        (self.0)(args)
     }
 }
 
