@@ -188,6 +188,7 @@ pub fn resolve_global<S: Storage>(module: &str, name: &str) -> Result<Value<S>> 
         ("NetUtils", "NetworkSlot") => globals::net_utils::network_slot(),
         ("NetUtils", "SlotType") => globals::net_utils::slot_type(),
         ("NetUtils", "Hint") => globals::net_utils::hint(),
+        ("NetUtils", "HintStatus") => globals::net_utils::hint_status(),
         _ => bail!("could not find {module}.{name}"),
     })
 }
@@ -244,6 +245,17 @@ mod globals {
                 ]);
 
                 Ok(Value::tuple(value))
+            })
+        }
+
+        pub fn hint_status<S: Storage>() -> Value<S> {
+            Value::callable(|args| {
+                // TODO: create iterator-like type for tuple that allows conversion
+                // e.g. ".next_number()" or `.next::<Number>()`
+                // Or how about a class trait + a derive?
+                let (hint_status,) = <(Number,)>::try_from(args)?;
+
+                Ok(Value::Number(hint_status))
             })
         }
     }
