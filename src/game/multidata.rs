@@ -1,16 +1,20 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use eyre::{Result, bail};
 use litemap::LiteMap;
 use serde::Deserialize;
 use serde_with::{FromInto, serde_as};
+use tracing::debug;
 
 use crate::game::{
     ConnectName, GameData, HashedGameData, ItemId, LocationId, LocationInfo, MinimumVersions,
     NetworkSlot, PickledVersion, SeedName, ServerOptions, SlotId, TeamAndSlot,
 };
-use crate::pickle::value::ArcValue;
+use crate::pickle::Value;
+use crate::pickle::value::{ArcValue, Dict, Number, Storage, Str, Tuple};
 use crate::proto::common::NetworkVersion;
+use crate::proto::server::print_json::HintStatus;
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
@@ -176,3 +180,71 @@ impl MultiData {
 //         Value::Bytes(bytes) => bytes.as_bstr().to_string(),
 //     }
 // }
+
+pub fn resolve_global<S: Storage>(module: &str, name: &str) -> Result<Value<S>> {
+    debug!("Trying to locate {module}.{name}");
+
+    Ok(match (module, name) {
+        ("NetUtils", "NetworkSlot") => globals::net_utils::network_slot(),
+        ("NetUtils", "SlotType") => globals::net_utils::slot_type(),
+        ("NetUtils", "Hint") => globals::net_utils::hint(),
+        _ => bail!("could not find {module}.{name}"),
+    })
+}
+
+mod globals {
+    pub mod net_utils {
+        use super::super::*;
+
+        pub fn network_slot<S: Storage>() -> Value<S> {
+            Value::callable(|args| {
+                let (name, game, r#type, group_members) =
+                    <(Str<S>, Str<S>, Number, Value<S>)>::try_from(args)?;
+
+                let dict = Dict::new();
+
+                {
+                    let mut dict = dict.write();
+                    dict.insert("__class", "NetworkSlot")?;
+                    dict.insert("name", name)?;
+                    dict.insert("game", game)?;
+                    dict.insert("type", r#type)?;
+                    dict.insert("group_members", group_members)?;
+                }
+
+                Ok(dict.into())
+            })
+        }
+
+        pub fn slot_type<S: Storage>() -> Value<S> {
+            Value::callable(|args| {
+                // TODO: create iterator-like type for tuple that allows conversion
+                // e.g. ".next_number()" or `.next::<Number>()`
+                // Or how about a class trait + a derive?
+                let (slot_type,) = <(Number,)>::try_from(args)?;
+
+                Ok(Value::Number(slot_type))
+            })
+        }
+
+        pub fn hint<S: Storage>() -> Value<S> {
+            Value::callable(|args| {
+                let mut args = args.iter().cloned().fuse();
+                let value = Tuple::from_iter([
+                    args.next().unwrap_or_else(Value::none),
+                    args.next().unwrap_or_else(Value::none),
+                    args.next().unwrap_or_else(Value::none),
+                    args.next().unwrap_or_else(Value::none),
+                    args.next().unwrap_or_else(Value::none),
+                    // TODO: move defaults to serde struct and remove custom class handling
+                    args.next().unwrap_or_else(|| Value::str("")),
+                    args.next().unwrap_or_else(|| Value::from(0)),
+                    args.next()
+                        .unwrap_or_else(|| Value::from(HintStatus::Unspecified as i32)),
+                ]);
+
+                Ok(Value::tuple(value))
+            })
+        }
+    }
+}

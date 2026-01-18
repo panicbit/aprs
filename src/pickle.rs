@@ -8,11 +8,10 @@ use eyre::{Context, ContextCompat, Result, anyhow, bail};
 use itertools::Itertools;
 use serde::Deserialize;
 use smallvec::SmallVec;
-use tracing::debug;
 
 use crate::FnvIndexMap;
-use crate::pickle::value::{Dict, Number, Storage, Str, Tuple};
-use crate::proto::server::print_json::HintStatus;
+use crate::game::multidata;
+use crate::pickle::value::{Number, Storage, Str};
 
 pub mod value;
 pub use value::Value;
@@ -33,58 +32,7 @@ where
 }
 
 pub fn unpickle<S: Storage>(data: &[u8]) -> Result<Value<S>> {
-    Unpickler::new(data, |module, name| {
-        debug!("Trying to locate {module}.{name}");
-
-        Ok(match (module, name) {
-            ("NetUtils", "NetworkSlot") => Value::callable(|args| {
-                let (name, game, r#type, group_members) =
-                    <(Str<S>, Str<S>, Number, Value<S>)>::try_from(args)?;
-
-                let dict = Dict::new();
-
-                {
-                    let mut dict = dict.write();
-                    dict.insert("__class", "NetworkSlot")?;
-                    dict.insert("name", name)?;
-                    dict.insert("game", game)?;
-                    dict.insert("type", r#type)?;
-                    dict.insert("group_members", group_members)?;
-                }
-
-                Ok(dict.into())
-            }),
-            ("NetUtils", "SlotType") => {
-                Value::callable(|args| {
-                    // TODO: create iterator-like type for tuple that allows conversion
-                    // e.g. ".next_number()" or `.next::<Number>()`
-                    // Or how about a class trait + a derive?
-                    let (slot_type,) = <(Number,)>::try_from(args)?;
-
-                    Ok(Value::Number(slot_type))
-                })
-            }
-            ("NetUtils", "Hint") => Value::callable(|args| {
-                let mut args = args.iter().cloned().fuse();
-                let value = Tuple::from_iter([
-                    args.next().unwrap_or_else(Value::none),
-                    args.next().unwrap_or_else(Value::none),
-                    args.next().unwrap_or_else(Value::none),
-                    args.next().unwrap_or_else(Value::none),
-                    args.next().unwrap_or_else(Value::none),
-                    // TODO: move defaults to serde struct and remove custom class handling
-                    args.next().unwrap_or_else(|| Value::str("")),
-                    args.next().unwrap_or_else(|| Value::from(0)),
-                    args.next()
-                        .unwrap_or_else(|| Value::from(HintStatus::Unspecified as i32)),
-                ]);
-
-                Ok(Value::tuple(value))
-            }),
-            _ => bail!("could not find {module}.{name}"),
-        })
-    })
-    .load()
+    Unpickler::new(data, multidata::resolve_global).load()
 }
 
 struct Unframer<'a> {

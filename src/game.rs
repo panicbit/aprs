@@ -16,7 +16,7 @@ use serde_with::FromInto;
 use serde_with::serde_as;
 use sha1::{Digest, Sha1};
 
-mod multidata;
+pub mod multidata;
 pub use multidata::MultiData;
 use tracing::info;
 
