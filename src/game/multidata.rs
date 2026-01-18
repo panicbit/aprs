@@ -70,6 +70,7 @@ impl MultiData {
     }
 
     // TODO: return all found locations, not just the first one
+    // TODO: create lookup map IF needed
     pub fn find_item_location(&self, item_id: ItemId) -> Option<(SlotId, LocationId, u64)> {
         for (slot, locations) in &self.locations {
             for (location_id, location) in locations {
