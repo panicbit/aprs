@@ -4,8 +4,7 @@ use eyre::{Result, bail};
 use tracing::warn;
 
 use crate::FnvIndexSet;
-use crate::pickle::value::Number;
-use crate::pickle::value::number::N;
+use crate::pickle::value::Int;
 use crate::pickle::value::storage::{SameAs, Storage};
 
 use super::Value;
@@ -45,7 +44,7 @@ impl<S: Storage> Inner<S> {
         }
 
         match key {
-            Value::Number(Number(N::I64(key))) => {
+            Value::Int(Int::I64(key)) => {
                 self.int_set.insert(key);
             }
             _ => {
@@ -155,7 +154,7 @@ impl<S: Storage> From<Item<'_, S>> for Value<S> {
     fn from(key: Item<'_, S>) -> Self {
         match key {
             Item::Value(value) => value.clone(),
-            Item::Int64(value) => Value::Number(value.into()),
+            Item::Int64(value) => Value::Int(value.into()),
         }
     }
 }

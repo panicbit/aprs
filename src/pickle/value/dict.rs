@@ -4,8 +4,7 @@ use eyre::{Result, bail};
 use tracing::warn;
 
 use crate::FnvIndexMap;
-use crate::pickle::value::Number;
-use crate::pickle::value::number::N;
+use crate::pickle::value::Int;
 use crate::pickle::value::storage::{SameAs, Storage};
 
 use super::Value;
@@ -75,7 +74,7 @@ impl<S: Storage> Inner<S> {
 
     fn get(&self, key: &Value<S>) -> Option<&Value<S>> {
         match &key {
-            Value::Number(Number(N::I64(key))) => self.int_dict.get(key),
+            Value::Int(Int::I64(key)) => self.int_dict.get(key),
             _ => self.value_dict.get(key),
         }
     }
@@ -103,7 +102,7 @@ impl<S: Storage> Inner<S> {
         let value = value.into();
 
         match key {
-            Value::Number(Number(N::I64(key))) => self.int_dict.insert(key, value),
+            Value::Int(Int::I64(key)) => self.int_dict.insert(key, value),
             _ => self.value_dict.insert(key, value),
         };
 
@@ -198,7 +197,7 @@ impl<S: Storage> From<Key<'_, S>> for Value<S> {
     fn from(key: Key<'_, S>) -> Self {
         match key {
             Key::Value(value) => value.clone(),
-            Key::Int64(value) => Value::Number(value.into()),
+            Key::Int64(value) => Value::Int(value.into()),
         }
     }
 }

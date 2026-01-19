@@ -12,7 +12,7 @@ use crate::game::{
     NetworkSlot, PickledVersion, SeedName, ServerOptions, SlotId, TeamAndSlot,
 };
 use crate::pickle::Value;
-use crate::pickle::value::{ArcValue, Dict, Number, Storage, Str, Tuple};
+use crate::pickle::value::{ArcValue, Dict, Storage, Str, Tuple};
 use crate::proto::common::NetworkVersion;
 use crate::proto::server::print_json::HintStatus;
 
@@ -196,12 +196,14 @@ pub fn resolve_global<S: Storage>(module: &str, name: &str) -> Result<Value<S>> 
 
 mod globals {
     pub mod net_utils {
+        use crate::pickle::value::Int;
+
         use super::super::*;
 
         pub fn network_slot<S: Storage>() -> Value<S> {
             Value::callable(|args| {
                 let (name, game, r#type, group_members) =
-                    <(Str<S>, Str<S>, Number, Value<S>)>::try_from(args)?;
+                    <(Str<S>, Str<S>, Int, Value<S>)>::try_from(args)?;
 
                 let dict = Dict::new();
 
@@ -223,9 +225,9 @@ mod globals {
                 // TODO: create iterator-like type for tuple that allows conversion
                 // e.g. ".next_number()" or `.next::<Number>()`
                 // Or how about a class trait + a derive?
-                let (slot_type,) = <(Number,)>::try_from(args)?;
+                let (slot_type,) = <(Int,)>::try_from(args)?;
 
-                Ok(Value::Number(slot_type))
+                Ok(Value::Int(slot_type))
             })
         }
 
@@ -254,9 +256,9 @@ mod globals {
                 // TODO: create iterator-like type for tuple that allows conversion
                 // e.g. ".next_number()" or `.next::<Number>()`
                 // Or how about a class trait + a derive?
-                let (hint_status,) = <(Number,)>::try_from(args)?;
+                let (hint_status,) = <(Int,)>::try_from(args)?;
 
-                Ok(Value::Number(hint_status))
+                Ok(Value::Int(hint_status))
             })
         }
     }

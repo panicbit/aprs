@@ -11,7 +11,7 @@ use smallvec::SmallVec;
 
 use crate::FnvIndexMap;
 use crate::game::multidata;
-use crate::pickle::value::{Number, Storage, Str};
+use crate::pickle::value::{Int, Storage, Str};
 
 pub mod value;
 pub use value::Value;
@@ -240,7 +240,7 @@ where
 
     pub fn load_binint(&mut self) -> Result<()> {
         let value = self.read_i32()?;
-        let value = Value::Number(value.into());
+        let value = Value::Int(value.into());
 
         self.stack.push(value);
 
@@ -249,7 +249,7 @@ where
 
     pub fn load_binint1(&mut self) -> Result<()> {
         let value = self.read_byte()?;
-        let value = Value::Number(value.into());
+        let value = Value::Int(value.into());
 
         self.stack.push(value);
 
@@ -258,7 +258,7 @@ where
 
     pub fn load_binint2(&mut self) -> Result<()> {
         let value = self.read_u16()?;
-        let value = Value::Number(value.into());
+        let value = Value::Int(value.into());
 
         self.stack.push(value);
 
@@ -315,7 +315,7 @@ where
 
     pub fn load_binget(&mut self) -> Result<()> {
         let index = self.read_byte()?;
-        let index = Value::Number(index.into());
+        let index = Value::Int(index.into());
 
         let value = self
             .memo
@@ -330,7 +330,7 @@ where
 
     pub fn load_long_binget(&mut self) -> Result<()> {
         let index = self.read_u32()?;
-        let index = Value::Number(index.into());
+        let index = Value::Int(index.into());
 
         let value = self
             .memo
@@ -483,8 +483,8 @@ where
         let len = self.read_byte()?;
         let len = usize::from(len);
         let bytes = self.read_exact(len)?;
-        let n = Number::from_signed_bytes_le(bytes);
-        let n = Value::Number(n);
+        let n = Int::from_signed_bytes_le(bytes);
+        let n = Value::Int(n);
 
         self.push(n);
 
@@ -546,7 +546,7 @@ where
 
     pub fn load_memoize(&mut self) -> Result<()> {
         let key = self.memo.len();
-        let key = Value::Number(key.into());
+        let key = Value::Int(key.into());
         let value = self.last().context("load_memoize")?;
 
         self.memo.insert(key, value.clone());

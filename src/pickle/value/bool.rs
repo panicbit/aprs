@@ -1,6 +1,8 @@
 use std::hash::{Hash, Hasher};
 use std::{fmt, ops};
 
+use crate::pickle::value::{Float, Int};
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Bool(bool);
 
@@ -47,5 +49,17 @@ impl fmt::Debug for Bool {
 impl From<bool> for Bool {
     fn from(value: bool) -> Self {
         Bool(value)
+    }
+}
+
+impl PartialEq<Int> for Bool {
+    fn eq(&self, other: &Int) -> bool {
+        other.eq(self)
+    }
+}
+
+impl PartialEq<Float> for Bool {
+    fn eq(&self, other: &Float) -> bool {
+        other.eq(self)
     }
 }

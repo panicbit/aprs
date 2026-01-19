@@ -11,8 +11,7 @@ type Iter<'a, S> = slice::Iter<'a, Value<S>>;
 
 type Vec<T> = SmallVec<[T; 3]>;
 
-#[derive(PartialEq, Clone)]
-
+#[derive(Clone)]
 pub struct Tuple<S: Storage>(S::ReadOnly<Vec<Value<S>>>);
 
 impl<S: Storage> Tuple<S> {
@@ -218,5 +217,11 @@ impl<S: Storage> fmt::Debug for Tuple<S> {
         }
 
         tuple.finish()
+    }
+}
+
+impl<S: Storage> PartialEq for Tuple<S> {
+    fn eq(&self, other: &Self) -> bool {
+        &*self.0 == &*other.0
     }
 }

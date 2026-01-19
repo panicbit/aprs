@@ -2,9 +2,8 @@ use serde::de::value::{MapDeserializer, SeqDeserializer, StrDeserializer};
 use serde::de::{IntoDeserializer, Visitor};
 use serde::{Deserializer, forward_to_deserialize_any};
 
-use crate::pickle::value::number::N;
 use crate::pickle::value::serde_error::SerdeError;
-use crate::pickle::value::{Storage, dict, set};
+use crate::pickle::value::{Int, Storage, dict, set};
 
 use super::Value;
 
@@ -21,12 +20,12 @@ impl<'de, S: Storage> Deserializer<'de> for &Value<S> {
             Value::Dict(dict) => visitor.visit_map(MapDeserializer::new(dict.read().iter())),
             Value::List(list) => visitor.visit_seq(SeqDeserializer::new(list.read().iter())),
             Value::Str(str) => visitor.visit_str(str.as_str()),
-            Value::Number(number) => match *number.inner() {
-                N::I64(n) => visitor.visit_i64(n),
-                N::I128(n) => visitor.visit_i128(n),
-                N::BigInt(ref n) => visitor.visit_string(n.to_string()),
-                N::F64(n) => visitor.visit_f64(n),
+            Value::Int(int) => match *int {
+                Int::I64(n) => visitor.visit_i64(n),
+                Int::I128(n) => visitor.visit_i128(n),
+                Int::BigInt(ref n) => visitor.visit_string(n.to_string()),
             },
+            Value::Float(n) => visitor.visit_f64(**n),
             Value::Bool(bool) => visitor.visit_bool(**bool),
             Value::Tuple(tuple) => visitor.visit_seq(SeqDeserializer::new(tuple.iter())),
             Value::Callable(callable) => visitor.visit_string(format!("{:?}", callable)),
@@ -48,7 +47,8 @@ impl<'de, S: Storage> Deserializer<'de> for &Value<S> {
             Value::Dict(_) => self.deserialize_any(visitor),
             Value::List(_) => self.deserialize_any(visitor),
             Value::Str(str) => StrDeserializer::new(str).deserialize_enum(name, variants, visitor),
-            Value::Number(_) => self.deserialize_any(visitor),
+            Value::Int(_) => self.deserialize_any(visitor),
+            Value::Float(_) => self.deserialize_any(visitor),
             Value::Bool(_) => self.deserialize_any(visitor),
             Value::Tuple(_) => self.deserialize_any(visitor),
             Value::Callable(_) => self.deserialize_any(visitor),
