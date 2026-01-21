@@ -69,11 +69,9 @@ impl Mul<Float> for Float {
     }
 }
 
-impl TryFrom<&Float> for Float {
-    type Error = Infallible;
-
-    fn try_from(n: &Float) -> Result<Self, Self::Error> {
-        Ok(*n)
+impl From<&Float> for Float {
+    fn from(n: &Float) -> Self {
+        *n
     }
 }
 
