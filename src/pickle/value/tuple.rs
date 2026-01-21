@@ -222,6 +222,6 @@ impl<S: Storage> fmt::Debug for Tuple<S> {
 
 impl<S: Storage> PartialEq for Tuple<S> {
     fn eq(&self, other: &Self) -> bool {
-        &*self.0 == &*other.0
+        *self.0 == *other.0
     }
 }
