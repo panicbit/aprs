@@ -1,8 +1,9 @@
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, BitAnd, BitOr, Mul, Sub};
 
-use eyre::{ContextCompat, Result, bail};
-use num::{BigInt, FromPrimitive, One, Zero};
+use eyre::{Context, ContextCompat, Result, bail};
+use num::traits::Pow;
+use num::{BigInt, FromPrimitive, One, Signed, ToPrimitive, Zero};
 
 use crate::{Bool, Float, Value};
 
@@ -66,6 +67,93 @@ impl Int {
             Int::BigInt(ref n) => n.try_into().ok(),
         }
     }
+
+    pub fn to_big_int(&self) -> BigInt {
+        match *self {
+            Int::I64(n) => n.into(),
+            Int::I128(n) => n.into(),
+            Int::BigInt(ref n) => n.clone(),
+        }
+    }
+
+    pub fn to_u32(&self) -> Option<u32> {
+        match *self {
+            Int::I64(n) => n.to_u32(),
+            Int::I128(n) => n.to_u32(),
+            Int::BigInt(ref n) => n.to_u32(),
+        }
+    }
+
+    pub fn is_positive(&self) -> bool {
+        match self {
+            Int::I64(n) => n.is_positive(),
+            Int::I128(n) => n.is_positive(),
+            Int::BigInt(n) => n.is_positive(),
+        }
+    }
+
+    pub fn is_negative(&self) -> bool {
+        match self {
+            Int::I64(n) => n.is_negative(),
+            Int::I128(n) => n.is_negative(),
+            Int::BigInt(n) => n.is_negative(),
+        }
+    }
+
+    pub fn powi_positive_exp(&self, exp: u32) -> Int {
+        match *self {
+            Int::I64(n) => Self::powi_i64_positive_exp(n, exp),
+            Int::I128(n) => Self::powi_i128_positive_exp(n, exp),
+            Int::BigInt(ref n) => Self::powi_big_int_positive_exp(n, exp),
+        }
+    }
+
+    fn powi_i64_positive_exp(n: i64, exp: u32) -> Int {
+        if let Some(result) = n.checked_pow(exp) {
+            return Int::I64(result);
+        };
+
+        Self::powi_i128_positive_exp(n.into(), exp)
+    }
+
+    fn powi_i128_positive_exp(n: i128, exp: u32) -> Int {
+        if let Some(result) = n.checked_pow(exp) {
+            return Int::I128(result);
+        };
+
+        Self::powi_big_int_positive_exp(&n.into(), exp)
+    }
+
+    fn powi_big_int_positive_exp(n: &BigInt, exp: u32) -> Int {
+        Self::BigInt(n.pow(exp))
+    }
+}
+
+impl Pow<&Int> for &Int {
+    type Output = eyre::Result<Value>;
+
+    fn pow(self, exp: &Int) -> eyre::Result<Value> {
+        if exp.is_negative() {
+            let this = Float::try_from(self).context("can't convert base to float")?;
+            let exp = Float::try_from(exp).context("can't convert exponent to float")?;
+
+            return this.pow(exp).map(Value::Float);
+        }
+
+        let exp = exp.to_u32().context("exponent too big")?;
+
+        Ok(Value::Int(self.powi_positive_exp(exp)))
+    }
+}
+
+impl Pow<Float> for &Int {
+    type Output = eyre::Result<Value>;
+
+    fn pow(self, exp: Float) -> eyre::Result<Value> {
+        let this = Float::try_from(self).context("can't convert base to float")?;
+
+        this.pow(exp).map(Value::Float)
+    }
 }
 
 impl From<u8> for Int {
@@ -126,6 +214,18 @@ impl From<u128> for Int {
 impl From<i128> for Int {
     fn from(value: i128) -> Self {
         Self::I128(value)
+    }
+}
+
+impl TryFrom<&Int> for i32 {
+    type Error = eyre::Report;
+
+    fn try_from(value: &Int) -> Result<i32> {
+        Ok(match *value {
+            Int::I64(value) => i32::try_from(value)?,
+            Int::I128(value) => i32::try_from(value)?,
+            Int::BigInt(ref value) => i32::try_from(value)?,
+        })
     }
 }
 

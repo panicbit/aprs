@@ -47,7 +47,7 @@ impl DataStorage {
                 // TODO: implement remaining set ops
                 SetOperation::Add(value) => current.add(value)?,
                 SetOperation::Mul(value) => current.mul(value)?,
-                // SetOperation::Pow(value) => current.pow(value),
+                SetOperation::Pow(value) => current.pow(value)?,
                 // SetOperation::Mod(value) => current.r#mod(value),
                 SetOperation::Floor => current.floor()?,
                 SetOperation::Ceil => current.ceil()?,

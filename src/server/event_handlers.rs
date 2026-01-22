@@ -62,7 +62,7 @@ impl super::Server {
             .send(RoomInfo {
                 version: (0, 5, 1).into(),
                 generator_version: self.multi_data.version,
-                tags: vec!["APRS".into()],
+                tags: vec!["APRS".into(), "100% python and gluten free".into()],
                 password: self.multi_data.server_options.client_password.is_some(),
                 permissions: Permissions {
                     release: CommandPermission::Auto,

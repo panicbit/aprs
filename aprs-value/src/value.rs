@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::{Add, BitAnd, BitOr, Mul, Sub};
 
 use eyre::{Result, bail};
+use num::traits::Pow;
 use tracing::error;
 
 use crate::{Bool, Callable, Dict, Float, Int, List, Set, Str, Tuple};
@@ -287,12 +288,15 @@ impl Value {
         Ok(a.mul(b).into())
     }
 
-    // fn pow(&self, rhs: &Value) -> Result<Value> {
-    //     match (self, rhs) {
-    //         (Value::Number(a), Value::Number(b)) => Ok(a.pow(b)).into()
-    //         _ => bail!("Can't `pow` {self:?} and {rhs:?}"),
-    //     }
-    // }
+    pub fn pow(&self, rhs: &Value) -> Result<Value> {
+        Ok(match (self, rhs) {
+            (Value::Int(a), Value::Int(b)) => return a.pow(b),
+            (Value::Int(a), Value::Float(b)) => return a.pow(*b),
+            (Value::Float(a), Value::Int(b)) => Value::Float(a.pow(b)?),
+            (Value::Float(a), Value::Float(b)) => Value::Float(a.pow(*b)?),
+            _ => bail!("Can't `pow` {self:?} and {rhs:?}"),
+        })
+    }
 
     fn r#mod(&self, _rhs: &Value) -> Result<Value> {
         todo!()

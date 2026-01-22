@@ -1,7 +1,8 @@
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, Deref, DerefMut, Mul, Sub};
 
-use eyre::{Result, ensure};
+use eyre::{Context, Result, bail, ensure};
+use num::traits::Pow;
 use num::{One, ToPrimitive, Zero};
 use ordered_float::OrderedFloat;
 
@@ -17,6 +18,30 @@ impl Float {
 
     pub fn ceil(&self) -> Result<Int> {
         self.0.ceil().try_into()
+    }
+}
+
+impl Pow<Float> for Float {
+    type Output = Result<Float>;
+
+    fn pow(self, exp: Float) -> Result<Float> {
+        let value = self.0.powf(exp.0);
+
+        if self.is_finite() && exp.is_finite() && value.is_infinite() {
+            bail!("Numerical result out of range")
+        }
+
+        Ok(Float(value))
+    }
+}
+
+impl Pow<&Int> for Float {
+    type Output = Result<Float>;
+
+    fn pow(self, exp: &Int) -> Self::Output {
+        let exp = i32::try_from(exp).context("exponent too big")?;
+
+        Ok(Float(self.0.powi(exp)))
     }
 }
 
