@@ -91,11 +91,11 @@ dependencies = [
 name = "aprs"
 version = "0.2.0"
 dependencies = [
+ "aprs-proto",
  "bitflags",
  "bstr",
  "byteorder",
  "bytes",
- "chrono",
  "clap",
  "color-eyre",
  "eyre",
@@ -113,10 +113,8 @@ dependencies = [
  "parking_lot",
  "rmp-serde",
  "serde",
- "serde-value",
  "serde_json",
  "serde_path_to_error",
- "serde_repr",
  "serde_tuple",
  "serde_with",
  "sha1",
@@ -132,6 +130,22 @@ dependencies = [
  "uuid",
  "zip",
  "zstd",
+]
+
+[[package]]
+name = "aprs-proto"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "bytes",
+ "chrono",
+ "fnv",
+ "hashers",
+ "indexmap 2.12.0",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "smallvec",
 ]
 
 [[package]]
@@ -1076,15 +1090,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
-name = "ordered-float"
-version = "2.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68f19d67e5a2795c94e73e0bb1cc1a7edeb2e28efd39e2e1c9b7a40c1108b11c"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1353,15 +1358,6 @@ checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
  "serde_derive",
-]
-
-[[package]]
-name = "serde-value"
-version = "0.7.0"
-source = "git+http://github.com/panicbit/serde-value?branch=128_bit_int_support#f1178adc441086ed02241f73d8ce7dc520ee76f3"
-dependencies = [
- "ordered-float",
- "serde",
 ]
 
 [[package]]

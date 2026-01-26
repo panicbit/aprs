@@ -557,10 +557,7 @@ impl<S: Storage> PartialEq for Value<S> {
                 Value::Callable(v2) => v1 == v2,
                 _ => false,
             },
-            Value::None(_) => match other {
-                Value::None(_) => true,
-                _ => false,
-            },
+            Value::None(_) => matches!(other, Value::None(_)),
             Value::Set(v1) => match other {
                 Value::Set(v2) => v1 == v2,
                 _ => false,

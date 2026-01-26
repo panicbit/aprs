@@ -1,4 +1,3 @@
-use std::convert::Infallible;
 use std::ops::{Add, Deref, DerefMut, Mul, Sub};
 
 use eyre::{Result, ensure};

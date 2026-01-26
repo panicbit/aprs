@@ -68,7 +68,7 @@ impl<S: Storage> List<S> {
         S::write(&self.0).extend(values);
     }
 
-    fn append_list(&self, list: &List<S>) -> Result<()> {
+    pub fn append_list(&self, list: &List<S>) -> Result<()> {
         let list = S::read(&list.0).clone();
 
         S::write(&self.0).extend(list);
@@ -120,6 +120,10 @@ impl<'a, S: Storage> ReadListGuard<'a, S> {
 
     pub fn iter(&self) -> impl Iterator<Item = &Value<S>> {
         self.list.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.list.len()
     }
 }
 

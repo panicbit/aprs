@@ -8,7 +8,6 @@ use crate::pickle::Value;
 use crate::pickle::value::{Bool, Float, Storage};
 
 #[derive(Clone, Debug)]
-#[expect(clippy::enum_variant_names)]
 pub enum Int {
     I64(i64),
     I128(i128),

@@ -7,7 +7,6 @@ use indexmap::{IndexMap, IndexSet};
 
 pub mod game;
 pub mod pickle;
-pub mod proto;
 pub mod server;
 pub mod websocket_server;
 

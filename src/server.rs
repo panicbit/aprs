@@ -2,6 +2,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Instant;
 
+use aprs_proto::primitives::{SlotId, TeamId};
+use aprs_proto::server::NetworkPlayer;
 use eyre::Result;
 use fnv::FnvHashMap;
 use itertools::Itertools;
@@ -9,9 +11,8 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc::Receiver;
 use tracing::{debug, error, info, warn};
 
-use crate::game::{MultiData, SlotId, TeamId};
+use crate::game::MultiData;
 use crate::pickle::value::ArcValue;
-use crate::proto::server::{Message, NetworkPlayer};
 use crate::server::state::State;
 
 mod event_handlers;
@@ -25,6 +26,12 @@ pub use config::Config;
 
 mod event;
 pub use event::Event;
+
+pub mod control;
+
+pub type ServerMessage = aprs_proto::server::Message<ArcValue>;
+pub type ClientMessage = aprs_proto::client::Message<ArcValue>;
+pub type ClientMessages = aprs_proto::client::Messages<ArcValue>;
 
 pub struct Server {
     config: Config,
@@ -162,7 +169,7 @@ impl Server {
             .collect_vec()
     }
 
-    async fn broadcast(&self, message: impl Into<Arc<Message>>) {
+    async fn broadcast(&self, message: impl Into<Arc<ServerMessage>>) {
         let message = message.into();
 
         for client in self.clients.values() {
@@ -170,7 +177,7 @@ impl Server {
         }
     }
 
-    async fn broadcast_messages(&self, messages: &[Arc<Message>]) {
+    async fn broadcast_messages(&self, messages: &[Arc<ServerMessage>]) {
         for client in self.clients.values() {
             let client = client.lock().await;
 
@@ -181,7 +188,7 @@ impl Server {
         }
     }
 
-    async fn broadcast_slot(&self, slot: SlotId, message: impl Into<Arc<Message>>) {
+    async fn broadcast_slot(&self, slot: SlotId, message: impl Into<Arc<ServerMessage>>) {
         let message = message.into();
 
         for client in self.clients.values() {

@@ -1,7 +1,18 @@
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use aprs_proto::client::{
+    Bounce, ClientStatus, Connect, Get, GetDataPackage, LocationChecks, LocationScouts, Say, Set,
+    SetNotify, SetOperation, StatusUpdate,
+};
+use aprs_proto::primitives::LocationId;
+use aprs_proto::server::{
+    Bounced, CommandPermission, Connected, ConnectionRefused, DataPackage, DataPackageData,
+    GameData, HashedGameData, LocationInfo, Message, NetworkItem, Permissions, PrintJson,
+    RemainingCommandPermission, Retrieved, RoomInfo, RoomUpdate, SetReply, Time,
+};
 use eyre::{ContextCompat, Result, bail};
 use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
@@ -9,22 +20,13 @@ use levenshtein::levenshtein;
 use tokio::sync::Mutex;
 use tracing::{debug, error, info, warn};
 
-use crate::game::{LocationId, TeamAndSlot};
+use crate::game::TeamAndSlot;
 use crate::pickle::Value;
-use crate::pickle::value::storage;
-use crate::proto::client::{
-    Bounce, ClientStatus, Connect, Get, GetDataPackage, LocationChecks, LocationScouts,
-    Message as ClientMessage, Messages as ClientMessages, Say, Set, SetNotify, SetOperation,
-    StatusUpdate,
-};
-use crate::proto::common::{Close, Control, Pong};
-use crate::proto::server::{
-    Bounced, CommandPermission, Connected, ConnectionRefused, DataPackage, DataPackageData,
-    LocationInfo, Message, NetworkItem, Permissions, PrintJson, RemainingCommandPermission,
-    Retrieved, RoomInfo, RoomUpdate, SetReply, Time,
-};
+use crate::pickle::value::{ArcValue, Str, storage};
 use crate::server::client::Client;
+use crate::server::control::{Close, Control, Pong};
 use crate::server::event::Event;
+use crate::server::{ClientMessage, ClientMessages, ServerMessage};
 
 type S = storage::Arc;
 
@@ -161,11 +163,13 @@ impl super::Server {
             }
             ClientMessage::Sync(_) => self.on_sync(client).await,
             ClientMessage::GetDataPackage(_) => {
-                error!("BUG: GetDataPackage should already be handled as unauthenticated packet")
+                error!("BUG: GetDataPackage should already be handled as unauthenticated packet");
             }
             ClientMessage::Bounce(bounce) => self.on_bounce(client, &bounce).await,
-            ClientMessage::Unknown(value) => warn!("Unknown client message: {value:?}"),
-        }
+            ClientMessage::Unknown(value) => {
+                warn!("Unknown client message: {value:?}");
+            }
+        };
 
         Ok(())
     }
@@ -187,14 +191,15 @@ impl super::Server {
 
         // the password must match if one is required
         if let Some(client_password) = &self.multi_data.server_options.client_password
-            && Some(client_password) != password.as_ref() {
-                client
-                    .lock()
-                    .await
-                    .send(ConnectionRefused::invalid_password())
-                    .await;
-                return Ok(());
-            }
+            && Some(client_password) != password.as_ref()
+        {
+            client
+                .lock()
+                .await
+                .send(ConnectionRefused::invalid_password())
+                .await;
+            return Ok(());
+        }
 
         // the requested slot name must exist
         let Some(team_and_slot) = self.multi_data.connect_names.get(&connect_name) else {
@@ -398,7 +403,7 @@ impl super::Server {
             .await;
     }
 
-    async fn on_set(&mut self, client: &Mutex<Client>, set: Set) {
+    async fn on_set(&mut self, client: &Mutex<Client>, set: Set<ArcValue>) {
         let Set {
             key,
             default,
@@ -410,7 +415,7 @@ impl super::Server {
         let original_value = self.state.data_storage_get(&key).unwrap_or(default);
         let mut value = original_value.clone();
 
-        fn handle_op(current: Value<S>, operation: SetOperation) -> Result<Value<S>> {
+        fn handle_op(current: Value<S>, operation: SetOperation<ArcValue>) -> Result<Value<S>> {
             Ok(match operation {
                 SetOperation::Default => current,
                 SetOperation::Replace(value) => value,
@@ -457,7 +462,7 @@ impl super::Server {
         {
             let client = client.lock().await;
 
-            if want_reply && !client.wants_updates_for_keys.contains(&key) {
+            if want_reply && !client.wants_updates_for_keys.contains(key.as_str()) {
                 client.send(set_reply.clone()).await;
             }
         }
@@ -465,7 +470,7 @@ impl super::Server {
         for client in self.clients.values() {
             let client = client.lock().await;
 
-            if client.wants_updates_for_keys.contains(&key) {
+            if client.wants_updates_for_keys.contains(key.as_str()) {
                 client.send(set_reply.clone()).await;
             }
         }
@@ -473,6 +478,9 @@ impl super::Server {
 
     pub async fn on_set_notify(&mut self, client: &Mutex<Client>, set_notify: SetNotify) {
         let SetNotify { keys } = set_notify;
+
+        // TODO: prevent required conversion
+        let keys = keys.into_iter().map(Str::from).collect::<FnvHashSet<_>>();
 
         client.lock().await.wants_updates_for_keys = keys;
     }
@@ -621,11 +629,29 @@ impl super::Server {
 
         let client = client.lock().await;
 
+        // TODO: don't do this conversion every single time...
+        let games = self
+            .multi_data
+            .data_package
+            .iter()
+            .map(|(key, value)| {
+                let hashed_game_data = HashedGameData {
+                    checksum: value.checksum.clone(),
+                    game_data: GameData {
+                        item_name_to_id: value.game_data.item_name_to_id.clone(),
+                        location_name_to_id: value.game_data.location_name_to_id.clone(),
+                    },
+                };
+
+                (key.clone(), hashed_game_data)
+            })
+            .collect::<BTreeMap<_, _>>();
+
         // TODO: only send back games asked for
         client
             .send(DataPackage {
                 data: DataPackageData {
-                    games: self.multi_data.data_package.clone(),
+                    games: Arc::new(games),
                 },
             })
             .await;
@@ -636,9 +662,9 @@ impl super::Server {
         self.sync_items_to_client(client).await;
     }
 
-    pub async fn on_bounce(&mut self, client: &Mutex<Client>, bounce: &Bounce) {
+    pub async fn on_bounce(&mut self, client: &Mutex<Client>, bounce: &Bounce<ArcValue>) {
         let bounced = Bounced::from(bounce.clone());
-        let bounced = Arc::<Message>::from(bounced);
+        let bounced = Arc::<ServerMessage>::from(bounced);
         let Bounce {
             games,
             slots,

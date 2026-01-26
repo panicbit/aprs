@@ -1,18 +1,19 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use aprs_proto as proto;
+use aprs_proto::client::ItemsHandling;
+use aprs_proto::primitives::{ConnectName, ItemId, SlotId, SlotName, TeamId};
+use aprs_proto::server::NetworkItem;
+use aprs_proto::server::ReceivedItems;
 use fnv::FnvHashSet;
 use itertools::Itertools;
 use tokio::sync::mpsc::Sender;
 use tracing::error;
 
-use crate::game::{ConnectName, ItemId, SlotId, SlotName, TeamId};
 use crate::pickle::value::{Str, storage};
-use crate::proto;
-use crate::proto::client::ItemsHandling;
-use crate::proto::common::{Close, Control, ControlOrMessage};
-use crate::proto::server::NetworkItem;
-use crate::proto::server::{Message as ServerMessage, ReceivedItems};
+use crate::server::ServerMessage;
+use crate::server::control::{Close, Control, ControlOrMessage};
 
 type S = storage::Arc;
 

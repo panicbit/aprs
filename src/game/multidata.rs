@@ -1,6 +1,10 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use aprs_proto::common::NetworkVersion;
+use aprs_proto::primitives::ConnectName;
+use aprs_proto::server::NetworkSlot;
+use aprs_proto::server::print_json::HintStatus;
 use eyre::{Result, bail};
 use litemap::LiteMap;
 use serde::Deserialize;
@@ -8,13 +12,11 @@ use serde_with::{FromInto, serde_as};
 use tracing::debug;
 
 use crate::game::{
-    ConnectName, GameData, HashedGameData, ItemId, LocationId, LocationInfo, MinimumVersions,
-    NetworkSlot, PickledVersion, SeedName, ServerOptions, SlotId, TeamAndSlot,
+    GameData, HashedGameData, ItemId, LocationId, LocationInfo, MinimumVersions, PickledVersion,
+    SeedName, ServerOptions, SlotId, TeamAndSlot,
 };
 use crate::pickle::Value;
 use crate::pickle::value::{ArcValue, Dict, Storage, Str, Tuple};
-use crate::proto::common::NetworkVersion;
-use crate::proto::server::print_json::HintStatus;
 
 #[serde_as]
 #[derive(Deserialize, Debug)]

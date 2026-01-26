@@ -1,11 +1,11 @@
-use core::fmt;
-use std::borrow::Borrow;
 use std::collections::BTreeMap;
+use std::fs;
 use std::io::Read;
 use std::path::Path;
 use std::time::Instant;
-use std::{fs, ops};
 
+use aprs_proto::common::NetworkVersion;
+use aprs_proto::primitives::{ItemId, LocationId, SlotId, TeamId};
 use bitflags::bitflags;
 use byteorder::ReadBytesExt;
 use eyre::{Context, ContextCompat, Result, ensure};
@@ -15,14 +15,13 @@ use serde_tuple::Deserialize_tuple;
 use serde_with::FromInto;
 use serde_with::serde_as;
 use sha1::{Digest, Sha1};
-
-pub mod multidata;
-pub use multidata::MultiData;
 use tracing::info;
 
 use crate::pickle::value::storage;
-use crate::proto::common::NetworkVersion;
 use crate::{FnvIndexMap, pickle};
+
+pub mod multidata;
+pub use multidata::MultiData;
 
 #[derive(Debug)]
 pub struct Game {
@@ -78,122 +77,6 @@ impl Game {
         Ok(Game { multi_data })
     }
 }
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[serde(transparent)]
-pub struct ConnectName(pub String);
-
-impl Default for ConnectName {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ConnectName {
-    pub fn new() -> Self {
-        Self(String::new())
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl ops::Deref for ConnectName {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl ops::DerefMut for ConnectName {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl Borrow<str> for ConnectName {
-    fn borrow(&self) -> &str {
-        self.as_str()
-    }
-}
-
-impl fmt::Display for ConnectName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[serde(transparent)]
-pub struct SlotName(pub String);
-
-impl Default for SlotName {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl SlotName {
-    pub fn new() -> Self {
-        Self(String::new())
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl ops::Deref for SlotName {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl ops::DerefMut for SlotName {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl Borrow<str> for SlotName {
-    fn borrow(&self) -> &str {
-        self.as_str()
-    }
-}
-
-impl fmt::Display for SlotName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[serde(transparent)]
-pub struct SlotId(pub i64);
-
-impl SlotId {
-    pub const SERVER: SlotId = SlotId(0);
-
-    pub fn is_server(&self) -> bool {
-        self.0 == 0
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[serde(transparent)]
-pub struct TeamId(pub i64);
-
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[serde(transparent)]
-pub struct ItemId(pub i64);
-
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[serde(transparent)]
-pub struct LocationId(pub i64);
 
 #[derive(Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(transparent)]
@@ -269,21 +152,8 @@ impl HashedGameData {
     }
 }
 
-impl ops::Deref for HashedGameData {
-    type Target = GameData;
-
-    fn deref(&self) -> &Self::Target {
-        &self.game_data
-    }
-}
-
-impl ops::DerefMut for HashedGameData {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.game_data
-    }
-}
-
-// field order is significant for checksum calculation
+// field order MUST be alphabetical for correct checksum calculation.
+// pickled game data contains extra fields compared to the network variant of it.
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GameData {
     // TODO: remove `serde(default)` once `proto` doesn't rely on this struct anymore
@@ -344,75 +214,6 @@ impl From<PickledVersion> for NetworkVersion {
             minor,
             build: patch,
         }
-    }
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct NetworkSlot {
-    pub name: SlotName,
-    pub game: String,
-    pub r#type: SlotType,
-    // TODO: implement for completeness some day maybe
-    // https://github.com/ArchipelagoMW/Archipelago/blob/e00467c2a299623f630d5a3e68f35bc56ccaa8aa/NetUtils.py#L86
-    pub group_members: serde_json::Value,
-}
-
-impl Serialize for NetworkSlot {
-    fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let NetworkSlot {
-            name,
-            game,
-            r#type,
-            group_members,
-        } = &self;
-
-        // The python client expects a "class" field in the json serialization
-        #[derive(Serialize)]
-        #[serde(tag = "class", rename = "NetworkSlot")]
-        struct PythonNetworkSlot<'a> {
-            pub name: &'a str,
-            pub game: &'a str,
-            pub r#type: &'a SlotType,
-            // TODO: implement for completeness some day maybe
-            // https://github.com/ArchipelagoMW/Archipelago/blob/e00467c2a299623f630d5a3e68f35bc56ccaa8aa/NetUtils.py#L86
-            pub group_members: &'a serde_json::Value,
-        }
-
-        PythonNetworkSlot {
-            name,
-            game,
-            r#type,
-            group_members,
-        }
-        .serialize(ser)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
-#[serde(transparent)]
-pub struct SlotType(u32);
-
-bitflags! {
-    impl SlotType: u32 {
-        const Player = 0b01;
-        const Group = 0b10;
-    }
-}
-
-impl SlotType {
-    pub fn is_spectator(&self) -> bool {
-        self.is_empty()
-    }
-
-    pub fn is_player(&self) -> bool {
-        self.contains(SlotType::Player)
-    }
-
-    pub fn is_group(&self) -> bool {
-        self.contains(SlotType::Group)
     }
 }
 

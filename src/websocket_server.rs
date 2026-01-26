@@ -16,10 +16,8 @@ use tokio_tungstenite::{WebSocketStream, tungstenite};
 use tracing::{debug, error};
 
 use crate::game::MultiData;
-use crate::proto::client;
-use crate::proto::common::{Close, Control, ControlOrMessage, Ping, Pong};
-use crate::proto::server;
-use crate::server::{Client, Event, Server};
+use crate::server::control::{Close, Control, ControlOrMessage, Ping, Pong};
+use crate::server::{Client, ClientMessages, Event, Server, ServerMessage};
 
 mod config;
 pub use config::Config;
@@ -133,7 +131,7 @@ async fn client_loop(
     stream: WebSocketStream<TcpStream>,
     address: SocketAddr,
     event_tx: Sender<Event>,
-    mut server_message_rx: Receiver<ControlOrMessage<Arc<server::Message>>>,
+    mut server_message_rx: Receiver<ControlOrMessage<Arc<ServerMessage>>>,
 ) {
     let mut stream = pin!(stream);
     let stream = &mut *stream;
@@ -177,7 +175,7 @@ async fn client_loop(
 
 async fn send(
     stream: &mut WebSocketStream<TcpStream>,
-    message: ControlOrMessage<Arc<server::Message>>,
+    message: ControlOrMessage<Arc<ServerMessage>>,
 ) -> Result<()> {
     let message = match message {
         ControlOrMessage::Control(Control::Ping(ping)) => {
@@ -200,9 +198,7 @@ async fn send(
     Ok(())
 }
 
-async fn recv(
-    stream: &mut WebSocketStream<TcpStream>,
-) -> Result<ControlOrMessage<client::Messages>> {
+async fn recv(stream: &mut WebSocketStream<TcpStream>) -> Result<ControlOrMessage<ClientMessages>> {
     let message = stream.next().await.transpose()?;
 
     let Some(message) = message else {
@@ -212,14 +208,14 @@ async fn recv(
     let message = match message {
         tungstenite::Message::Text(message) => {
             debug!("<<< {message}");
-            let messages = serde_json::from_str::<client::Messages>(message.as_str())
+            let messages = serde_json::from_str::<ClientMessages>(message.as_str())
                 .map_err(|err| SerdeError::new(message.to_string(), err))?;
 
             messages.into()
         }
         tungstenite::Message::Binary(message) => {
             debug!("<<< <binary>");
-            let messages = serde_json::from_slice::<client::Messages>(&message)?;
+            let messages = serde_json::from_slice::<ClientMessages>(&message)?;
 
             messages.into()
         }

@@ -3,6 +3,8 @@ use std::fs::File;
 use std::io;
 use std::path::Path;
 
+use aprs_proto::primitives::{LocationId, SlotId, TeamId};
+use aprs_proto::server::NetworkItem;
 use eyre::ContextCompat;
 use eyre::Result;
 use fnv::{FnvHashMap, FnvHashSet};
@@ -12,11 +14,10 @@ use serde::Serialize;
 use tempfile::NamedTempFile;
 use tracing::warn;
 
-use crate::game::{LocationId, MultiData, SlotId, TeamId};
+use crate::game::MultiData;
 use crate::pickle::Value;
 use crate::pickle::value::Str;
 use crate::pickle::value::storage;
-use crate::proto::server::NetworkItem;
 
 type S = storage::Arc;
 
@@ -76,8 +77,8 @@ impl State {
         self.data_storage.get(key).cloned()
     }
 
-    pub fn data_storage_set(&mut self, key: Str<S>, value: impl Into<Value<S>>) {
-        self.data_storage.insert(key, value.into());
+    pub fn data_storage_set(&mut self, key: impl Into<Str<S>>, value: impl Into<Value<S>>) {
+        self.data_storage.insert(key.into(), value.into());
     }
 
     pub fn get_hints(&self, _team: TeamId, _slot: SlotId) -> Option<Value<S>> {
