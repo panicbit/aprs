@@ -2,7 +2,7 @@ use std::fmt;
 
 use eyre::{ContextCompat, Result};
 
-use crate::pickle::value::storage::Storage;
+use crate::storage::Storage;
 
 use super::Value;
 

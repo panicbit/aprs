@@ -1,7 +1,6 @@
 use serde::Serialize;
 
-use crate::pickle::Value;
-use crate::pickle::value::{Int, Storage, dict, set};
+use crate::{Int, Storage, Value, dict, set};
 
 impl<ST: Storage> Serialize for Value<ST> {
     fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>

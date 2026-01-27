@@ -4,8 +4,8 @@ use std::{fmt, slice};
 use eyre::{ContextCompat, Error, Result, bail};
 use smallvec::{SmallVec, smallvec};
 
-use crate::pickle::value::storage::Storage;
-use crate::pickle::value::{List, Value};
+use crate::storage::Storage;
+use crate::{List, Value};
 
 type Iter<'a, S> = slice::Iter<'a, Value<S>>;
 

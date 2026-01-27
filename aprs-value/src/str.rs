@@ -6,8 +6,8 @@ use std::ops::Deref;
 use eyre::{Error, Result, bail};
 use serde::{Deserialize, Serialize};
 
-use crate::pickle::value::Value;
-use crate::pickle::value::storage::Storage;
+use crate::Value;
+use crate::storage::Storage;
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct Str<S: Storage>(S::ReadOnly<String>);

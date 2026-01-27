@@ -6,12 +6,12 @@ use aprs_proto::client::ItemsHandling;
 use aprs_proto::primitives::{ConnectName, ItemId, SlotId, SlotName, TeamId};
 use aprs_proto::server::NetworkItem;
 use aprs_proto::server::ReceivedItems;
+use aprs_value::{Str, storage};
 use fnv::FnvHashSet;
 use itertools::Itertools;
 use tokio::sync::mpsc::Sender;
 use tracing::error;
 
-use crate::pickle::value::{Str, storage};
 use crate::server::ServerMessage;
 use crate::server::control::{Close, Control, ControlOrMessage};
 

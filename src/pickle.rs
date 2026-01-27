@@ -4,17 +4,14 @@
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use eyre::{Context, ContextCompat, Result, anyhow, bail};
+use aprs_value::{Int, Storage, Str, Value};
+use color_eyre::eyre::{Context, ContextCompat, Result, anyhow, bail};
 use itertools::Itertools;
 use serde::Deserialize;
 use smallvec::SmallVec;
 
 use crate::FnvIndexMap;
 use crate::game::multidata;
-use crate::pickle::value::{Int, Storage, Str};
-
-pub mod value;
-pub use value::Value;
 
 mod dispatch;
 mod op;

@@ -4,8 +4,8 @@ use eyre::{Result, bail};
 use tracing::warn;
 
 use crate::FnvIndexSet;
-use crate::pickle::value::Int;
-use crate::pickle::value::storage::{SameAs, Storage};
+use crate::Int;
+use crate::storage::{SameAs, Storage};
 
 use super::Value;
 

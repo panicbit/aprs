@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use aprs::websocket_server::{Config, WebsocketServer};
 use clap::Parser;
-use eyre::Result;
+use color_eyre::Result;
 use tokio::runtime::Runtime;
 use tracing::level_filters::LevelFilter;
 use tracing::{error, info};

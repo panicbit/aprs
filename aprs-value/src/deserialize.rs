@@ -3,8 +3,7 @@ use std::marker::PhantomData;
 
 use serde::{Deserialize, de};
 
-use crate::pickle::Value;
-use crate::pickle::value::{Dict, List, Storage};
+use crate::{Dict, List, Storage, Value};
 
 impl<'de, S: Storage> Deserialize<'de> for Value<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

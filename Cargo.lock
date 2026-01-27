@@ -92,13 +92,13 @@ name = "aprs"
 version = "0.2.0"
 dependencies = [
  "aprs-proto",
+ "aprs-value",
  "bitflags",
  "bstr",
  "byteorder",
  "bytes",
  "clap",
  "color-eyre",
- "eyre",
  "flate2",
  "fnv",
  "format_serde_error",
@@ -109,8 +109,6 @@ dependencies = [
  "itertools",
  "levenshtein",
  "litemap",
- "num",
- "parking_lot",
  "rmp-serde",
  "serde",
  "serde_json",
@@ -146,6 +144,21 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "smallvec",
+]
+
+[[package]]
+name = "aprs-value"
+version = "0.1.0"
+dependencies = [
+ "eyre",
+ "fnv",
+ "hashers",
+ "indexmap 2.12.0",
+ "num",
+ "parking_lot",
+ "serde",
+ "smallvec",
+ "tracing",
 ]
 
 [[package]]

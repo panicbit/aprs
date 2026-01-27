@@ -1,0 +1,15 @@
+[package]
+name = "aprs-value"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { workspace = true }
+eyre = { workspace = true }
+fnv = { workspace = true }
+hashers = { workspace = true }
+indexmap = { workspace = true }
+num = { workspace = true }
+parking_lot = { workspace = true }
+smallvec = { workspace = true }
+tracing = { workspace = true }

@@ -5,7 +5,8 @@ use aprs_proto::common::NetworkVersion;
 use aprs_proto::primitives::ConnectName;
 use aprs_proto::server::NetworkSlot;
 use aprs_proto::server::print_json::HintStatus;
-use eyre::{Result, bail};
+use aprs_value::{ArcValue, Dict, Storage, Str, Tuple, Value};
+use color_eyre::eyre::{Result, bail};
 use litemap::LiteMap;
 use serde::Deserialize;
 use serde_with::{FromInto, serde_as};
@@ -15,8 +16,6 @@ use crate::game::{
     GameData, HashedGameData, ItemId, LocationId, LocationInfo, MinimumVersions, PickledVersion,
     SeedName, ServerOptions, SlotId, TeamAndSlot,
 };
-use crate::pickle::Value;
-use crate::pickle::value::{ArcValue, Dict, Storage, Str, Tuple};
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
@@ -198,9 +197,8 @@ pub fn resolve_global<S: Storage>(module: &str, name: &str) -> Result<Value<S>> 
 
 mod globals {
     pub mod net_utils {
-        use crate::pickle::value::Int;
-
         use super::super::*;
+        use aprs_value::Int;
 
         pub fn network_slot<S: Storage>() -> Value<S> {
             Value::callable(|args| {

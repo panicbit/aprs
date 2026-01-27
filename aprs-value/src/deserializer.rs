@@ -2,8 +2,8 @@ use serde::de::value::{MapDeserializer, SeqDeserializer, StrDeserializer};
 use serde::de::{IntoDeserializer, Visitor};
 use serde::{Deserializer, forward_to_deserialize_any};
 
-use crate::pickle::value::serde_error::SerdeError;
-use crate::pickle::value::{Int, Storage, dict, set};
+use crate::serde_error::SerdeError;
+use crate::{Int, Storage, dict, set};
 
 use super::Value;
 

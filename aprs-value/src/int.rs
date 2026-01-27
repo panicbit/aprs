@@ -4,8 +4,7 @@ use std::ops::{Add, BitAnd, BitOr, Mul, Sub};
 use eyre::{ContextCompat, Result, bail};
 use num::{BigInt, FromPrimitive, One, Zero};
 
-use crate::pickle::Value;
-use crate::pickle::value::{Bool, Float, Storage};
+use crate::{Bool, Float, Storage, Value};
 
 #[derive(Clone, Debug)]
 pub enum Int {

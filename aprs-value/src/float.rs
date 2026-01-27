@@ -3,7 +3,7 @@ use std::ops::{Add, Deref, DerefMut, Mul, Sub};
 use eyre::{Result, ensure};
 use num::{One, ToPrimitive, Zero};
 
-use crate::pickle::value::{Bool, Int};
+use crate::{Bool, Int};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Float(f64);

@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 use std::{fmt, ops};
 
-use crate::pickle::value::{Float, Int};
+use crate::{Float, Int};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Bool(bool);

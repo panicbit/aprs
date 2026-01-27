@@ -1,10 +1,10 @@
-use std::sync::Arc;
 use std::fmt;
+use std::sync::Arc;
 
 use eyre::{Context, Result};
 
-use crate::pickle::value::storage::{AsPtr, SameAs};
-use crate::pickle::value::{Storage, Tuple};
+use crate::storage::{AsPtr, SameAs};
+use crate::{Storage, Tuple};
 
 use super::Value;
 

@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::pin::pin;
 use std::sync::Arc;
 
-use eyre::{Result, bail};
+use color_eyre::eyre::{Result, bail};
 use format_serde_error::SerdeError;
 use futures::SinkExt;
 use smallvec::smallvec;
