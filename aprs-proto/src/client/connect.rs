@@ -2,8 +2,8 @@ use bitflags::bitflags;
 
 use crate::client::Deserialize;
 use crate::common::NetworkVersion;
+use crate::deserialize::u128_uuid;
 use crate::primitives::ConnectName;
-use crate::u128_uuid;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Connect {
@@ -11,7 +11,7 @@ pub struct Connect {
     pub game: String,
     pub name: ConnectName,
     // parse either number OR string
-    #[serde(with = "u128_uuid")]
+    #[serde(deserialize_with = "u128_uuid")]
     pub uuid: String,
     pub version: NetworkVersion,
     pub items_handling: ItemsHandling,
