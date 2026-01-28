@@ -17,7 +17,7 @@ use serde_with::serde_as;
 use sha1::{Digest, Sha1};
 use tracing::info;
 
-use crate::{FnvIndexMap, pickle};
+use crate::FnvIndexMap;
 
 pub mod multidata;
 pub use multidata::MultiData;
@@ -62,7 +62,8 @@ impl Game {
         info!("Decompression finished in {:?}", decompression_time);
 
         let unpickle_start = Instant::now();
-        let multi_data = pickle::unpickle(&multi_data).context("failed to unpickle")?;
+        let multi_data = aprs_pickle::unpickle(&multi_data, multidata::resolve_global)
+            .context("failed to unpickle")?;
         let unpickle_time = unpickle_start.elapsed();
         info!("Unpickling finished in {:?}", unpickle_time);
 

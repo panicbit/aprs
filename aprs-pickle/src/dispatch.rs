@@ -1,4 +1,4 @@
-use color_eyre::eyre::{Result, bail};
+use eyre::{Result, bail};
 
 use super::{Value, op};
 

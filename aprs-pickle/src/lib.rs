@@ -1,34 +1,31 @@
 // This module and its submodules is based on:
 // https://github.com/python/cpython/blob/a3990df6121880e8c67824a101bb1316de232898/Lib/pickle.py#L306
 
+use std::hash::BuildHasherDefault;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use aprs_value::{Int, Str, Value};
-use color_eyre::eyre::{Context, ContextCompat, Result, anyhow, bail};
+use eyre::{Context, ContextCompat, Result, anyhow, bail};
+use hashers::fx_hash::FxHasher;
+use indexmap::IndexMap;
 use itertools::Itertools;
-use serde::Deserialize;
 use smallvec::SmallVec;
 
-use crate::FnvIndexMap;
-use crate::game::multidata;
+type Hasher = FxHasher;
+type FnvIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<Hasher>>;
+
+pub mod op;
 
 mod dispatch;
-mod op;
 
-const HIGHEST_PROTOCOL: u8 = 5;
+pub const HIGHEST_PROTOCOL: u8 = 5;
 
-pub fn from_value<D, S>(value: Value) -> Result<D>
+pub fn unpickle<FindClass>(data: &[u8], find_class: FindClass) -> Result<Value>
 where
-    D: for<'de> Deserialize<'de>,
+    FindClass: FnMut(&str, &str) -> Result<Value>,
 {
-    let value = D::deserialize(&value)?;
-
-    Ok(value)
-}
-
-pub fn unpickle(data: &[u8]) -> Result<Value> {
-    Unpickler::new(data, multidata::resolve_global).load()
+    Unpickler::new(data, find_class).load()
 }
 
 struct Unframer<'a> {

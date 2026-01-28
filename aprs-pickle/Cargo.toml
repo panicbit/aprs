@@ -1,0 +1,13 @@
+[package]
+name = "aprs-pickle"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aprs-value = { workspace = true }
+eyre = { workspace = true }
+hashers = { workspace = true }
+indexmap = { workspace = true }
+itertools = { workspace = true }
+serde = { workspace = true }
+smallvec = { workspace = true }

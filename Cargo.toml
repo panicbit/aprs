@@ -4,6 +4,7 @@ version = "0.2.0"
 edition = "2024"
 
 [dependencies]
+aprs-pickle = { workspace = true }
 aprs-proto = { workspace = true }
 aprs-value = { workspace = true }
 bitflags = { workspace = true }
@@ -17,6 +18,7 @@ format_serde_error = "0.3.0"
 futures = "0.3.31"
 hex = { workspace = true }
 indexmap = { workspace = true }
+itertools = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_path_to_error = "0.1.20"
@@ -29,7 +31,6 @@ tokio-tungstenite = "0.28.0"
 uuid = { version = "1.18.1", features = ["serde"] }
 zip = "6.0.0"
 serde_with = "3.15.1"
-itertools = "0.14.0"
 levenshtein = "1.0.5"
 tracing = { workspace = true }
 # Locked to 0.3.19 because of https://github.com/tokio-rs/tracing/issues/3378
@@ -56,6 +57,7 @@ lto = true
 members = ["aprs-*"]
 
 [workspace.dependencies]
+aprs-pickle = { path = "aprs-pickle" }
 aprs-proto = { path = "aprs-proto" }
 aprs-value = { path = "aprs-value" }
 bitflags = "2.10.0"
@@ -66,6 +68,7 @@ fnv = "1.0.7"
 hashers = "1.0.1"
 hex = "0.4.3"
 indexmap = { version = "2.12.0", features = ["serde"] }
+itertools = "0.14.0"
 num = "0.4.3"
 parking_lot = "0.12.5"
 serde = { version = "1.0.228", features = ["derive", "rc"] }

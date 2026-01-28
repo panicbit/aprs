@@ -7,7 +7,7 @@ use aprs_proto::server::NetworkPlayer;
 use aprs_value::Value;
 use color_eyre::Result;
 use fnv::FnvHashMap;
-use itertools::Itertools;
+// use itertools::Itertools;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::Receiver;
 use tracing::{debug, error, info, warn};
@@ -166,7 +166,7 @@ impl Server {
                 alias: slot_info.name.as_str().into(),
                 name: slot_info.name.clone(),
             })
-            .collect_vec()
+            .collect::<Vec<_>>()
     }
 
     async fn broadcast(&self, message: impl Into<Arc<ServerMessage>>) {

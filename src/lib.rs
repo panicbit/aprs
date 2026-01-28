@@ -6,7 +6,6 @@ use hashers::fx_hash::FxHasher;
 use indexmap::IndexMap;
 
 pub mod game;
-pub mod pickle;
 pub mod server;
 pub mod websocket_server;
 

@@ -1,9 +1,11 @@
 use std::hash::BuildHasherDefault;
 
+use eyre::Result;
 use hashers::fx_hash::FxHasher;
 use indexmap::{IndexMap, IndexSet};
 
 mod value;
+use serde::Deserialize;
 pub use value::Value;
 
 mod list;
@@ -45,3 +47,12 @@ mod serialize;
 type Hasher = FxHasher;
 type FnvIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<Hasher>>;
 type FnvIndexSet<K> = IndexSet<K, BuildHasherDefault<Hasher>>;
+
+pub fn from_value<D>(value: Value) -> Result<D>
+where
+    D: for<'de> Deserialize<'de>,
+{
+    let value = D::deserialize(&value)?;
+
+    Ok(value)
+}
