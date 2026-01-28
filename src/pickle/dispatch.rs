@@ -1,11 +1,10 @@
-use aprs_value::Storage;
 use color_eyre::eyre::{Result, bail};
 
 use super::{Value, op};
 
-impl<'a, FindClass, S: Storage> super::Unpickler<'a, FindClass, S>
+impl<'a, FindClass> super::Unpickler<'a, FindClass>
 where
-    FindClass: FnMut(&str, &str) -> Result<Value<S>>,
+    FindClass: FnMut(&str, &str) -> Result<Value>,
 {
     pub fn dispatch(&mut self, op: u8) -> Result<()> {
         match op {

@@ -13,7 +13,7 @@ use aprs_proto::server::{
     GameData, HashedGameData, LocationInfo, Message, NetworkItem, Permissions, PrintJson,
     RemainingCommandPermission, Retrieved, RoomInfo, RoomUpdate, SetReply, Time,
 };
-use aprs_value::{ArcValue, Str, Value, storage};
+use aprs_value::{Str, Value};
 use color_eyre::eyre::{ContextCompat, Result, bail};
 use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
@@ -26,8 +26,6 @@ use crate::server::client::Client;
 use crate::server::control::{Close, Control, Pong};
 use crate::server::event::Event;
 use crate::server::{ClientMessage, ClientMessages, ServerMessage};
-
-type S = storage::Arc;
 
 impl super::Server {
     pub async fn on_event(&mut self, event: Event) {
@@ -402,7 +400,7 @@ impl super::Server {
             .await;
     }
 
-    async fn on_set(&mut self, client: &Mutex<Client>, set: Set<ArcValue>) {
+    async fn on_set(&mut self, client: &Mutex<Client>, set: Set<Value>) {
         let Set {
             key,
             default,
@@ -414,7 +412,7 @@ impl super::Server {
         let original_value = self.state.data_storage_get(&key).unwrap_or(default);
         let mut value = original_value.clone();
 
-        fn handle_op(current: Value<S>, operation: SetOperation<ArcValue>) -> Result<Value<S>> {
+        fn handle_op(current: Value, operation: SetOperation<Value>) -> Result<Value> {
             Ok(match operation {
                 SetOperation::Default => current,
                 SetOperation::Replace(value) => value,
@@ -661,7 +659,7 @@ impl super::Server {
         self.sync_items_to_client(client).await;
     }
 
-    pub async fn on_bounce(&mut self, client: &Mutex<Client>, bounce: &Bounce<ArcValue>) {
+    pub async fn on_bounce(&mut self, client: &Mutex<Client>, bounce: &Bounce<Value>) {
         let bounced = Bounced::from(bounce.clone());
         let bounced = Arc::<ServerMessage>::from(bounced);
         let Bounce {

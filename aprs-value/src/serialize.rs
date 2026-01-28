@@ -1,8 +1,8 @@
 use serde::Serialize;
 
-use crate::{Int, Storage, Value, dict, set};
+use crate::{Int, Value, dict, set};
 
-impl<ST: Storage> Serialize for Value<ST> {
+impl Serialize for Value {
     fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -32,7 +32,7 @@ impl<ST: Storage> Serialize for Value<ST> {
     }
 }
 
-impl<ST: Storage> Serialize for dict::Key<'_, ST> {
+impl Serialize for dict::Key<'_> {
     fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -44,7 +44,7 @@ impl<ST: Storage> Serialize for dict::Key<'_, ST> {
     }
 }
 
-impl<ST: Storage> Serialize for set::Item<'_, ST> {
+impl Serialize for set::Item<'_> {
     fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

@@ -5,7 +5,7 @@ use std::path::Path;
 
 use aprs_proto::primitives::{LocationId, SlotId, TeamId};
 use aprs_proto::server::NetworkItem;
-use aprs_value::{Str, Value, storage};
+use aprs_value::{Str, Value};
 use color_eyre::eyre::{ContextCompat, Result};
 use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
@@ -16,12 +16,10 @@ use tracing::warn;
 
 use crate::game::MultiData;
 
-type S = storage::Arc;
-
 #[derive(Deserialize, Serialize)]
 pub struct State {
     slot_states: FnvHashMap<SlotId, SlotState>,
-    data_storage: FnvHashMap<Str<S>, Value<S>>,
+    data_storage: FnvHashMap<Str, Value>,
 }
 
 impl State {
@@ -70,15 +68,15 @@ impl State {
         self.slot_states.get_mut(&slot)
     }
 
-    pub fn data_storage_get(&self, key: &str) -> Option<Value<S>> {
+    pub fn data_storage_get(&self, key: &str) -> Option<Value> {
         self.data_storage.get(key).cloned()
     }
 
-    pub fn data_storage_set(&mut self, key: impl Into<Str<S>>, value: impl Into<Value<S>>) {
+    pub fn data_storage_set(&mut self, key: impl Into<Str>, value: impl Into<Value>) {
         self.data_storage.insert(key.into(), value.into());
     }
 
-    pub fn get_hints(&self, _team: TeamId, _slot: SlotId) -> Option<Value<S>> {
+    pub fn get_hints(&self, _team: TeamId, _slot: SlotId) -> Option<Value> {
         // TODO: implement get hints
         warn!("TODO: implement get_hints");
         None

@@ -1,52 +1,51 @@
 use std::fmt;
+use std::sync::Arc;
 
 use eyre::{Result, bail};
+use parking_lot::RwLockWriteGuard;
+use parking_lot::{RwLock, RwLockReadGuard};
 use tracing::warn;
 
 use crate::FnvIndexMap;
 use crate::Int;
-use crate::storage::{SameAs, Storage};
 
 use super::Value;
 
 #[derive(Clone)]
-pub struct Dict<S: Storage>(S::ReadWrite<Inner<S>>);
+pub struct Dict(Arc<RwLock<Inner>>);
 
 #[derive(PartialEq, Eq)]
-struct Inner<S: Storage> {
-    value_dict: FnvIndexMap<Value<S>, Value<S>>,
-    int_dict: FnvIndexMap<i64, Value<S>>,
+struct Inner {
+    value_dict: FnvIndexMap<Value, Value>,
+    int_dict: FnvIndexMap<i64, Value>,
 }
 
-impl<S> Dict<S>
-where
-    S: Storage,
-{
+impl Dict {
     pub fn new() -> Self {
-        Self(S::new_read_write(Inner {
+        Self(Arc::new(RwLock::new(Inner {
             value_dict: <_>::default(),
             int_dict: <_>::default(),
-        }))
+        })))
     }
 
     pub fn len(&self) -> usize {
-        S::read(&self.0).len()
+        self.0.read().len()
     }
 
     pub fn is_empty(&self) -> bool {
-        S::read(&self.0).is_empty()
+        self.0.read().is_empty()
     }
 
-    pub fn read(&self) -> ReadDictGuard<'_, S> {
+    pub fn read(&self) -> ReadDictGuard<'_> {
         ReadDictGuard::new(self)
     }
 
-    pub fn write(&self) -> WriteDictGuard<'_, S> {
+    pub fn write(&self) -> WriteDictGuard<'_> {
         WriteDictGuard::new(self)
     }
 
-    pub fn update(&self, other: &Dict<S>) -> Result<()> {
-        if self.0.same_as(&other.0) {
+    pub fn update(&self, other: &Dict) -> Result<()> {
+        if Arc::ptr_eq(&self.0, &other.0) {
             return Ok(());
         }
 
@@ -63,7 +62,7 @@ where
     }
 }
 
-impl<S: Storage> Inner<S> {
+impl Inner {
     fn len(&self) -> usize {
         self.value_dict.len() + self.int_dict.len()
     }
@@ -72,14 +71,14 @@ impl<S: Storage> Inner<S> {
         self.len() == 0
     }
 
-    fn get(&self, key: &Value<S>) -> Option<&Value<S>> {
+    fn get(&self, key: &Value) -> Option<&Value> {
         match &key {
             Value::Int(Int::I64(key)) => self.int_dict.get(key),
             _ => self.value_dict.get(key),
         }
     }
 
-    fn iter(&self) -> impl Iterator<Item = (Key<'_, S>, &Value<S>)> {
+    fn iter(&self) -> impl Iterator<Item = (Key<'_>, &Value)> {
         let value_iter = self
             .value_dict
             .iter()
@@ -92,7 +91,7 @@ impl<S: Storage> Inner<S> {
         value_iter.chain(int_iter)
     }
 
-    fn insert(&mut self, key: impl Into<Value<S>>, value: impl Into<Value<S>>) -> Result<()> {
+    fn insert(&mut self, key: impl Into<Value>, value: impl Into<Value>) -> Result<()> {
         let key = key.into();
 
         if !key.is_hashable() {
@@ -109,7 +108,7 @@ impl<S: Storage> Inner<S> {
         Ok(())
     }
 
-    fn extend(&mut self, items: impl IntoIterator<Item = (Value<S>, Value<S>)>) {
+    fn extend(&mut self, items: impl IntoIterator<Item = (Value, Value)>) {
         for (key, value) in items.into_iter() {
             if let Err(err) = self.insert(key, value) {
                 warn!("{err}");
@@ -118,9 +117,9 @@ impl<S: Storage> Inner<S> {
     }
 }
 
-impl<S: Storage> PartialEq for Dict<S> {
+impl PartialEq for Dict {
     fn eq(&self, other: &Self) -> bool {
-        if self.0.same_as(&other.0) {
+        if Arc::ptr_eq(&self.0, &other.0) {
             return true;
         }
 
@@ -131,30 +130,30 @@ impl<S: Storage> PartialEq for Dict<S> {
     }
 }
 
-impl<S: Storage> Default for Dict<S> {
+impl Default for Dict {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<S: Storage> fmt::Debug for Dict<S> {
+impl fmt::Debug for Dict {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.read().iter()).finish()
     }
 }
 
-pub struct ReadDictGuard<'a, S: Storage> {
-    inner: S::Read<'a, Inner<S>>,
+pub struct ReadDictGuard<'a> {
+    inner: RwLockReadGuard<'a, Inner>,
 }
 
-impl<'a, S: Storage> ReadDictGuard<'a, S> {
-    fn new(dict: &'a Dict<S>) -> Self {
-        let inner = S::read(&dict.0);
+impl<'a> ReadDictGuard<'a> {
+    fn new(dict: &'a Dict) -> Self {
+        let inner = dict.0.read();
 
         Self { inner }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (Key<'_, S>, &Value<S>)> {
+    pub fn iter(&self) -> impl Iterator<Item = (Key<'_>, &Value)> {
         self.inner.iter()
     }
 
@@ -162,39 +161,39 @@ impl<'a, S: Storage> ReadDictGuard<'a, S> {
         self.inner.len()
     }
 
-    pub fn get(&self, key: &Value<S>) -> Option<&Value<S>> {
+    pub fn get(&self, key: &Value) -> Option<&Value> {
         self.inner.get(key)
     }
 }
 
-pub struct WriteDictGuard<'a, S: Storage> {
-    inner: S::Write<'a, Inner<S>>,
+pub struct WriteDictGuard<'a> {
+    inner: RwLockWriteGuard<'a, Inner>,
 }
 
-impl<'a, S: Storage> WriteDictGuard<'a, S> {
-    fn new(dict: &'a Dict<S>) -> Self {
-        let inner = S::write(&dict.0);
+impl<'a> WriteDictGuard<'a> {
+    fn new(dict: &'a Dict) -> Self {
+        let inner = dict.0.write();
 
         Self { inner }
     }
 
-    pub fn insert(&mut self, key: impl Into<Value<S>>, value: impl Into<Value<S>>) -> Result<()> {
+    pub fn insert(&mut self, key: impl Into<Value>, value: impl Into<Value>) -> Result<()> {
         self.inner.insert(key, value)
     }
 
-    pub fn extend(&mut self, items: impl IntoIterator<Item = (Value<S>, Value<S>)>) {
+    pub fn extend(&mut self, items: impl IntoIterator<Item = (Value, Value)>) {
         self.inner.extend(items);
     }
 }
 
 #[derive(Clone, Debug)]
-pub enum Key<'a, S: Storage> {
-    Value(&'a Value<S>),
+pub enum Key<'a> {
+    Value(&'a Value),
     Int64(i64),
 }
 
-impl<S: Storage> From<Key<'_, S>> for Value<S> {
-    fn from(key: Key<'_, S>) -> Self {
+impl From<Key<'_>> for Value {
+    fn from(key: Key<'_>) -> Self {
         match key {
             Key::Value(value) => value.clone(),
             Key::Int64(value) => Value::Int(value.into()),

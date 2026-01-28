@@ -4,7 +4,7 @@ use std::ops::{Add, BitAnd, BitOr, Mul, Sub};
 use eyre::{ContextCompat, Result, bail};
 use num::{BigInt, FromPrimitive, One, Zero};
 
-use crate::{Bool, Float, Storage, Value};
+use crate::{Bool, Float, Value};
 
 #[derive(Clone, Debug)]
 pub enum Int {
@@ -160,10 +160,10 @@ impl TryFrom<Float> for Int {
     }
 }
 
-impl<S: Storage> TryFrom<Value<S>> for Int {
+impl TryFrom<Value> for Int {
     type Error = eyre::Report;
 
-    fn try_from(value: Value<S>) -> Result<Self, Self::Error> {
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
         match value {
             Value::Int(n) => Ok(n),
             Value::Float(n) => Ok(n.try_into()?),

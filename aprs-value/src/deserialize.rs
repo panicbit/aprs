@@ -1,23 +1,22 @@
 use std::fmt;
-use std::marker::PhantomData;
 
 use serde::{Deserialize, de};
 
-use crate::{Dict, List, Storage, Value};
+use crate::{Dict, List, Value};
 
-impl<'de, S: Storage> Deserialize<'de> for Value<S> {
+impl<'de> Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_any(ValueVisitor(PhantomData))
+        deserializer.deserialize_any(ValueVisitor)
     }
 }
 
-struct ValueVisitor<S>(PhantomData<S>);
+struct ValueVisitor;
 
-impl<'de, S: Storage> de::Visitor<'de> for ValueVisitor<S> {
-    type Value = Value<S>;
+impl<'de> de::Visitor<'de> for ValueVisitor {
+    type Value = Value;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Value")
@@ -151,7 +150,7 @@ impl<'de, S: Storage> de::Visitor<'de> for ValueVisitor<S> {
             .iter()
             .copied()
             .map(|byte| Value::int(byte))
-            .collect::<List<S>>();
+            .collect::<List>();
 
         Ok(Value::List(list))
     }
@@ -206,7 +205,7 @@ impl<'de, S: Storage> de::Visitor<'de> for ValueVisitor<S> {
         let size_hint = seq.size_hint().unwrap_or(0);
         let mut list = Vec::with_capacity(size_hint);
 
-        while let Some(value) = seq.next_element::<Value<S>>()? {
+        while let Some(value) = seq.next_element::<Value>()? {
             list.push(value);
         }
 
@@ -222,7 +221,7 @@ impl<'de, S: Storage> de::Visitor<'de> for ValueVisitor<S> {
         {
             let mut dict = dict.write();
 
-            while let Some((key, value)) = map.next_entry::<Value<S>, Value<S>>()? {
+            while let Some((key, value)) = map.next_entry::<Value, Value>()? {
                 dict.insert(key, value);
             }
         }

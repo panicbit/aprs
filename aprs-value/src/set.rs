@@ -1,42 +1,45 @@
 use std::fmt;
+use std::sync::Arc;
 
 use eyre::{Result, bail};
+use parking_lot::RwLock;
+use parking_lot::RwLockReadGuard;
+use parking_lot::RwLockWriteGuard;
 use tracing::warn;
 
 use crate::FnvIndexSet;
 use crate::Int;
-use crate::storage::{SameAs, Storage};
 
 use super::Value;
 
 #[derive(Clone)]
-pub struct Set<S: Storage>(S::ReadWrite<Inner<S>>);
+pub struct Set(Arc<RwLock<Inner>>);
 
 #[derive(PartialEq)]
-struct Inner<S: Storage> {
-    value_set: FnvIndexSet<Value<S>>,
+struct Inner {
+    value_set: FnvIndexSet<Value>,
     int_set: FnvIndexSet<i64>,
 }
 
-impl<S: Storage> Set<S> {
+impl Set {
     pub fn new() -> Self {
-        Self(S::new_read_write(Inner {
+        Self(Arc::new(RwLock::new(Inner {
             value_set: <_>::default(),
             int_set: <_>::default(),
-        }))
+        })))
     }
 
-    pub fn read(&self) -> ReadSetGuard<'_, S> {
+    pub fn read(&self) -> ReadSetGuard<'_> {
         ReadSetGuard::new(self)
     }
 
-    pub fn write(&self) -> WriteSetGuard<'_, S> {
+    pub fn write(&self) -> WriteSetGuard<'_> {
         WriteSetGuard::new(self)
     }
 }
 
-impl<S: Storage> Inner<S> {
-    fn insert(&mut self, key: impl Into<Value<S>>) -> Result<()> {
+impl Inner {
+    fn insert(&mut self, key: impl Into<Value>) -> Result<()> {
         let key = key.into();
 
         if !key.is_hashable() {
@@ -55,7 +58,7 @@ impl<S: Storage> Inner<S> {
         Ok(())
     }
 
-    fn iter(&self) -> impl Iterator<Item = Item<'_, S>> {
+    fn iter(&self) -> impl Iterator<Item = Item<'_>> {
         let value_set = self.value_set.iter().map(Item::Value);
         let int_set = self.int_set.iter().copied().map(Item::Int64);
 
@@ -66,7 +69,7 @@ impl<S: Storage> Inner<S> {
         self.value_set.len()
     }
 
-    fn extend(&mut self, items: impl IntoIterator<Item = Value<S>>) {
+    fn extend(&mut self, items: impl IntoIterator<Item = Value>) {
         for item in items.into_iter() {
             if let Err(err) = self.insert(item) {
                 warn!("{err}");
@@ -75,15 +78,15 @@ impl<S: Storage> Inner<S> {
     }
 }
 
-impl<S: Storage> Default for Set<S> {
+impl Default for Set {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<S: Storage> PartialEq for Set<S> {
+impl PartialEq for Set {
     fn eq(&self, other: &Self) -> bool {
-        if self.0.same_as(&other.0) {
+        if Arc::ptr_eq(&self.0, &other.0) {
             return true;
         }
 
@@ -94,24 +97,24 @@ impl<S: Storage> PartialEq for Set<S> {
     }
 }
 
-impl<S: Storage> fmt::Debug for Set<S> {
+impl fmt::Debug for Set {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.read().iter()).finish()
     }
 }
 
-pub struct ReadSetGuard<'a, S: Storage> {
-    inner: S::Read<'a, Inner<S>>,
+pub struct ReadSetGuard<'a> {
+    inner: RwLockReadGuard<'a, Inner>,
 }
 
-impl<'a, S: Storage> ReadSetGuard<'a, S> {
-    fn new(set: &'a Set<S>) -> Self {
-        let set = S::read(&set.0);
+impl<'a> ReadSetGuard<'a> {
+    fn new(set: &'a Set) -> Self {
+        let set = set.0.read();
 
         Self { inner: set }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = Item<'_, S>> {
+    pub fn iter(&self) -> impl Iterator<Item = Item<'_>> {
         self.inner.iter()
     }
 
@@ -120,38 +123,38 @@ impl<'a, S: Storage> ReadSetGuard<'a, S> {
     }
 }
 
-pub struct WriteSetGuard<'a, S: Storage> {
-    inner: S::Write<'a, Inner<S>>,
+pub struct WriteSetGuard<'a> {
+    inner: RwLockWriteGuard<'a, Inner>,
 }
 
-impl<'a, S: Storage> WriteSetGuard<'a, S> {
-    fn new(set: &'a Set<S>) -> Self {
-        let inner = S::write(&set.0);
+impl<'a> WriteSetGuard<'a> {
+    fn new(set: &'a Set) -> Self {
+        let inner = set.0.write();
 
         Self { inner }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = Item<'_, S>> {
+    pub fn iter(&self) -> impl Iterator<Item = Item<'_>> {
         self.inner.iter()
     }
 
-    pub fn insert(&mut self, key: Value<S>) -> Result<()> {
+    pub fn insert(&mut self, key: Value) -> Result<()> {
         self.inner.insert(key)
     }
 
-    pub fn extend(&mut self, items: impl IntoIterator<Item = Value<S>>) {
+    pub fn extend(&mut self, items: impl IntoIterator<Item = Value>) {
         self.inner.extend(items)
     }
 }
 
 #[derive(Clone, Debug)]
-pub enum Item<'a, S: Storage> {
-    Value(&'a Value<S>),
+pub enum Item<'a> {
+    Value(&'a Value),
     Int64(i64),
 }
 
-impl<S: Storage> From<Item<'_, S>> for Value<S> {
-    fn from(key: Item<'_, S>) -> Self {
+impl From<Item<'_>> for Value {
+    fn from(key: Item<'_>) -> Self {
         match key {
             Item::Value(value) => value.clone(),
             Item::Int64(value) => Value::Int(value.into()),

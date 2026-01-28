@@ -5,22 +5,22 @@ use std::ops::{Add, BitAnd, BitOr, Mul, Sub};
 use eyre::{Result, bail};
 use tracing::error;
 
-use crate::{Bool, Callable, Dict, Float, Int, List, Set, Storage, Str, Tuple};
+use crate::{Bool, Callable, Dict, Float, Int, List, Set, Str, Tuple};
 
-pub enum Value<S: Storage> {
-    Dict(Dict<S>),
-    List(List<S>),
-    Str(Str<S>),
+pub enum Value {
+    Dict(Dict),
+    List(List),
+    Str(Str),
     Int(Int),
     Float(Float),
     Bool(Bool),
-    Tuple(Tuple<S>),
-    Callable(Callable<S>),
+    Tuple(Tuple),
+    Callable(Callable),
     None(crate::None),
-    Set(Set<S>),
+    Set(Set),
 }
 
-impl<S: Storage> Value<S> {
+impl Value {
     pub fn empty_dict() -> Self {
         Value::Dict(Dict::default())
     }
@@ -58,7 +58,7 @@ impl<S: Storage> Value<S> {
         }
     }
 
-    pub fn extend(&self, value: Vec<Value<S>>) -> Result<()> {
+    pub fn extend(&self, value: Vec<Value>) -> Result<()> {
         match self {
             Value::List(list) => {
                 list.extend(value);
@@ -70,21 +70,21 @@ impl<S: Storage> Value<S> {
 
     // TODO: move conversions to TryFrom impls
 
-    pub fn as_dict(&self) -> Result<&Dict<S>> {
+    pub fn as_dict(&self) -> Result<&Dict> {
         match self {
             Value::Dict(dict) => Ok(dict),
             _ => bail!("{} is not a Dict", self.type_name()),
         }
     }
 
-    pub fn as_list(&self) -> Result<&List<S>> {
+    pub fn as_list(&self) -> Result<&List> {
         match self {
             Value::List(list) => Ok(list),
             _ => bail!("{} is not a List", self.type_name()),
         }
     }
 
-    pub fn as_str(&self) -> Result<&Str<S>> {
+    pub fn as_str(&self) -> Result<&Str> {
         match self {
             Value::Str(str) => Ok(str),
             _ => bail!("{} is not a Str", self.type_name()),
@@ -105,21 +105,21 @@ impl<S: Storage> Value<S> {
         }
     }
 
-    pub fn as_tuple(&self) -> Result<&Tuple<S>> {
+    pub fn as_tuple(&self) -> Result<&Tuple> {
         match self {
             Value::Tuple(tuple) => Ok(tuple),
             _ => bail!("{} is not a Tuple", self.type_name()),
         }
     }
 
-    pub fn as_callable(&self) -> Result<&Callable<S>> {
+    pub fn as_callable(&self) -> Result<&Callable> {
         match self {
             Value::Callable(callable) => Ok(callable),
             _ => bail!("{} is not a Callable", self.type_name()),
         }
     }
 
-    pub fn as_set(&self) -> Result<&Set<S>> {
+    pub fn as_set(&self) -> Result<&Set> {
         match self {
             Value::Set(set) => Ok(set),
             _ => bail!("{} is not a Set", self.type_name()),
@@ -158,7 +158,7 @@ impl<S: Storage> Value<S> {
         }
     }
 
-    pub fn tuple(value: impl Into<Tuple<S>>) -> Self {
+    pub fn tuple(value: impl Into<Tuple>) -> Self {
         Self::Tuple(value.into())
     }
 
@@ -180,7 +180,7 @@ impl<S: Storage> Value<S> {
 
     pub fn callable<F>(f: F) -> Self
     where
-        F: Fn(&Tuple<S>) -> Result<Value<S>> + Send + Sync + 'static,
+        F: Fn(&Tuple) -> Result<Value> + Send + Sync + 'static,
     {
         Self::Callable(Callable::new(f))
     }
@@ -201,8 +201,8 @@ impl<S: Storage> Value<S> {
     }
 }
 
-impl<S: Storage> Value<S> {
-    pub fn add(&self, rhs: &Value<S>) -> Result<Value<S>> {
+impl Value {
+    pub fn add(&self, rhs: &Value) -> Result<Value> {
         match (self, rhs) {
             (Value::Int(a), Value::Int(b)) => Self::add_int(a, b),
             (Value::Float(a), Value::Float(b)) => Self::add_float(a, b),
@@ -213,11 +213,11 @@ impl<S: Storage> Value<S> {
         }
     }
 
-    fn add_int(a: &Int, b: &Int) -> Result<Value<S>> {
+    fn add_int(a: &Int, b: &Int) -> Result<Value> {
         Ok(a.add(b).into())
     }
 
-    fn add_float<A, B>(a: A, b: B) -> Result<Value<S>>
+    fn add_float<A, B>(a: A, b: B) -> Result<Value>
     where
         A: TryInto<Float>,
         eyre::Report: From<A::Error>,
@@ -230,7 +230,7 @@ impl<S: Storage> Value<S> {
         Ok(a.add(b).into())
     }
 
-    pub fn sub(&self, rhs: &Value<S>) -> Result<Value<S>> {
+    pub fn sub(&self, rhs: &Value) -> Result<Value> {
         match (self, rhs) {
             (Value::Int(a), Value::Int(b)) => Self::sub_int(a, b),
             (Value::Float(a), Value::Float(b)) => Self::sub_float(a, b),
@@ -241,11 +241,11 @@ impl<S: Storage> Value<S> {
         }
     }
 
-    fn sub_int(a: &Int, b: &Int) -> Result<Value<S>> {
+    fn sub_int(a: &Int, b: &Int) -> Result<Value> {
         Ok(a.sub(b).into())
     }
 
-    fn sub_float<A, B>(a: A, b: B) -> Result<Value<S>>
+    fn sub_float<A, B>(a: A, b: B) -> Result<Value>
     where
         A: TryInto<Float>,
         eyre::Report: From<A::Error>,
@@ -258,7 +258,7 @@ impl<S: Storage> Value<S> {
         Ok(a.sub(b).into())
     }
 
-    pub fn mul(&self, rhs: &Value<S>) -> Result<Value<S>> {
+    pub fn mul(&self, rhs: &Value) -> Result<Value> {
         match (self, rhs) {
             (Value::Int(a), Value::Int(b)) => Self::mul_int(a, b),
             (Value::Float(a), Value::Float(b)) => Self::mul_float(a, b),
@@ -269,11 +269,11 @@ impl<S: Storage> Value<S> {
         }
     }
 
-    fn mul_int(a: &Int, b: &Int) -> Result<Value<S>> {
+    fn mul_int(a: &Int, b: &Int) -> Result<Value> {
         Ok(a.mul(b).into())
     }
 
-    fn mul_float<A, B>(a: A, b: B) -> Result<Value<S>>
+    fn mul_float<A, B>(a: A, b: B) -> Result<Value>
     where
         A: TryInto<Float>,
         eyre::Report: From<A::Error>,
@@ -293,11 +293,11 @@ impl<S: Storage> Value<S> {
     //     }
     // }
 
-    fn r#mod(&self, _rhs: &Value<S>) -> Result<Value<S>> {
+    fn r#mod(&self, _rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    pub fn floor(&self) -> Result<Value<S>> {
+    pub fn floor(&self) -> Result<Value> {
         match self {
             Self::Int(n) => Ok(Self::Int(n.clone())),
             Self::Float(n) => n.floor().map(Self::Int),
@@ -305,7 +305,7 @@ impl<S: Storage> Value<S> {
         }
     }
 
-    pub fn ceil(&self) -> Result<Value<S>> {
+    pub fn ceil(&self) -> Result<Value> {
         match self {
             Self::Int(n) => Ok(Self::Int(n.clone())),
             Self::Float(n) => n.ceil().map(Self::Int),
@@ -313,15 +313,15 @@ impl<S: Storage> Value<S> {
         }
     }
 
-    fn max(&self, _rhs: &Value<S>) -> Result<Value<S>> {
+    fn max(&self, _rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn min(&self, _rhs: &Value<S>) -> Result<Value<S>> {
+    fn min(&self, _rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    pub fn and(&self, rhs: &Value<S>) -> Result<Value<S>> {
+    pub fn and(&self, rhs: &Value) -> Result<Value> {
         match (self, rhs) {
             (Value::Int(a), Value::Int(b)) => Ok(Self::Int(a.bitand(b))),
             (Value::Bool(a), Value::Bool(b)) => Ok((**a && **b).into()),
@@ -329,7 +329,7 @@ impl<S: Storage> Value<S> {
         }
     }
 
-    pub fn or(&self, rhs: &Value<S>) -> Result<Value<S>> {
+    pub fn or(&self, rhs: &Value) -> Result<Value> {
         match (self, rhs) {
             (Value::Int(a), Value::Int(b)) => Ok(Self::Int(a.bitor(b))),
             (Value::Bool(a), Value::Bool(b)) => Ok((**a || **b).into()),
@@ -337,29 +337,29 @@ impl<S: Storage> Value<S> {
         }
     }
 
-    fn xor(&self, _rhs: &Value<S>) -> Result<Value<S>> {
+    fn xor(&self, _rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn left_shift(&self, _rhs: &Value<S>) -> Result<Value<S>> {
+    fn left_shift(&self, _rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn right_shift(&self, _rhs: &Value<S>) -> Result<Value<S>> {
+    fn right_shift(&self, _rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    fn remove(&self, _rhs: &Value<S>) -> Result<Value<S>> {
+    fn remove(&self, _rhs: &Value) -> Result<Value> {
         todo!()
     }
 
-    pub fn pop(&self, rhs: &Value<S>) -> Result<Option<Value<S>>> {
+    pub fn pop(&self, rhs: &Value) -> Result<Option<Value>> {
         let list = self.as_list()?;
 
         list.remove(rhs)
     }
 
-    pub fn update(&self, dict: &Value<S>) -> Result<()> {
+    pub fn update(&self, dict: &Value) -> Result<()> {
         let this = self.as_dict()?;
         let dict = dict.as_dict()?;
 
@@ -367,10 +367,7 @@ impl<S: Storage> Value<S> {
     }
 }
 
-impl<S> Clone for Value<S>
-where
-    S: Storage,
-{
+impl Clone for Value {
     fn clone(&self) -> Self {
         match self {
             Self::Dict(arg0) => Self::Dict(arg0.clone()),
@@ -387,79 +384,79 @@ where
     }
 }
 
-impl<S: Storage> Default for Value<S> {
+impl Default for Value {
     fn default() -> Self {
         Value::none()
     }
 }
 
-impl<S: Storage> From<&Value<S>> for Value<S> {
-    fn from(value: &Value<S>) -> Self {
+impl From<&Value> for Value {
+    fn from(value: &Value) -> Self {
         value.clone()
     }
 }
 
-impl<S: Storage> From<&str> for Value<S> {
+impl From<&str> for Value {
     fn from(str: &str) -> Self {
         Self::str(str)
     }
 }
 
-impl<S: Storage> From<Dict<S>> for Value<S> {
-    fn from(dict: Dict<S>) -> Self {
+impl From<Dict> for Value {
+    fn from(dict: Dict) -> Self {
         Value::Dict(dict)
     }
 }
 
-impl<S: Storage> From<List<S>> for Value<S> {
-    fn from(list: List<S>) -> Self {
+impl From<List> for Value {
+    fn from(list: List) -> Self {
         Value::List(list)
     }
 }
 
-impl<S: Storage> From<Str<S>> for Value<S> {
-    fn from(str: Str<S>) -> Self {
+impl From<Str> for Value {
+    fn from(str: Str) -> Self {
         Value::Str(str)
     }
 }
 
-impl<S: Storage> From<Int> for Value<S> {
+impl From<Int> for Value {
     fn from(n: Int) -> Self {
         Value::Int(n)
     }
 }
 
-impl<S: Storage> From<Float> for Value<S> {
+impl From<Float> for Value {
     fn from(n: Float) -> Self {
         Value::Float(n)
     }
 }
 
-impl<S: Storage> From<i32> for Value<S> {
+impl From<i32> for Value {
     fn from(value: i32) -> Self {
         Value::from(Int::from(value))
     }
 }
 
-impl<S: Storage> From<f64> for Value<S> {
+impl From<f64> for Value {
     fn from(value: f64) -> Self {
         Value::from(Float::from(value))
     }
 }
 
-impl<S: Storage> From<Bool> for Value<S> {
+impl From<Bool> for Value {
     fn from(value: Bool) -> Self {
         Value::Bool(value)
     }
 }
 
-impl<S: Storage> From<bool> for Value<S> {
+impl From<bool> for Value {
     fn from(value: bool) -> Self {
         Value::from(Bool::from(value))
     }
 }
 
-impl<S: Storage> fmt::Debug for Value<S> {
+impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Value::Dict(dict) => f.debug_tuple("Dict").field(dict).finish(),
@@ -476,7 +473,7 @@ impl<S: Storage> fmt::Debug for Value<S> {
     }
 }
 
-impl<S: Storage> PartialEq for Value<S> {
+impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match self {
             Value::Dict(v1) => match other {
@@ -526,7 +523,7 @@ impl<S: Storage> PartialEq for Value<S> {
     }
 }
 
-impl<S: Storage> Hash for Value<S> {
+impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.hash(state)
             .unwrap_or_else(|err| error!("hash of unhashable value: {err}"));
@@ -534,4 +531,4 @@ impl<S: Storage> Hash for Value<S> {
 }
 
 // This is a lie. All bets are off.
-impl<S: Storage> Eq for Value<S> {}
+impl Eq for Value {}

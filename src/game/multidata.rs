@@ -5,7 +5,7 @@ use aprs_proto::common::NetworkVersion;
 use aprs_proto::primitives::ConnectName;
 use aprs_proto::server::NetworkSlot;
 use aprs_proto::server::print_json::HintStatus;
-use aprs_value::{ArcValue, Dict, Storage, Str, Tuple, Value};
+use aprs_value::{Dict, Str, Tuple, Value};
 use color_eyre::eyre::{Result, bail};
 use litemap::LiteMap;
 use serde::Deserialize;
@@ -22,7 +22,7 @@ use crate::game::{
 // #[serde(deny_unknown_fields)]
 pub struct MultiData {
     pub slot_info: Arc<BTreeMap<SlotId, NetworkSlot>>,
-    pub slot_data: Arc<BTreeMap<SlotId, ArcValue>>,
+    pub slot_data: Arc<BTreeMap<SlotId, Value>>,
     pub connect_names: BTreeMap<ConnectName, TeamAndSlot>,
     pub seed_name: SeedName,
     pub minimum_versions: MinimumVersions,
@@ -35,7 +35,7 @@ pub struct MultiData {
     pub spheres: Vec<BTreeMap<SlotId, Vec<LocationId>>>,
     pub precollected_items: BTreeMap<SlotId, Vec<ItemId>>,
     #[serde(flatten)]
-    pub rest: BTreeMap<String, ArcValue>,
+    pub rest: BTreeMap<String, Value>,
 }
 
 impl MultiData {
@@ -183,7 +183,7 @@ impl MultiData {
 //     }
 // }
 
-pub fn resolve_global<S: Storage>(module: &str, name: &str) -> Result<Value<S>> {
+pub fn resolve_global(module: &str, name: &str) -> Result<Value> {
     debug!("Trying to locate {module}.{name}");
 
     Ok(match (module, name) {
@@ -200,10 +200,9 @@ mod globals {
         use super::super::*;
         use aprs_value::Int;
 
-        pub fn network_slot<S: Storage>() -> Value<S> {
+        pub fn network_slot() -> Value {
             Value::callable(|args| {
-                let (name, game, r#type, group_members) =
-                    <(Str<S>, Str<S>, Int, Value<S>)>::try_from(args)?;
+                let (name, game, r#type, group_members) = <(Str, Str, Int, Value)>::try_from(args)?;
 
                 let dict = Dict::new();
 
@@ -220,7 +219,7 @@ mod globals {
             })
         }
 
-        pub fn slot_type<S: Storage>() -> Value<S> {
+        pub fn slot_type() -> Value {
             Value::callable(|args| {
                 // TODO: create iterator-like type for tuple that allows conversion
                 // e.g. ".next_number()" or `.next::<Number>()`
@@ -231,7 +230,7 @@ mod globals {
             })
         }
 
-        pub fn hint<S: Storage>() -> Value<S> {
+        pub fn hint() -> Value {
             Value::callable(|args| {
                 let mut args = args.iter().cloned().fuse();
                 let value = Tuple::from_iter([
@@ -251,7 +250,7 @@ mod globals {
             })
         }
 
-        pub fn hint_status<S: Storage>() -> Value<S> {
+        pub fn hint_status() -> Value {
             Value::callable(|args| {
                 // TODO: create iterator-like type for tuple that allows conversion
                 // e.g. ".next_number()" or `.next::<Number>()`

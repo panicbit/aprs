@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use aprs_proto::primitives::{SlotId, TeamId};
 use aprs_proto::server::NetworkPlayer;
-use aprs_value::ArcValue;
+use aprs_value::Value;
 use color_eyre::Result;
 use fnv::FnvHashMap;
 use itertools::Itertools;
@@ -29,9 +29,9 @@ pub use event::Event;
 
 pub mod control;
 
-pub type ServerMessage = aprs_proto::server::Message<ArcValue>;
-pub type ClientMessage = aprs_proto::client::Message<ArcValue>;
-pub type ClientMessages = aprs_proto::client::Messages<ArcValue>;
+pub type ServerMessage = aprs_proto::server::Message<aprs_value::Value>;
+pub type ClientMessage = aprs_proto::client::Message<aprs_value::Value>;
+pub type ClientMessages = aprs_proto::client::Messages<aprs_value::Value>;
 
 pub struct Server {
     config: Config,
@@ -81,7 +81,7 @@ impl Server {
         }
     }
 
-    fn get_key(&self, key: &str) -> Option<ArcValue> {
+    fn get_key(&self, key: &str) -> Option<Value> {
         if let Some(key) = key.strip_prefix("_read_") {
             return self.get_special_key(key);
         }
@@ -89,7 +89,7 @@ impl Server {
         self.state.data_storage_get(key)
     }
 
-    fn get_special_key(&self, key: &str) -> Option<ArcValue> {
+    fn get_special_key(&self, key: &str) -> Option<Value> {
         if let Some(key) = key.strip_prefix("hints_") {
             return self.get_hints(key);
         }
@@ -119,27 +119,27 @@ impl Server {
         None
     }
 
-    fn get_item_name_groups(&self, _key: &str) -> Option<ArcValue> {
+    fn get_item_name_groups(&self, _key: &str) -> Option<Value> {
         warn!("TODO: implement get_item_name_groups");
         None
     }
 
-    fn get_location_name_groups(&self, _key: &str) -> Option<ArcValue> {
+    fn get_location_name_groups(&self, _key: &str) -> Option<Value> {
         warn!("TODO: implement get_location_name_groups");
         None
     }
 
-    fn get_client_status(&self, _key: &str) -> Option<ArcValue> {
+    fn get_client_status(&self, _key: &str) -> Option<Value> {
         warn!("TODO: implement get_client_status");
         None
     }
 
-    fn get_race_mode(&self, _key: &str) -> Option<ArcValue> {
+    fn get_race_mode(&self, _key: &str) -> Option<Value> {
         warn!("TODO: implement get_race_mode");
         None
     }
 
-    fn get_hints(&self, key: &str) -> Option<ArcValue> {
+    fn get_hints(&self, key: &str) -> Option<Value> {
         let (team, slot) = key.split_once("_")?;
         let team = team.parse::<i64>().map(TeamId).ok()?;
         let slot = slot.parse::<i64>().map(SlotId).ok()?;
@@ -149,7 +149,7 @@ impl Server {
         Some(hints)
     }
 
-    fn get_slot_data(&self, key: &str) -> Option<ArcValue> {
+    fn get_slot_data(&self, key: &str) -> Option<Value> {
         let slot = key.parse::<i64>().map(SlotId).ok()?;
 
         self.multi_data.slot_data.get(&slot).cloned()

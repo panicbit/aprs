@@ -6,7 +6,7 @@ use aprs_proto::client::ItemsHandling;
 use aprs_proto::primitives::{ConnectName, ItemId, SlotId, SlotName, TeamId};
 use aprs_proto::server::NetworkItem;
 use aprs_proto::server::ReceivedItems;
-use aprs_value::{Str, storage};
+use aprs_value::Str;
 use fnv::FnvHashSet;
 use itertools::Itertools;
 use tokio::sync::mpsc::Sender;
@@ -14,8 +14,6 @@ use tracing::error;
 
 use crate::server::ServerMessage;
 use crate::server::control::{Close, Control, ControlOrMessage};
-
-type S = storage::Arc;
 
 #[derive(Clone)]
 pub struct Client {
@@ -28,7 +26,7 @@ pub struct Client {
     pub team_id: TeamId,
     pub tags: FnvHashSet<String>,
     pub game: String,
-    pub wants_updates_for_keys: FnvHashSet<Str<S>>,
+    pub wants_updates_for_keys: FnvHashSet<Str>,
     starting_inventory: FnvHashSet<ItemId>,
     items_handling: ItemsHandling,
     next_slot_item_index: usize,

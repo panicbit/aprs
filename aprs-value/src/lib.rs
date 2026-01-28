@@ -42,12 +42,6 @@ mod serde_error;
 mod serialize;
 // mod serializer;
 
-pub mod storage;
-pub use storage::Storage;
-
-pub type RcValue = Value<storage::Rc>;
-pub type ArcValue = Value<storage::Arc>;
-
 type Hasher = FxHasher;
 type FnvIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<Hasher>>;
 type FnvIndexSet<K> = IndexSet<K, BuildHasherDefault<Hasher>>;

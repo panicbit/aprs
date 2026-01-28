@@ -3,13 +3,13 @@ use serde::de::{IntoDeserializer, Visitor};
 use serde::{Deserializer, forward_to_deserialize_any};
 
 use crate::serde_error::SerdeError;
-use crate::{Int, Storage, dict, set};
+use crate::{Int, dict, set};
 
 use super::Value;
 
 pub type Result<T> = std::result::Result<T, SerdeError>;
 
-impl<'de, S: Storage> Deserializer<'de> for &Value<S> {
+impl<'de> Deserializer<'de> for &Value {
     type Error = SerdeError;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
@@ -121,7 +121,7 @@ impl<'de, S: Storage> Deserializer<'de> for &Value<S> {
     }
 }
 
-impl<S: Storage> IntoDeserializer<'_, SerdeError> for &Value<S> {
+impl IntoDeserializer<'_, SerdeError> for &Value {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {
@@ -129,7 +129,7 @@ impl<S: Storage> IntoDeserializer<'_, SerdeError> for &Value<S> {
     }
 }
 
-impl<'de, S: Storage> Deserializer<'de> for dict::Key<'_, S> {
+impl<'de> Deserializer<'de> for dict::Key<'_> {
     type Error = SerdeError;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
@@ -169,7 +169,7 @@ impl<'de, S: Storage> Deserializer<'de> for dict::Key<'_, S> {
     }
 }
 
-impl<S: Storage> IntoDeserializer<'_, SerdeError> for dict::Key<'_, S> {
+impl IntoDeserializer<'_, SerdeError> for dict::Key<'_> {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {
@@ -177,7 +177,7 @@ impl<S: Storage> IntoDeserializer<'_, SerdeError> for dict::Key<'_, S> {
     }
 }
 
-impl<'de, S: Storage> Deserializer<'de> for set::Item<'_, S> {
+impl<'de> Deserializer<'de> for set::Item<'_> {
     type Error = SerdeError;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
@@ -217,7 +217,7 @@ impl<'de, S: Storage> Deserializer<'de> for set::Item<'_, S> {
     }
 }
 
-impl<S: Storage> IntoDeserializer<'_, SerdeError> for set::Item<'_, S> {
+impl IntoDeserializer<'_, SerdeError> for set::Item<'_> {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {

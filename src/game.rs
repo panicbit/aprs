@@ -6,7 +6,6 @@ use std::time::Instant;
 
 use aprs_proto::common::NetworkVersion;
 use aprs_proto::primitives::{ItemId, LocationId, SlotId, TeamId};
-use aprs_value::storage;
 use bitflags::bitflags;
 use byteorder::ReadBytesExt;
 use color_eyre::eyre::{Context, ContextCompat, Result, ensure};
@@ -63,8 +62,7 @@ impl Game {
         info!("Decompression finished in {:?}", decompression_time);
 
         let unpickle_start = Instant::now();
-        let multi_data =
-            pickle::unpickle::<storage::Rc>(&multi_data).context("failed to unpickle")?;
+        let multi_data = pickle::unpickle(&multi_data).context("failed to unpickle")?;
         let unpickle_time = unpickle_start.elapsed();
         info!("Unpickling finished in {:?}", unpickle_time);
 
