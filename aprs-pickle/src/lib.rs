@@ -102,7 +102,7 @@ impl<'a> Unframer<'a> {
 
     fn read_f64(&mut self) -> Result<f64> {
         let data = self.read_exact(8)?;
-        let value = f64::from_le_bytes(data.try_into().unwrap());
+        let value = f64::from_be_bytes(data.try_into().unwrap());
 
         Ok(value)
     }
