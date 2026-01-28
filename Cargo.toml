@@ -3,6 +3,10 @@ name = "aprs"
 version = "0.2.0"
 edition = "2024"
 
+[features]
+default = ["path_to_error"]
+path_to_error = ["serde_path_to_error"]
+
 [dependencies]
 aprs-pickle = { workspace = true }
 aprs-proto = { workspace = true }
@@ -21,7 +25,7 @@ indexmap = { workspace = true }
 itertools = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_path_to_error = "0.1.20"
+serde_path_to_error = { version = "0.1.20", optional = true }
 serde_tuple = "1.1.2"
 sha1 = { workspace = true }
 smallvec = { workspace = true }

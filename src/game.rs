@@ -68,8 +68,15 @@ impl Game {
         info!("Unpickling finished in {:?}", unpickle_time);
 
         let deserialize_start = Instant::now();
-        let multi_data = MultiData::deserialize(&multi_data)
-            .with_context(|| format!("failed to deserialize `{multi_data_filename}`"))?;
+
+        {}
+
+        #[cfg(not(feature = "path_to_error"))]
+        let multi_data = MultiData::deserialize(&multi_data);
+        #[cfg(feature = "path_to_error")]
+        let multi_data = serde_path_to_error::deserialize::<_, MultiData>(&multi_data);
+        let multi_data =
+            multi_data.with_context(|| format!("failed to deserialize `{multi_data_filename}`"))?;
         let deserialize_time = deserialize_start.elapsed();
         info!("Deserializing finished in {:?}", deserialize_time);
 
