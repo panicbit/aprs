@@ -40,7 +40,7 @@ pub fn run() -> Result<()> {
 
     info!("Loading world...");
     let load_start = Instant::now();
-    let game = Game::load(&cli.multiworld_path)?;
+    let game = Game::load_from_zip_or_bare(&cli.multiworld_path)?;
     let load_time = load_start.elapsed();
     info!("Loading finished in {load_time:?}");
 

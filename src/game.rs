@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
-use std::fs;
+use std::ffi::OsStr;
+use std::fs::{self, File};
 use std::io::Read;
 use std::path::Path;
 use std::time::Instant;
@@ -8,7 +9,7 @@ use aprs_proto::common::NetworkVersion;
 use aprs_proto::primitives::{ItemId, LocationId, SlotId, TeamId};
 use bitflags::bitflags;
 use byteorder::ReadBytesExt;
-use color_eyre::eyre::{Context, ContextCompat, Result, ensure};
+use color_eyre::eyre::{Context, ContextCompat, Result, bail, ensure};
 use flate2::read::ZlibDecoder;
 use serde::{Deserialize, Serialize};
 use serde_tuple::Deserialize_tuple;
@@ -28,7 +29,25 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn load(path: impl AsRef<Path>) -> Result<Game> {
+    pub fn load_from_zip_or_bare(path: impl AsRef<Path>) -> Result<Game> {
+        const INVALID_EXTENSION_ERROR: &str =
+            "unknown extension (expected `.zip` or `.archipelago`)";
+
+        let path = path.as_ref();
+        let extension = path
+            .extension()
+            .and_then(OsStr::to_str)
+            .context(INVALID_EXTENSION_ERROR)?;
+
+        match extension {
+            "zip" => Self::load_from_zip(path),
+            "archipelago" => Self::load_from_bare(path),
+            _ => bail!(INVALID_EXTENSION_ERROR),
+        }
+    }
+
+    pub fn load_from_zip(path: impl AsRef<Path>) -> Result<Game> {
+        let path = path.as_ref();
         let zip = fs::File::open(path).context("failed to open zip")?;
         let mut zip = zip::ZipArchive::new(zip).context("failed to read zip")?;
         let multi_data_filename = zip
@@ -41,6 +60,19 @@ impl Game {
             .by_name(&multi_data_filename)
             .with_context(|| format!("failed to read `{multi_data_filename}`"))?;
 
+        Self::from_reader(&mut multi_data)
+            .with_context(|| format!("failed to parse `{multi_data_filename}` in {path:?}"))
+    }
+
+    pub fn load_from_bare(path: impl AsRef<Path>) -> Result<Game> {
+        let path = path.as_ref();
+        let mut multi_data =
+            File::open(path).with_context(|| format!("failed to open {path:?}"))?;
+
+        Self::from_reader(&mut multi_data).with_context(|| format!("failed to parse {path:?}"))
+    }
+
+    pub fn from_reader<R: Read>(multi_data: &mut R) -> Result<Game> {
         let format_version = multi_data
             .read_u8()
             .context("failed to read format version")?;
@@ -75,8 +107,7 @@ impl Game {
         let multi_data = MultiData::deserialize(&multi_data);
         #[cfg(feature = "path_to_error")]
         let multi_data = serde_path_to_error::deserialize::<_, MultiData>(&multi_data);
-        let multi_data =
-            multi_data.with_context(|| format!("failed to deserialize `{multi_data_filename}`"))?;
+        let multi_data = multi_data.context("failed to deserialize")?;
         let deserialize_time = deserialize_start.elapsed();
         info!("Deserializing finished in {:?}", deserialize_time);
 
