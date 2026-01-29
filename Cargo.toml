@@ -10,6 +10,7 @@ path_to_error = ["serde_path_to_error"]
 [dependencies]
 aprs-pickle = { workspace = true }
 aprs-proto = { workspace = true }
+aprs-server-core = { workspace = true }
 aprs-value = { workspace = true }
 bitflags = { workspace = true }
 bstr = "1.12.1"
@@ -63,6 +64,7 @@ members = ["aprs-*"]
 [workspace.dependencies]
 aprs-pickle = { path = "aprs-pickle" }
 aprs-proto = { path = "aprs-proto" }
+aprs-server-core = { path = "aprs-server-core" }
 aprs-value = { path = "aprs-value" }
 bitflags = "2.10.0"
 bytes = { version = "1.10.1", features = ["serde"] }

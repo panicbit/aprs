@@ -93,6 +93,7 @@ version = "0.2.0"
 dependencies = [
  "aprs-pickle",
  "aprs-proto",
+ "aprs-server-core",
  "aprs-value",
  "bitflags",
  "bstr",
@@ -158,6 +159,14 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "smallvec",
+]
+
+[[package]]
+name = "aprs-server-core"
+version = "0.1.0"
+dependencies = [
+ "aprs-proto",
+ "serde",
 ]
 
 [[package]]

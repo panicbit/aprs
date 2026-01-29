@@ -13,6 +13,7 @@ use aprs_proto::server::{
     GameData, HashedGameData, LocationInfo, Message, NetworkItem, Permissions, PrintJson,
     RemainingCommandPermission, Retrieved, RoomInfo, RoomUpdate, SetReply, Time,
 };
+use aprs_server_core::bounce_matches;
 use aprs_value::{Str, Value};
 use color_eyre::eyre::{ContextCompat, Result, bail};
 use fnv::{FnvHashMap, FnvHashSet};
@@ -662,25 +663,13 @@ impl super::Server {
     pub async fn on_bounce(&mut self, client: &Mutex<Client>, bounce: &Bounce<Value>) {
         let bounced = Bounced::from(bounce.clone());
         let bounced = Arc::<ServerMessage>::from(bounced);
-        let Bounce {
-            games,
-            slots,
-            tags,
-            data: _,
-        } = bounce;
 
-        let team_id = client.lock().await.team_id;
+        let sender_team_id = client.lock().await.team_id;
 
         for client in self.clients.values() {
             let client = client.lock().await;
 
-            let team_matches = || client.team_id != team_id;
-            let game_matches = || games.contains(&client.game);
-            let team_and_game_matches = || team_matches() && game_matches();
-            let tag_matches = || tags.iter().any(|tag| client.tags.contains(tag));
-            let slot_matches = || slots.contains(&client.slot_id);
-
-            if team_and_game_matches() || tag_matches() || slot_matches() {
+            if bounce_matches(bounce, sender_team_id, &client) {
                 client.send(bounced.clone()).await;
             }
         }

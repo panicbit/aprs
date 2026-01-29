@@ -6,6 +6,7 @@ use aprs_proto::client::ItemsHandling;
 use aprs_proto::primitives::{ConnectName, ItemId, SlotId, SlotName, TeamId};
 use aprs_proto::server::NetworkItem;
 use aprs_proto::server::ReceivedItems;
+use aprs_server_core::traits::{GetGame, GetSlotId, GetTeamId, HasTag};
 use aprs_value::Str;
 use fnv::FnvHashSet;
 use itertools::Itertools;
@@ -139,5 +140,29 @@ impl Client {
             items: missing_items,
         })
         .await;
+    }
+}
+
+impl GetSlotId for Client {
+    fn get_slot_id(&self) -> SlotId {
+        self.slot_id
+    }
+}
+
+impl GetTeamId for Client {
+    fn get_team_id(&self) -> TeamId {
+        self.team_id
+    }
+}
+
+impl GetGame for Client {
+    fn get_game(&self) -> &str {
+        &self.game
+    }
+}
+
+impl HasTag for Client {
+    fn has_tag(&self, tag: &str) -> bool {
+        self.tags.contains(tag)
     }
 }
