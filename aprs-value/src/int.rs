@@ -185,6 +185,31 @@ impl TryFrom<Value> for Int {
     }
 }
 
+impl TryFrom<&str> for Int {
+    type Error = eyre::Report;
+
+    fn try_from(value: &str) -> Result<Self> {
+        let Ok(n) = value.parse::<i128>() else {
+            let n = value.parse::<BigInt>()?;
+            return Ok(Int::BigInt(n));
+        };
+
+        let Ok(n) = i64::try_from(n) else {
+            return Ok(Int::I128(n));
+        };
+
+        Ok(Int::I64(n))
+    }
+}
+
+impl TryFrom<String> for Int {
+    type Error = eyre::Report;
+
+    fn try_from(value: String) -> Result<Self> {
+        value.as_str().try_into()
+    }
+}
+
 impl Add<Int> for Int {
     type Output = Int;
 
