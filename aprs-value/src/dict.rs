@@ -4,7 +4,7 @@ use std::sync::Arc;
 use eyre::{Result, bail};
 use parking_lot::RwLockWriteGuard;
 use parking_lot::{RwLock, RwLockReadGuard};
-use tracing::{error, warn};
+use tracing::error;
 
 use crate::FnvIndexMap;
 use crate::Int;
