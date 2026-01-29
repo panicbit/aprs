@@ -4,7 +4,7 @@ use std::sync::Arc;
 use eyre::{Result, bail};
 use parking_lot::RwLockWriteGuard;
 use parking_lot::{RwLock, RwLockReadGuard};
-use tracing::warn;
+use tracing::{error, warn};
 
 use crate::FnvIndexMap;
 use crate::Int;
@@ -111,7 +111,7 @@ impl Inner {
     fn extend(&mut self, items: impl IntoIterator<Item = (Value, Value)>) {
         for (key, value) in items.into_iter() {
             if let Err(err) = self.insert(key, value) {
-                warn!("{err}");
+                error!("Can't insert key into dict: {err}");
             }
         }
     }
