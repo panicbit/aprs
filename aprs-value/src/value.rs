@@ -531,4 +531,5 @@ impl Hash for Value {
 }
 
 // This is a lie. All bets are off.
+// TODO: needs scrutiny regarding floats. check `ordered_float` crate.
 impl Eq for Value {}
