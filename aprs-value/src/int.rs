@@ -42,14 +42,20 @@ impl Int {
         }
     }
 
-    pub fn from_signed_bytes_le(bytes: &[u8]) -> Self {
-        match bytes.len() {
-            1 => Self::I64(i8::from_le_bytes(bytes.try_into().unwrap()) as i64),
-            2 => Self::I64(i16::from_le_bytes(bytes.try_into().unwrap()) as i64),
-            4 => Self::I64(i32::from_le_bytes(bytes.try_into().unwrap()) as i64),
-            8 => Self::I64(i64::from_le_bytes(bytes.try_into().unwrap())),
-            16 => Self::I128(i128::from_le_bytes(bytes.try_into().unwrap())),
-            _ => Self::BigInt(BigInt::from_signed_bytes_le(bytes)),
+    pub fn from_signed_bytes_le(unpadded_bytes: &[u8]) -> Self {
+        match unpadded_bytes.len() {
+            0 => Self::I64(0),
+            1..=8 => {
+                let mut bytes = [0; 8];
+                bytes[..unpadded_bytes.len()].copy_from_slice(unpadded_bytes);
+                Self::I64(i64::from_le_bytes(bytes))
+            }
+            9..=16 => {
+                let mut bytes = [0; 16];
+                bytes[..unpadded_bytes.len()].copy_from_slice(unpadded_bytes);
+                Self::I128(i128::from_le_bytes(bytes))
+            }
+            _ => Self::BigInt(BigInt::from_signed_bytes_le(unpadded_bytes)),
         }
     }
 
