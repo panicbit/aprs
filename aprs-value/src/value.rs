@@ -135,7 +135,7 @@ impl Value {
             Value::Float(float) => float.hash(state),
             Value::Bool(bool) => bool.hash(state),
             Value::Tuple(tuple) => tuple.hash(state),
-            Value::Callable(_callable) => bail!("Callable is unhashable"),
+            Value::Callable(callable) => callable.hash(state),
             Value::None(none) => none.hash(state),
             Value::Set(_) => bail!("Set is unhashable"),
         }
@@ -152,7 +152,7 @@ impl Value {
             Value::Float(_) => true,
             Value::Bool(_) => true,
             Value::Tuple(value) => value.is_hashable(),
-            Value::Callable(_callable) => false,
+            Value::Callable(_) => true,
             Value::None(_) => true,
             Value::Set(_) => false,
         }
