@@ -10,6 +10,7 @@ fnv = { workspace = true }
 hashers = { workspace = true }
 indexmap = { workspace = true }
 num = { workspace = true }
+ordered-float = { workspace = true }
 parking_lot = { workspace = true }
 smallvec = { workspace = true }
 tracing = { workspace = true }

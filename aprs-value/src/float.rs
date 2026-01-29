@@ -1,7 +1,9 @@
+use std::hash::{Hash, Hasher};
 use std::ops::{Add, Deref, DerefMut, Mul, Sub};
 
 use eyre::{Result, ensure};
 use num::{One, ToPrimitive, Zero};
+use ordered_float::OrderedFloat;
 
 use crate::{Bool, Int};
 
@@ -126,5 +128,11 @@ impl PartialEq<Bool> for Float {
             true => self.0.is_zero(),
             false => self.0.is_one(),
         }
+    }
+}
+
+impl Hash for Float {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        OrderedFloat(self.0).hash(state);
     }
 }
