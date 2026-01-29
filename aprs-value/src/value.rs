@@ -374,7 +374,7 @@ impl Clone for Value {
             Self::List(arg0) => Self::List(arg0.clone()),
             Self::Str(arg0) => Self::Str(arg0.clone()),
             Self::Int(arg0) => Self::Int(arg0.clone()),
-            Self::Float(arg0) => Self::Float(arg0.clone()),
+            Self::Float(arg0) => Self::Float(*arg0),
             Self::Bool(arg0) => Self::Bool(arg0.clone()),
             Self::Tuple(arg0) => Self::Tuple(arg0.clone()),
             Self::Callable(arg0) => Self::Callable(arg0.clone()),
