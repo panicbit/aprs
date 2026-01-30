@@ -166,7 +166,11 @@ name = "aprs-server-core"
 version = "0.1.0"
 dependencies = [
  "aprs-proto",
+ "aprs-value",
+ "eyre",
+ "fnv",
  "serde",
+ "tracing",
 ]
 
 [[package]]

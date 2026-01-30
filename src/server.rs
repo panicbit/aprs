@@ -86,7 +86,7 @@ impl Server {
             return self.get_special_key(key);
         }
 
-        self.state.data_storage_get(key)
+        self.state.data_storage.get_raw(key).cloned()
     }
 
     fn get_special_key(&self, key: &str) -> Option<Value> {

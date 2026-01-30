@@ -5,6 +5,7 @@ use std::path::Path;
 
 use aprs_proto::primitives::{LocationId, SlotId, TeamId};
 use aprs_proto::server::NetworkItem;
+use aprs_server_core::DataStorage;
 use aprs_value::{Str, Value};
 use color_eyre::eyre::{ContextCompat, Result};
 use fnv::{FnvHashMap, FnvHashSet};
@@ -19,7 +20,7 @@ use crate::game::MultiData;
 #[derive(Deserialize, Serialize)]
 pub struct State {
     slot_states: FnvHashMap<SlotId, SlotState>,
-    data_storage: FnvHashMap<Str, Value>,
+    pub data_storage: DataStorage,
 }
 
 impl State {
@@ -31,7 +32,7 @@ impl State {
 
         Self {
             slot_states,
-            data_storage: FnvHashMap::default(),
+            data_storage: DataStorage::new(),
         }
     }
 
@@ -66,14 +67,6 @@ impl State {
 
     pub fn get_slot_state_mut(&mut self, slot: SlotId) -> Option<&mut SlotState> {
         self.slot_states.get_mut(&slot)
-    }
-
-    pub fn data_storage_get(&self, key: &str) -> Option<Value> {
-        self.data_storage.get(key).cloned()
-    }
-
-    pub fn data_storage_set(&mut self, key: impl Into<Str>, value: impl Into<Value>) {
-        self.data_storage.insert(key.into(), value.into());
     }
 
     pub fn get_hints(&self, _team: TeamId, _slot: SlotId) -> Option<Value> {

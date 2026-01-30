@@ -5,4 +5,8 @@ edition = "2024"
 
 [dependencies]
 aprs-proto = { workspace = true }
+aprs-value = { workspace = true }
+eyre = { workspace = true }
+fnv = { workspace = true }
 serde = { workspace = true }
+tracing = { workspace = true }

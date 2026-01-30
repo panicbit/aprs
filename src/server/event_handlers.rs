@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use aprs_proto::client::{
     Bounce, ClientStatus, Connect, Get, GetDataPackage, LocationChecks, LocationScouts, Say, Set,
-    SetNotify, SetOperation, StatusUpdate,
+    SetNotify, StatusUpdate,
 };
 use aprs_proto::primitives::LocationId;
 use aprs_proto::server::{
@@ -403,52 +403,26 @@ impl super::Server {
 
     async fn on_set(&mut self, client: &Mutex<Client>, set: Set<Value>) {
         let Set {
-            key,
-            default,
+            ref key,
+            default: _,
             want_reply,
-            operations,
+            operations: _,
         } = set;
 
+        if key.starts_with("_read_") {
+            warn!("invalid datastorage Set key: {key}");
+            return;
+        }
+
         let slot = client.lock().await.slot_id;
-        let original_value = self.state.data_storage_get(&key).unwrap_or(default);
-        let mut value = original_value.clone();
 
-        fn handle_op(current: Value, operation: SetOperation<Value>) -> Result<Value> {
-            Ok(match operation {
-                SetOperation::Default => current,
-                SetOperation::Replace(value) => value,
-                // TODO: implement remaining set ops
-                SetOperation::Add(value) => current.add(&value)?,
-                SetOperation::Mul(value) => current.mul(&value)?,
-                // SetOperation::Pow(value) => current.pow(value),
-                // SetOperation::Mod(value) => current.r#mod(value),
-                SetOperation::Floor => current.floor()?,
-                SetOperation::Ceil => current.ceil()?,
-                // SetOperation::Max(value) => current.max(value),
-                // SetOperation::Min(value) => current.min(value),
-                SetOperation::And(value) => current.and(&value)?,
-                SetOperation::Or(value) => current.or(&value)?,
-                // SetOperation::Xor(value) => current.xor(value),
-                // SetOperation::LeftShift(value) => current.left_shift(value),
-                // SetOperation::RightShift(value) => current.right_shift(value),
-                // SetOperation::Remove(value) => current.remove(value),
-                SetOperation::Pop(value) => current.pop(&value).map(|_| current)?,
-                SetOperation::Update(value) => current.update(&value).map(|_| current)?,
-                _ => bail!("TODO: implement SetOperation: {operation:?}"),
-            })
-        }
-
-        self.state.data_storage_set(key.clone(), value.clone());
-
-        for operation in operations {
-            value = match handle_op(value, operation) {
-                Ok(value) => value,
-                Err(err) => {
-                    error!("op err: {err:?}");
-                    return;
-                }
+        let (original_value, value) = match self.state.data_storage.set(&set) {
+            Ok(value) => value,
+            Err(err) => {
+                warn!("DataStorage set failed: {err}");
+                return;
             }
-        }
+        };
 
         let set_reply = Arc::new(Message::SetReply(SetReply {
             key: key.clone(),

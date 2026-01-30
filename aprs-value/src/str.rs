@@ -78,6 +78,12 @@ impl Borrow<str> for Str {
     }
 }
 
+impl Borrow<String> for Str {
+    fn borrow(&self) -> &String {
+        &self.0
+    }
+}
+
 impl<'de> Deserialize<'de> for Str {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
