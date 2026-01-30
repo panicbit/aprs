@@ -101,8 +101,6 @@ impl Game {
 
         let deserialize_start = Instant::now();
 
-        {}
-
         #[cfg(not(feature = "path_to_error"))]
         let multi_data = MultiData::deserialize(&multi_data);
         #[cfg(feature = "path_to_error")]
