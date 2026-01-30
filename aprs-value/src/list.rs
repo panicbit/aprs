@@ -75,6 +75,10 @@ impl List {
 
         Ok(())
     }
+
+    pub fn concat(&self, other: &List) -> List {
+        self.iter().chain(other).collect()
+    }
 }
 
 impl Default for List {

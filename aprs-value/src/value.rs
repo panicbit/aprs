@@ -208,6 +208,7 @@ impl Value {
             (Value::Float(a), Value::Float(b)) => Self::add_float(a, b),
             (Value::Int(a), Value::Float(b)) => Self::add_float(a, b),
             (Value::Float(a), Value::Int(b)) => Self::add_float(a, b),
+            (Value::List(a), Value::List(b)) => Ok(Self::List(a.concat(b))),
 
             _ => bail!("Can't `add` {self:?} and {rhs:?}"),
         }
