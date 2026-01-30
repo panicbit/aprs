@@ -1,3 +1,4 @@
+use aprs_value::Value;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
@@ -28,14 +29,14 @@ pub use get_data_package::GetDataPackage;
 mod bounce;
 pub use bounce::Bounce;
 
-pub type Messages<V> = SmallVec<[Message<V>; 1]>;
+pub type Messages = SmallVec<[Message; 1]>;
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "cmd")]
-pub enum Message<V> {
+pub enum Message {
     Connect(Connect),
     Get(Get),
-    Set(Set<V>),
+    Set(Set),
     SetNotify(SetNotify),
     Say(Say),
     Sync(Sync),
@@ -43,9 +44,9 @@ pub enum Message<V> {
     LocationChecks(LocationChecks),
     GetDataPackage(GetDataPackage),
     StatusUpdate(StatusUpdate),
-    Bounce(Bounce<V>),
+    Bounce(Bounce),
     #[serde(untagged)]
-    Unknown(V),
+    Unknown(Value),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

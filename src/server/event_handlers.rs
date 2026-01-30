@@ -14,7 +14,7 @@ use aprs_proto::server::{
     RemainingCommandPermission, Retrieved, RoomInfo, RoomUpdate, SetReply, Time,
 };
 use aprs_server_core::bounce_matches;
-use aprs_value::{Str, Value};
+use aprs_value::Str;
 use color_eyre::eyre::{ContextCompat, Result, bail};
 use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
@@ -401,7 +401,7 @@ impl super::Server {
             .await;
     }
 
-    async fn on_set(&mut self, client: &Mutex<Client>, set: Set<Value>) {
+    async fn on_set(&mut self, client: &Mutex<Client>, set: Set) {
         let Set {
             ref key,
             default: _,
@@ -634,7 +634,7 @@ impl super::Server {
         self.sync_items_to_client(client).await;
     }
 
-    pub async fn on_bounce(&mut self, client: &Mutex<Client>, bounce: &Bounce<Value>) {
+    pub async fn on_bounce(&mut self, client: &Mutex<Client>, bounce: &Bounce) {
         let bounced = Bounced::from(bounce.clone());
         let bounced = Arc::<ServerMessage>::from(bounced);
 

@@ -29,9 +29,9 @@ pub use event::Event;
 
 pub mod control;
 
-pub type ServerMessage = aprs_proto::server::Message<aprs_value::Value>;
-pub type ClientMessage = aprs_proto::client::Message<aprs_value::Value>;
-pub type ClientMessages = aprs_proto::client::Messages<aprs_value::Value>;
+pub type ServerMessage = aprs_proto::server::Message;
+pub type ClientMessage = aprs_proto::client::Message;
+pub type ClientMessages = aprs_proto::client::Messages;
 
 pub struct Server {
     config: Config,

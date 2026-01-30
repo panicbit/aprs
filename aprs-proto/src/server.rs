@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 mod room_info;
@@ -62,82 +61,82 @@ pub use hashed_game_data::HashedGameData;
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "cmd")]
-pub enum Message<V> {
+pub enum Message {
     RoomInfo(RoomInfo),
     ConnectionRefused(ConnectionRefused),
-    Connected(Connected<V>),
-    Retrieved(Retrieved<V>),
+    Connected(Connected),
+    Retrieved(Retrieved),
     LocationInfo(LocationInfo),
-    SetReply(SetReply<V>),
+    SetReply(SetReply),
     ReceivedItems(ReceivedItems),
     RoomUpdate(RoomUpdate),
     DataPackage(DataPackage),
     #[serde(rename = "PrintJSON")]
     PrintJson(PrintJson),
-    Bounced(Bounced<V>),
+    Bounced(Bounced),
 }
 
-impl<V: DeserializeOwned> From<RoomInfo> for Arc<Message<V>> {
+impl From<RoomInfo> for Arc<Message> {
     fn from(value: RoomInfo) -> Self {
         Arc::new(Message::RoomInfo(value))
     }
 }
 
-impl<V: DeserializeOwned> From<ConnectionRefused> for Arc<Message<V>> {
+impl From<ConnectionRefused> for Arc<Message> {
     fn from(value: ConnectionRefused) -> Self {
         Arc::new(Message::ConnectionRefused(value))
     }
 }
 
-impl<V: DeserializeOwned> From<Connected<V>> for Arc<Message<V>> {
-    fn from(value: Connected<V>) -> Self {
+impl From<Connected> for Arc<Message> {
+    fn from(value: Connected) -> Self {
         Arc::new(Message::Connected(value))
     }
 }
 
-impl<V: DeserializeOwned> From<Retrieved<V>> for Arc<Message<V>> {
-    fn from(value: Retrieved<V>) -> Self {
+impl From<Retrieved> for Arc<Message> {
+    fn from(value: Retrieved) -> Self {
         Arc::new(Message::Retrieved(value))
     }
 }
 
-impl<V: DeserializeOwned> From<PrintJson> for Arc<Message<V>> {
+impl From<PrintJson> for Arc<Message> {
     fn from(value: PrintJson) -> Self {
         Arc::new(Message::PrintJson(value))
     }
 }
 
-impl<V: DeserializeOwned> From<Bounced<V>> for Arc<Message<V>> {
-    fn from(value: Bounced<V>) -> Self {
+impl From<Bounced> for Arc<Message> {
+    fn from(value: Bounced) -> Self {
         Arc::new(Message::Bounced(value))
     }
 }
 
-impl<V: DeserializeOwned> From<LocationInfo> for Arc<Message<V>> {
+impl From<LocationInfo> for Arc<Message> {
     fn from(value: LocationInfo) -> Self {
         Arc::new(Message::LocationInfo(value))
     }
 }
 
-impl<V: DeserializeOwned> From<SetReply<V>> for Arc<Message<V>> {
-    fn from(value: SetReply<V>) -> Self {
+impl From<SetReply> for Arc<Message> {
+    fn from(value: SetReply) -> Self {
         Arc::new(Message::SetReply(value))
     }
 }
 
-impl<V: DeserializeOwned> From<ReceivedItems> for Arc<Message<V>> {
+impl From<ReceivedItems> for Arc<Message> {
     fn from(value: ReceivedItems) -> Self {
         Arc::new(Message::ReceivedItems(value))
     }
 }
 
-impl<V: DeserializeOwned> From<RoomUpdate> for Arc<Message<V>> {
+impl From<RoomUpdate> for Arc<Message> {
     fn from(value: RoomUpdate) -> Self {
         Arc::new(Message::RoomUpdate(value))
     }
 }
 
-impl<V: DeserializeOwned> From<DataPackage> for Arc<Message<V>> {
+impl From<DataPackage> for Arc<Message> {
     fn from(value: DataPackage) -> Self {
         Arc::new(Message::DataPackage(value))
     }

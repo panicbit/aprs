@@ -29,7 +29,7 @@ impl DataStorage {
     }
 
     /// Returns `(original_value, new_value)`
-    pub fn set(&mut self, set: &Set<Value>) -> Result<(Value, Value)> {
+    pub fn set(&mut self, set: &Set) -> Result<(Value, Value)> {
         let Set {
             key,
             default,
@@ -40,7 +40,7 @@ impl DataStorage {
         let original_value = self.get_raw(key).unwrap_or(default).clone();
         let mut value = original_value.clone();
 
-        fn handle_op(current: Value, operation: &SetOperation<Value>) -> Result<Value> {
+        fn handle_op(current: Value, operation: &SetOperation) -> Result<Value> {
             Ok(match operation {
                 SetOperation::Default => current,
                 SetOperation::Replace(value) => value.clone(),

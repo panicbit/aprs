@@ -1,12 +1,10 @@
 use aprs_proto::client::Bounce;
 use aprs_proto::primitives::TeamId;
-use serde::de::DeserializeOwned;
 
 use crate::traits::{GetGame, GetSlotId, GetTeamId, HasTag};
 
-pub fn bounce_matches<V, C>(bounce: &Bounce<V>, sender_team_id: TeamId, client: C) -> bool
+pub fn bounce_matches<C>(bounce: &Bounce, sender_team_id: TeamId, client: C) -> bool
 where
-    V: DeserializeOwned,
     C: GetSlotId + GetTeamId + GetGame + HasTag,
 {
     let Bounce {
