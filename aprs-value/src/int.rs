@@ -1,5 +1,5 @@
 use std::hash::{Hash, Hasher};
-use std::ops::{Add, BitAnd, BitOr, Mul, Sub};
+use std::ops::{Add, BitAnd, BitOr, Mul, Rem, Sub};
 
 use eyre::{Context, ContextCompat, Result, bail};
 use num::traits::Pow;
@@ -129,6 +129,36 @@ impl Int {
     }
 }
 
+trait Minimize {
+    fn minimize(self) -> Int;
+}
+
+impl Minimize for i64 {
+    fn minimize(self) -> Int {
+        Int::I64(self)
+    }
+}
+
+impl Minimize for i128 {
+    fn minimize(self) -> Int {
+        if let Ok(n) = i64::try_from(self) {
+            return n.minimize();
+        }
+
+        Int::I128(self)
+    }
+}
+
+impl Minimize for BigInt {
+    fn minimize(self) -> Int {
+        if let Ok(n) = i128::try_from(&self) {
+            return n.minimize();
+        }
+
+        Int::BigInt(self)
+    }
+}
+
 impl Pow<&Int> for &Int {
     type Output = eyre::Result<Value>;
 
@@ -153,6 +183,30 @@ impl Pow<Float> for &Int {
         let this = Float::try_from(self).context("can't convert base to float")?;
 
         this.pow(exp).map(Value::Float)
+    }
+}
+
+impl Rem<&Int> for &Int {
+    type Output = Int;
+
+    fn rem(self, rhs: &Int) -> Self::Output {
+        match *self {
+            Int::I64(lhs) => match *rhs {
+                Int::I64(rhs) => lhs.rem(rhs).minimize(),
+                Int::I128(rhs) => i128::from(lhs).rem(rhs).minimize(),
+                Int::BigInt(ref rhs) => lhs.rem(rhs).minimize(),
+            },
+            Int::I128(lhs) => match *rhs {
+                Int::I64(rhs) => lhs.rem(i128::from(rhs)).minimize(),
+                Int::I128(rhs) => lhs.rem(rhs).minimize(),
+                Int::BigInt(ref rhs) => lhs.rem(rhs).minimize(),
+            },
+            Int::BigInt(ref lhs) => match *rhs {
+                Int::I64(rhs) => lhs.rem(rhs).minimize(),
+                Int::I128(rhs) => lhs.rem(rhs).minimize(),
+                Int::BigInt(ref rhs) => lhs.rem(rhs).minimize(),
+            },
+        }
     }
 }
 

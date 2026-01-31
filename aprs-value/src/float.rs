@@ -1,5 +1,5 @@
 use std::hash::{Hash, Hasher};
-use std::ops::{Add, Deref, DerefMut, Mul, Sub};
+use std::ops::{Add, Deref, DerefMut, Mul, Rem, Sub};
 
 use eyre::{Context, Result, bail, ensure};
 use num::traits::Pow;
@@ -92,6 +92,14 @@ impl Mul<Float> for Float {
 
     fn mul(self, rhs: Float) -> Self::Output {
         Self(self.0.mul(rhs.0))
+    }
+}
+
+impl Rem<Float> for Float {
+    type Output = Float;
+
+    fn rem(self, rhs: Float) -> Self::Output {
+        Self(self.0.rem(rhs.0))
     }
 }
 

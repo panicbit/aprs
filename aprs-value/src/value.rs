@@ -1,6 +1,6 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::ops::{Add, BitAnd, BitOr, Mul, Sub};
+use std::ops::{Add, BitAnd, BitOr, Mul, Rem, Sub};
 
 use eyre::{Result, bail};
 use num::traits::Pow;
@@ -298,8 +298,14 @@ impl Value {
         })
     }
 
-    fn r#mod(&self, _rhs: &Value) -> Result<Value> {
-        todo!()
+    pub fn r#mod(&self, rhs: &Value) -> Result<Value> {
+        Ok(match (self, rhs) {
+            (Value::Int(a), Value::Int(b)) => Value::Int(a.r#rem(b)),
+            (Value::Int(a), Value::Float(b)) => Value::Float(Float::try_from(a)?.rem(*b)),
+            (Value::Float(a), Value::Int(b)) => Value::Float(a.r#rem(Float::try_from(b)?)),
+            (Value::Float(a), Value::Float(b)) => Value::Float(a.r#rem(*b)),
+            _ => bail!("Can't `mod` {self:?} and {rhs:?}"),
+        })
     }
 
     pub fn floor(&self) -> Result<Value> {
