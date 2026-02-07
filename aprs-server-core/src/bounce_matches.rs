@@ -14,11 +14,10 @@ where
         data: _,
     } = bounce;
 
-    let team_matches = || client.get_team_id() != sender_team_id;
+    let team_matches = || client.get_team_id() == sender_team_id;
     let game_matches = || games.iter().any(|game| game == client.get_game());
-    let team_and_game_matches = || team_matches() && game_matches();
     let tag_matches = || tags.iter().any(|tag| client.has_tag(tag));
     let slot_matches = || slots.contains(&client.get_slot_id());
 
-    team_and_game_matches() || tag_matches() || slot_matches()
+    team_matches() && (game_matches() || tag_matches() || slot_matches())
 }
