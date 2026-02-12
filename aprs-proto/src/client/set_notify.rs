@@ -1,7 +1,7 @@
 use fnv::FnvHashSet;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SetNotify {
     pub keys: FnvHashSet<String>,
 }

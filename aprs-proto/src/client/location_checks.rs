@@ -1,9 +1,9 @@
 use fnv::FnvHashSet;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::primitives::LocationId;
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct LocationChecks {
     pub locations: FnvHashSet<LocationId>,
 }

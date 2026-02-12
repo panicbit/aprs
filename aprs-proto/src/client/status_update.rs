@@ -1,12 +1,12 @@
-use serde::Deserialize;
-use serde_repr::Deserialize_repr;
+use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct StatusUpdate {
     pub status: ClientStatus,
 }
 
-#[derive(Deserialize_repr, Debug)]
+#[derive(Serialize_repr, Deserialize_repr, Debug)]
 #[repr(u8)]
 pub enum ClientStatus {
     Unknown = 0,

@@ -31,7 +31,7 @@ pub use bounce::Bounce;
 
 pub type Messages = SmallVec<[Message; 1]>;
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "cmd")]
 pub enum Message {
     Connect(Connect),

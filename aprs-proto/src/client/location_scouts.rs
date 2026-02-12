@@ -1,8 +1,8 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::primitives::LocationId;
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct LocationScouts {
     pub locations: Vec<LocationId>,
     pub create_as_hint: i32,

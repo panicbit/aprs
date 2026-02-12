@@ -1,11 +1,11 @@
 use bitflags::bitflags;
+use serde::{Deserialize, Serialize};
 
-use crate::client::Deserialize;
 use crate::common::NetworkVersion;
 use crate::deserialize::u128_uuid;
 use crate::primitives::ConnectName;
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Connect {
     pub password: Option<String>,
     pub game: String,
@@ -24,7 +24,8 @@ fn bool_true() -> bool {
     true
 }
 
-#[derive(Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
+#[serde(transparent)]
 pub struct ItemsHandling(u8);
 
 bitflags! {
