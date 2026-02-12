@@ -49,6 +49,72 @@ pub enum Message {
     Unknown(Value),
 }
 
+impl From<Connect> for Message {
+    fn from(value: Connect) -> Self {
+        Message::Connect(value)
+    }
+}
+
+impl From<Get> for Message {
+    fn from(value: Get) -> Self {
+        Message::Get(value)
+    }
+}
+
+impl From<Set> for Message {
+    fn from(value: Set) -> Self {
+        Message::Set(value)
+    }
+}
+
+impl From<SetNotify> for Message {
+    fn from(value: SetNotify) -> Self {
+        Message::SetNotify(value)
+    }
+}
+
+impl From<Say> for Message {
+    fn from(value: Say) -> Self {
+        Message::Say(value)
+    }
+}
+
+impl From<Sync> for Message {
+    fn from(value: Sync) -> Self {
+        Message::Sync(value)
+    }
+}
+
+impl From<LocationScouts> for Message {
+    fn from(value: LocationScouts) -> Self {
+        Message::LocationScouts(value)
+    }
+}
+
+impl From<LocationChecks> for Message {
+    fn from(value: LocationChecks) -> Self {
+        Message::LocationChecks(value)
+    }
+}
+
+impl From<GetDataPackage> for Message {
+    fn from(value: GetDataPackage) -> Self {
+        Message::GetDataPackage(value)
+    }
+}
+
+impl From<StatusUpdate> for Message {
+    fn from(value: StatusUpdate) -> Self {
+        Message::StatusUpdate(value)
+    }
+}
+
+impl From<Bounce> for Message {
+    fn from(value: Bounce) -> Self {
+        Message::Bounce(value)
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Get {
     pub keys: SmallVec<[String; 1]>,
