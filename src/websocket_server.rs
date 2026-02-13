@@ -1,10 +1,12 @@
 use std::net::SocketAddr;
-use std::pin::pin;
+use std::pin::{Pin, pin};
 use std::sync::Arc;
+use std::task;
 
-use color_eyre::eyre::{Result, bail};
+use color_eyre::eyre::{Context, Result, bail};
 use format_serde_error::SerdeError;
-use futures::SinkExt;
+use futures::future::BoxFuture;
+use futures::{FutureExt, SinkExt};
 use smallvec::smallvec;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
@@ -37,13 +39,22 @@ impl WebsocketServer {
         Ok(Self { server, config, tx })
     }
 
-    pub async fn run(self) -> Result<()> {
+    pub async fn listen(self) -> Result<WebsocketServerHandle> {
         let listen_address = self.config.listen_address;
         let listener = TcpListener::bind(listen_address).await?;
+        let local_addr = listener
+            .local_addr()
+            .context("failed to get socket address")?;
+        let port = local_addr.port();
 
         tokio::spawn(acceptor_loop(listener, self.tx.clone()));
 
-        self.server.run().await
+        let server_future = self.server.run().boxed();
+
+        Ok(WebsocketServerHandle {
+            port,
+            server_future,
+        })
     }
 }
 
@@ -243,4 +254,23 @@ async fn recv(stream: &mut WebSocketStream<TcpStream>) -> Result<ControlOrMessag
     };
 
     Ok(message)
+}
+
+pub struct WebsocketServerHandle {
+    port: u16,
+    server_future: BoxFuture<'static, Result<()>>,
+}
+
+impl WebsocketServerHandle {
+    pub fn port(&self) -> u16 {
+        self.port
+    }
+}
+
+impl Future for WebsocketServerHandle {
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> task::Poll<Self::Output> {
+        self.server_future.poll_unpin(cx)
+    }
 }

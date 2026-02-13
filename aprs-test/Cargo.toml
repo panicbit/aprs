@@ -1,0 +1,9 @@
+[package]
+name = "aprs-test"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aprs.workspace = true
+aprs-proto.workspace = true
+tempfile.workspace = true

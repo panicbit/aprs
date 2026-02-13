@@ -56,8 +56,12 @@ pub fn run() -> Result<()> {
     info!("Server started.");
 
     let server = WebsocketServer::new(config, game.multi_data)?;
+    Runtime::new()?.block_on(async move {
+        let server_handle = server.listen().await?;
+        server_handle.await?;
 
-    Runtime::new()?.block_on(server.run())
+        Ok(())
+    })
 }
 
 fn configure_tracing() {
