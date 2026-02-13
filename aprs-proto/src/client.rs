@@ -8,6 +8,9 @@ pub use connect::{Connect, ItemsHandling};
 mod location_scouts;
 pub use location_scouts::LocationScouts;
 
+mod say;
+pub use say::Say;
+
 mod get;
 pub use get::Get;
 
@@ -116,9 +119,4 @@ impl From<Bounce> for Message {
     fn from(value: Bounce) -> Self {
         Message::Bounce(value)
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Say {
-    pub text: String,
 }
