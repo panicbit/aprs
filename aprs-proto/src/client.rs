@@ -8,6 +8,9 @@ pub use connect::{Connect, ItemsHandling};
 mod location_scouts;
 pub use location_scouts::LocationScouts;
 
+mod get;
+pub use get::Get;
+
 mod set;
 pub use set::{Set, SetOperation};
 
@@ -113,11 +116,6 @@ impl From<Bounce> for Message {
     fn from(value: Bounce) -> Self {
         Message::Bounce(value)
     }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Get {
-    pub keys: SmallVec<[String; 1]>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
