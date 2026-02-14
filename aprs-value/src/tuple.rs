@@ -1,8 +1,10 @@
+use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use std::{fmt, slice};
 
 use eyre::{ContextCompat, Error, Result, bail};
+use itertools::{EitherOrBoth, Itertools};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{List, Value};
@@ -41,6 +43,22 @@ impl Tuple {
 
     pub fn as_slice(&self) -> &[Value] {
         &self.0
+    }
+
+    pub fn cmp(&self, other: &Tuple) -> Result<Option<Ordering>> {
+        for ab in self.iter().zip_longest(other) {
+            match ab {
+                EitherOrBoth::Both(a, b) => match a.cmp(&b)? {
+                    Some(Ordering::Equal) => {}
+                    Some(ordering) => return Ok(Some(ordering)),
+                    None => return Ok(None),
+                },
+                EitherOrBoth::Left(_) => return Ok(Some(Ordering::Greater)),
+                EitherOrBoth::Right(_) => return Ok(Some(Ordering::Less)),
+            }
+        }
+
+        Ok(Some(Ordering::Equal))
     }
 }
 

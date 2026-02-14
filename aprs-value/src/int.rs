@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, BitAnd, BitOr, Mul, Rem, Sub};
 
@@ -127,6 +128,26 @@ impl Int {
     fn powi_big_int_positive_exp(n: &BigInt, exp: u32) -> Int {
         Self::BigInt(n.pow(exp))
     }
+
+    pub fn cmp(&self, other: &Int) -> Option<Ordering> {
+        match self {
+            Int::I64(this) => match other {
+                Int::I64(other) => this.partial_cmp(other),
+                Int::I128(other) => i128::from(*this).partial_cmp(other),
+                Int::BigInt(other) => BigInt::from(*this).partial_cmp(other),
+            },
+            Int::I128(this) => match other {
+                Int::I64(other) => this.partial_cmp(&i128::from(*other)),
+                Int::I128(other) => this.partial_cmp(other),
+                Int::BigInt(other) => BigInt::from(*this).partial_cmp(other),
+            },
+            Int::BigInt(this) => match other {
+                Int::I64(other) => this.partial_cmp(&BigInt::from(*other)),
+                Int::I128(other) => this.partial_cmp(&BigInt::from(*other)),
+                Int::BigInt(other) => this.partial_cmp(other),
+            },
+        }
+    }
 }
 
 trait Minimize {
@@ -207,6 +228,18 @@ impl Rem<&Int> for &Int {
                 Int::BigInt(ref rhs) => lhs.rem(rhs).minimize(),
             },
         }
+    }
+}
+
+impl From<bool> for Int {
+    fn from(value: bool) -> Self {
+        Self::I64(value.into())
+    }
+}
+
+impl From<Bool> for Int {
+    fn from(value: Bool) -> Self {
+        Self::from(*value)
     }
 }
 

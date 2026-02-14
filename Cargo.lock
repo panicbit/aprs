@@ -182,6 +182,7 @@ dependencies = [
  "fnv",
  "hashers",
  "indexmap 2.12.0",
+ "itertools",
  "num",
  "ordered-float",
  "parking_lot",

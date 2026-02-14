@@ -1,7 +1,9 @@
+use std::cmp::Ordering;
 use std::fmt;
 use std::sync::Arc;
 
 use eyre::{ContextCompat, Result};
+use itertools::{EitherOrBoth, Itertools};
 use parking_lot::{RwLock, RwLockReadGuard};
 
 use super::Value;
@@ -78,6 +80,22 @@ impl List {
 
     pub fn concat(&self, other: &List) -> List {
         self.iter().chain(other).collect()
+    }
+
+    pub fn cmp(&self, other: &List) -> Result<Option<Ordering>> {
+        for ab in self.iter().zip_longest(other) {
+            match ab {
+                EitherOrBoth::Both(a, b) => match a.cmp(&b)? {
+                    Some(Ordering::Equal) => {}
+                    Some(ordering) => return Ok(Some(ordering)),
+                    None => return Ok(None),
+                },
+                EitherOrBoth::Left(_) => return Ok(Some(Ordering::Greater)),
+                EitherOrBoth::Right(_) => return Ok(Some(Ordering::Less)),
+            }
+        }
+
+        Ok(Some(Ordering::Equal))
     }
 }
 

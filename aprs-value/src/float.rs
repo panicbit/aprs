@@ -8,7 +8,7 @@ use ordered_float::OrderedFloat;
 
 use crate::{Bool, Int};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct Float(f64);
 
 impl Float {

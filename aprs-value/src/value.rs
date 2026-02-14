@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, BitAnd, BitOr, Mul, Rem, Sub};
@@ -324,12 +325,32 @@ impl Value {
         }
     }
 
-    fn max(&self, _rhs: &Value) -> Result<Value> {
-        todo!()
+    pub fn min<'a>(&'a self, other: &'a Value) -> Result<&'a Value> {
+        let ordering = self.cmp(other)?;
+
+        let Some(ordering) = ordering else {
+            return Ok(self);
+        };
+
+        Ok(match ordering {
+            Ordering::Less => self,
+            Ordering::Equal => self,
+            Ordering::Greater => other,
+        })
     }
 
-    fn min(&self, _rhs: &Value) -> Result<Value> {
-        todo!()
+    pub fn max<'a>(&'a self, other: &'a Value) -> Result<&'a Value> {
+        let ordering = self.cmp(other)?;
+
+        let Some(ordering) = ordering else {
+            return Ok(self);
+        };
+
+        Ok(match ordering {
+            Ordering::Less => other,
+            Ordering::Equal => self,
+            Ordering::Greater => self,
+        })
     }
 
     pub fn and(&self, rhs: &Value) -> Result<Value> {
@@ -375,6 +396,52 @@ impl Value {
         let dict = dict.as_dict()?;
 
         this.update(dict)
+    }
+
+    #[expect(clippy::should_implement_trait)]
+    pub fn cmp(&self, other: &Value) -> Result<Option<Ordering>> {
+        Ok(match (self, other) {
+            (Value::List(this), Value::List(other)) => this.cmp(other)?,
+            (Value::Str(this), Value::Str(other)) => this.partial_cmp(other),
+            (Value::Tuple(this), Value::Tuple(other)) => this.cmp(other)?,
+            (Value::Set(this), Value::Set(other)) => this.partial_cmp(other),
+            (Value::Int(this), Value::Int(other)) => this.cmp(other),
+            (Value::Float(this), Value::Float(other)) => this.partial_cmp(other),
+            (Value::Bool(this), Value::Bool(other)) => this.partial_cmp(other),
+            (Value::Int(this), Value::Float(other)) => {
+                let this = Float::try_from(this)?;
+                this.partial_cmp(other)
+            }
+            (Value::Int(this), Value::Bool(other)) => {
+                let other = Int::from(**other);
+                this.cmp(&other)
+            }
+            (Value::Bool(this), Value::Int(other)) => {
+                let this = Int::from(**this);
+                this.cmp(other)
+            }
+            (Value::Float(this), Value::Int(other)) => {
+                let other = Float::try_from(other)?;
+                this.partial_cmp(&other)
+            }
+            (Value::Float(this), Value::Bool(other)) => {
+                let other = i64::from(**other);
+                let other = Int::from(other);
+                let other = Float::try_from(other)?;
+                this.partial_cmp(&other)
+            }
+            (Value::Bool(this), Value::Float(other)) => {
+                let this = i64::from(**this);
+                let this = Int::from(this);
+                let this = Float::try_from(this)?;
+                this.partial_cmp(other)
+            }
+            _ => bail!(
+                "Can't compare `{}` and `{}`",
+                self.type_name(),
+                other.type_name()
+            ),
+        })
     }
 }
 
@@ -544,3 +611,9 @@ impl Hash for Value {
 // This is a lie. All bets are off.
 // TODO: needs scrutiny regarding floats. check `ordered_float` crate.
 impl Eq for Value {}
+
+impl AsRef<Value> for Value {
+    fn as_ref(&self) -> &Value {
+        self
+    }
+}

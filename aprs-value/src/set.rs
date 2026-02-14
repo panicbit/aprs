@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt;
 use std::sync::Arc;
 
@@ -159,5 +160,19 @@ impl From<Item<'_>> for Value {
             Item::Value(value) => value.clone(),
             Item::Int64(value) => Value::Int(value.into()),
         }
+    }
+}
+
+impl PartialOrd for Set {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let len_this = self.read().len();
+        let len_other = other.read().len();
+        let ordering = len_this.cmp(&len_other);
+
+        if ordering.is_ne() {
+            return Some(ordering);
+        }
+
+        (self == other).then_some(Ordering::Equal)
     }
 }
