@@ -9,6 +9,9 @@ use tracing::error;
 
 use crate::{Bool, Callable, Dict, Float, Int, List, Set, Str, Tuple};
 
+#[cfg(test)]
+mod tests;
+
 pub enum Value {
     Dict(Dict),
     List(List),

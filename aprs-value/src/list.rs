@@ -205,6 +205,7 @@ where
         // TODO: consider iterator size_hint
         let list = List::new();
 
+        // TODO: use .write() lock
         for value in iter {
             let value = value.into();
 

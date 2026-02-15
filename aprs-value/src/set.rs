@@ -37,6 +37,25 @@ impl Set {
     pub fn write(&self) -> WriteSetGuard<'_> {
         WriteSetGuard::new(self)
     }
+
+    pub fn try_from_iter<V, I>(iter: I) -> Result<Set>
+    where
+        V: Into<Value>,
+        I: IntoIterator<Item = V>,
+    {
+        // TODO: consider iterator size_hint
+        let set = Set::new();
+
+        {
+            let mut set = set.write();
+
+            for value in iter {
+                set.insert(value.into())?;
+            }
+        }
+
+        Ok(set)
+    }
 }
 
 impl Inner {

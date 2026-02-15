@@ -60,6 +60,26 @@ impl Dict {
 
         Ok(())
     }
+
+    pub fn try_from_iter<K, V, I>(iter: I) -> Result<Self>
+    where
+        K: Into<Value>,
+        V: Into<Value>,
+        I: IntoIterator<Item = (K, V)>,
+    {
+        // TODO: consider iterator size_hint
+        let dict = Dict::new();
+
+        {
+            let mut dict = dict.write();
+
+            for (k, v) in iter {
+                dict.insert(k, v)?;
+            }
+        }
+
+        Ok(dict)
+    }
 }
 
 impl Inner {

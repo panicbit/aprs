@@ -150,7 +150,7 @@ impl Int {
     }
 }
 
-trait Minimize {
+pub trait Minimize {
     fn minimize(self) -> Int;
 }
 
@@ -177,6 +177,16 @@ impl Minimize for BigInt {
         }
 
         Int::BigInt(self)
+    }
+}
+
+impl Minimize for &BigInt {
+    fn minimize(self) -> Int {
+        if let Ok(n) = i128::try_from(self) {
+            return n.minimize();
+        }
+
+        Int::BigInt(self.clone())
     }
 }
 
