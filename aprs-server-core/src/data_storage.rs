@@ -32,51 +32,17 @@ impl DataStorage {
     pub fn set(&mut self, set: &Set) -> Result<(Value, Value)> {
         let Set {
             key,
-            default,
+            default: _,
             want_reply: _,
-            operations,
+            operations: _,
         } = set;
 
-        let original_value = self.get_raw(key).unwrap_or(default).clone();
-        let mut value = original_value.clone();
+        let current_value = self.get_raw(key);
+        let (original_value, new_value) = evaluate_set(current_value, set)?;
 
-        fn handle_op(current: Value, operation: &SetOperation) -> Result<Value> {
-            Ok(match operation {
-                SetOperation::Default => current,
-                SetOperation::Replace(value) => value.clone(),
-                // TODO: implement remaining set ops
-                SetOperation::Add(value) => current.add(value)?,
-                SetOperation::Mul(value) => current.mul(value)?,
-                SetOperation::Pow(value) => current.pow(value)?,
-                SetOperation::Mod(value) => current.r#mod(value)?,
-                SetOperation::Floor => current.floor()?,
-                SetOperation::Ceil => current.ceil()?,
-                SetOperation::Min(value) => current.min(value)?.clone(),
-                SetOperation::Max(value) => current.max(value)?.clone(),
-                SetOperation::And(value) => current.and(value)?,
-                SetOperation::Or(value) => current.or(value)?,
-                // SetOperation::Xor(value) => current.xor(value),
-                // SetOperation::LeftShift(value) => current.left_shift(value),
-                // SetOperation::RightShift(value) => current.right_shift(value),
-                // SetOperation::Remove(value) => current.remove(value),
-                SetOperation::Pop(value) => current.pop(value).map(|_| current)?,
-                SetOperation::Update(value) => current.update(value).map(|_| current)?,
-                _ => bail!("TODO: implement SetOperation: {operation:?}"),
-            })
-        }
+        self.set_raw(key.clone(), new_value.clone());
 
-        for operation in operations {
-            value = match handle_op(value, operation) {
-                Ok(value) => value,
-                Err(err) => {
-                    bail!("op err: {err:?}");
-                }
-            }
-        }
-
-        self.set_raw(key.clone(), value.clone());
-
-        Ok((original_value, value))
+        Ok((original_value, new_value))
     }
 }
 
@@ -84,4 +50,52 @@ impl Default for DataStorage {
     fn default() -> Self {
         Self::new()
     }
+}
+
+pub fn evaluate_set(current_value: Option<&Value>, set: &Set) -> Result<(Value, Value)> {
+    let Set {
+        key: _,
+        default,
+        want_reply: _,
+        operations,
+    } = set;
+
+    let original_value = current_value.unwrap_or(default).clone();
+    let mut new_value = original_value.clone();
+
+    for operation in operations {
+        new_value = match evaluate_set_operation(new_value, operation) {
+            Ok(value) => value,
+            Err(err) => {
+                bail!("op err: {err:?}");
+            }
+        }
+    }
+
+    Ok((original_value, new_value))
+}
+
+pub fn evaluate_set_operation(current: Value, operation: &SetOperation) -> Result<Value> {
+    Ok(match operation {
+        SetOperation::Default => current,
+        SetOperation::Replace(value) => value.clone(),
+        // TODO: implement remaining set ops
+        SetOperation::Add(value) => current.add(value)?,
+        SetOperation::Mul(value) => current.mul(value)?,
+        SetOperation::Pow(value) => current.pow(value)?,
+        SetOperation::Mod(value) => current.r#mod(value)?,
+        SetOperation::Floor => current.floor()?,
+        SetOperation::Ceil => current.ceil()?,
+        SetOperation::Min(value) => current.min(value)?.clone(),
+        SetOperation::Max(value) => current.max(value)?.clone(),
+        SetOperation::And(value) => current.and(value)?,
+        SetOperation::Or(value) => current.or(value)?,
+        // SetOperation::Xor(value) => current.xor(value),
+        // SetOperation::LeftShift(value) => current.left_shift(value),
+        // SetOperation::RightShift(value) => current.right_shift(value),
+        // SetOperation::Remove(value) => current.remove(value),
+        SetOperation::Pop(value) => current.pop(value).map(|_| current)?,
+        SetOperation::Update(value) => current.update(value).map(|_| current)?,
+        _ => bail!("TODO: implement SetOperation: {operation:?}"),
+    })
 }
