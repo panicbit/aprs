@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "o")]
 pub struct Set {
     pub key: String,
-    pub default: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default: Option<Value>,
     #[serde(default = "bool_true")]
     pub want_reply: bool,
     pub operations: Vec<SetOperation>,

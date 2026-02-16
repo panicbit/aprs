@@ -60,7 +60,10 @@ pub fn evaluate_set(current_value: Option<&Value>, set: &Set) -> Result<(Value, 
         operations,
     } = set;
 
-    let original_value = current_value.unwrap_or(default).clone();
+    let original_value = current_value
+        .or(default.as_ref())
+        .cloned()
+        .unwrap_or_else(|| Value::int(0));
     let mut new_value = original_value.clone();
 
     for operation in operations {
