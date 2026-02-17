@@ -20,6 +20,15 @@ impl Str {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub fn concat(&self, other: &Str) -> Self {
+        let mut result = String::with_capacity(self.len() + other.len());
+
+        result.push_str(self.as_str());
+        result.push_str(other.as_str());
+
+        Self::from(result)
+    }
 }
 
 impl Default for Str {
