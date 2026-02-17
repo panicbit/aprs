@@ -86,6 +86,7 @@ impl List {
         self.iter().chain(other).collect()
     }
 
+    #[expect(clippy::should_implement_trait)]
     pub fn cmp(&self, other: &List) -> Result<Option<Ordering>> {
         for ab in self.iter().zip_longest(other) {
             match ab {
