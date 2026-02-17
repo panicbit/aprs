@@ -54,7 +54,7 @@ impl PythonValue {
             }
             Self::Set(value) => format!("set({})", slice_to_python(value)),
             Self::Tuple(value) => format!("tuple({})", slice_to_python(value)),
-            Self::None => format!("None"),
+            Self::None => "None".to_string(),
         }
     }
 
@@ -354,11 +354,6 @@ impl BinaryOp {
         match self {
             BinaryOp::Add => format!("{lhs} + {rhs}"),
         }
-    }
-
-    fn eval_python(&self, lhs: &PythonValue, rhs: &PythonValue) -> Result<PythonValue, String> {
-        let code = self.to_python(lhs, rhs);
-        eval_python(&code)
     }
 
     fn eval_rust(&self, lhs: &PythonValue, rhs: &PythonValue) -> Result<PythonValue, String> {
