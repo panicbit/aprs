@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use eyre::{ContextCompat, Result};
 use itertools::{EitherOrBoth, Itertools};
-use parking_lot::{RwLock, RwLockReadGuard};
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use super::Value;
 
@@ -24,8 +24,12 @@ impl List {
         ReadListGuard::new(self)
     }
 
+    pub fn write(&self) -> WriteListGuard<'_> {
+        WriteListGuard::new(self)
+    }
+
     pub fn len(&self) -> usize {
-        self.0.read().len()
+        self.read().len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -37,7 +41,7 @@ impl List {
     }
 
     pub fn push(&self, value: Value) {
-        self.0.write().push(value);
+        self.write().push(value);
     }
 
     pub fn pop(&self) -> Option<Value> {
@@ -205,14 +209,37 @@ where
         // TODO: consider iterator size_hint
         let list = List::new();
 
-        // TODO: use .write() lock
-        for value in iter {
-            let value = value.into();
+        {
+            let mut list = list.write();
 
-            list.push(value);
+            for value in iter {
+                let value = value.into();
+
+                list.push(value);
+            }
         }
 
         list
+    }
+}
+
+pub struct WriteListGuard<'a> {
+    list: RwLockWriteGuard<'a, Vec<Value>>,
+}
+
+impl<'a> WriteListGuard<'a> {
+    fn new(list: &'a List) -> Self {
+        let list = list.0.write();
+
+        Self { list }
+    }
+
+    pub fn len(&self) -> usize {
+        self.list.len()
+    }
+
+    pub fn push(&mut self, value: Value) {
+        self.list.push(value);
     }
 }
 
