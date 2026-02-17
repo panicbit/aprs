@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Value;
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, PartialOrd)]
 pub struct Str(Arc<String>);
 
 impl Str {
