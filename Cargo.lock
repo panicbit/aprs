@@ -88,6 +88,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprs"
+version = "0.1.0"
+dependencies = [
+ "aprs-server",
+ "clap",
+ "eyre",
+]
+
+[[package]]
 name = "aprs-client"
 version = "0.1.0"
 dependencies = [

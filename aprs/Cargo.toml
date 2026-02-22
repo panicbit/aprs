@@ -1,0 +1,10 @@
+[package]
+name = "aprs"
+version = "0.1.0"
+edition = "2024"
+default-run = "aprs"
+
+[dependencies]
+aprs-server = { workspace = true }
+clap = { workspace = true }
+eyre = { workspace = true }
