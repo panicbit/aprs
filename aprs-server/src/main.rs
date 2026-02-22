@@ -1,7 +1,7 @@
 use std::net::Ipv4Addr;
 use std::time::Instant;
 
-use aprs::websocket_server::{Config, WebsocketServer};
+use aprs_server::websocket_server::{Config, WebsocketServer};
 use clap::Parser;
 use color_eyre::Result;
 use tokio::runtime::Runtime;
@@ -12,7 +12,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::cli::Cli;
-use aprs::game::Game;
+use aprs_server::game::Game;
 
 mod cli;
 
