@@ -1,0 +1,13 @@
+[package]
+name = "aprs-client"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aprs-proto = { workspace = true }
+eyre = { workspace = true }
+futures = { workspace = true }
+serde_json = { workspace = true }
+serde_path_to_error = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
