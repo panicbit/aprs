@@ -59,6 +59,9 @@ pub use game_data::GameData;
 mod hashed_game_data;
 pub use hashed_game_data::HashedGameData;
 
+mod invalid_packet;
+pub use invalid_packet::{InvalidPacket, KnownPacketProblemType, PacketProblemType};
+
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "cmd")]
 pub enum Message {
@@ -74,6 +77,7 @@ pub enum Message {
     #[serde(rename = "PrintJSON")]
     PrintJson(PrintJson),
     Bounced(Bounced),
+    InvalidPacket(InvalidPacket),
 }
 
 impl From<RoomInfo> for Arc<Message> {
