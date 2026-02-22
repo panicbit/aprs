@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 serde = { workspace = true }
 eyre = { workspace = true }
-fnv = { workspace = true }
 hashers = { workspace = true }
 indexmap = { workspace = true }
 num = { workspace = true }
@@ -21,5 +20,4 @@ num = { workspace = true, features = ["serde"] }
 ordered-float = { workspace = true, features = ["serde"] }
 pyo3 = { workspace = true, features = ["auto-initialize", "num-bigint"] }
 serde = { workspace = true }
-serde_json = { workspace = true, features = ["arbitrary_precision"] }
 strum = { workspace = true, features = ["derive"] }

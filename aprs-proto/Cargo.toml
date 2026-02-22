@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 aprs-value = { workspace = true }
-bytes = { workspace = true }
 bitflags = { workspace = true }
 chrono = { workspace = true }
 fnv = { workspace = true }
