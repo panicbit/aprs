@@ -267,8 +267,7 @@ impl super::Server {
                         .slot_data
                         .get(&slot)
                         .filter(|_| slot_data)
-                        .cloned()
-                        .unwrap_or_default(),
+                        .cloned(),
                     slot_info: self.multi_data.slot_info.clone(),
                     // TODO: sent actual hintpoints
                     hint_points: 0,

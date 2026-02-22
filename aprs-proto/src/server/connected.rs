@@ -15,7 +15,8 @@ pub struct Connected {
     pub players: Vec<NetworkPlayer>,
     pub missing_locations: FnvHashSet<LocationId>,
     pub checked_locations: FnvHashSet<LocationId>,
-    pub slot_data: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slot_data: Option<Value>,
     pub slot_info: Arc<BTreeMap<SlotId, NetworkSlot>>,
     pub hint_points: u32,
 }
