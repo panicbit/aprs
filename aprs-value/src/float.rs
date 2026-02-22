@@ -19,6 +19,19 @@ impl Float {
     pub fn ceil(&self) -> Result<Int> {
         self.0.ceil().try_into()
     }
+
+    pub fn modulo(&self, divisor: &Self) -> Result<Self> {
+        let remainder = self.rem(*divisor)?;
+
+        let cond1 = *remainder > 0. && **divisor < 0.;
+        let cond2 = *remainder < 0. && **divisor > 0.;
+
+        if cond1 || cond2 {
+            return Ok(remainder + *divisor);
+        }
+
+        Ok(remainder)
+    }
 }
 
 impl Pow<Float> for Float {
@@ -40,8 +53,13 @@ impl Pow<&Int> for Float {
 
     fn pow(self, exp: &Int) -> Self::Output {
         let exp = i32::try_from(exp).context("exponent too big")?;
+        let value = self.0.powi(exp);
 
-        Ok(Float(self.0.powi(exp)))
+        if self.is_finite() && value.is_infinite() {
+            bail!("Numerical result out of range")
+        }
+
+        Ok(Float(value))
     }
 }
 
@@ -96,10 +114,14 @@ impl Mul<Float> for Float {
 }
 
 impl Rem<Float> for Float {
-    type Output = Float;
+    type Output = Result<Float>;
 
     fn rem(self, rhs: Float) -> Self::Output {
-        Self(self.0.rem(rhs.0))
+        if rhs.is_zero() {
+            bail!("division by zero");
+        }
+
+        Ok(Self(self.0.rem(rhs.0)))
     }
 }
 

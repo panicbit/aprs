@@ -86,7 +86,7 @@ pub fn evaluate_set_operation(current: Value, operation: &SetOperation) -> Resul
         SetOperation::Add(value) => current.add(value)?,
         SetOperation::Mul(value) => current.mul(value)?,
         SetOperation::Pow(value) => current.pow(value)?,
-        SetOperation::Mod(value) => current.r#mod(value)?,
+        SetOperation::Mod(value) => current.modulo(value)?,
         SetOperation::Floor => current.floor()?,
         SetOperation::Ceil => current.ceil()?,
         SetOperation::Min(value) => current.min(value)?.clone(),

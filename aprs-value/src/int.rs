@@ -1,10 +1,12 @@
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
+use std::mem;
 use std::ops::{Add, BitAnd, BitOr, Mul, Rem, Sub};
 
 use eyre::{Context, ContextCompat, Result, bail};
-use num::traits::Pow;
+use num::traits::{Euclid, Pow};
 use num::{BigInt, FromPrimitive, One, Signed, ToPrimitive, Zero};
+use serde::de;
 
 use crate::{Bool, Float, Value};
 
@@ -28,19 +30,19 @@ impl Int {
         matches!(self, Self::BigInt(_))
     }
 
-    fn is_zero(&self) -> bool {
-        match self {
-            Int::I64(n) => *n == 0,
-            Int::I128(n) => *n == 0,
-            Int::BigInt(n) => n.is_zero(),
+    pub fn is_zero(&self) -> bool {
+        match *self {
+            Int::I64(n) => n == 0,
+            Int::I128(n) => n == 0,
+            Int::BigInt(ref n) => n.is_zero(),
         }
     }
 
-    fn is_one(&self) -> bool {
-        match self {
-            Int::I64(n) => *n == 1,
-            Int::I128(n) => *n == 1,
-            Int::BigInt(n) => n.is_one(),
+    pub fn is_one(&self) -> bool {
+        match *self {
+            Int::I64(n) => n == 1,
+            Int::I128(n) => n == 1,
+            Int::BigInt(ref n) => n.is_one(),
         }
     }
 
@@ -101,6 +103,22 @@ impl Int {
         }
     }
 
+    pub fn greater_than_zero(&self) -> bool {
+        match *self {
+            Int::I64(n) => n > 0,
+            Int::I128(n) => n > 0,
+            Int::BigInt(ref n) => n.is_positive() && !n.is_zero(),
+        }
+    }
+
+    pub fn less_than_zero(&self) -> bool {
+        match *self {
+            Int::I64(n) => n < 0,
+            Int::I128(n) => n < 0,
+            Int::BigInt(ref n) => n.is_negative() && !n.is_zero(),
+        }
+    }
+
     pub fn powi_positive_exp(&self, exp: u32) -> Int {
         match *self {
             Int::I64(n) => Self::powi_i64_positive_exp(n, exp),
@@ -129,6 +147,7 @@ impl Int {
         Self::BigInt(n.pow(exp))
     }
 
+    #[expect(clippy::should_implement_trait)]
     pub fn cmp(&self, other: &Int) -> Option<Ordering> {
         match self {
             Int::I64(this) => match other {
@@ -147,6 +166,19 @@ impl Int {
                 Int::BigInt(other) => this.partial_cmp(other),
             },
         }
+    }
+
+    pub fn modulo(&self, divisor: &Self) -> Result<Self> {
+        let remainder = self.rem(divisor)?;
+
+        let cond1 = remainder.greater_than_zero() && divisor.less_than_zero();
+        let cond2 = remainder.less_than_zero() && divisor.greater_than_zero();
+
+        if cond1 || cond2 {
+            return Ok(&remainder + divisor);
+        }
+
+        Ok(remainder)
     }
 }
 
@@ -217,28 +249,59 @@ impl Pow<Float> for &Int {
     }
 }
 
-impl Rem<&Int> for &Int {
-    type Output = Int;
+impl<'a> Rem<&'a Int> for &'a Int {
+    type Output = Result<Int>;
 
-    fn rem(self, rhs: &Int) -> Self::Output {
-        match *self {
+    fn rem(self, rhs: &'a Int) -> Self::Output {
+        if rhs.is_zero() {
+            bail!("division by zero");
+        }
+
+        if self.is_zero() {
+            return Ok(Int::from(0));
+        }
+
+        Ok(match *self {
             Int::I64(lhs) => match *rhs {
-                Int::I64(rhs) => lhs.rem(rhs).minimize(),
-                Int::I128(rhs) => i128::from(lhs).rem(rhs).minimize(),
-                Int::BigInt(ref rhs) => lhs.rem(rhs).minimize(),
+                Int::I64(rhs) => rem_i64(lhs, rhs),
+                Int::I128(rhs) => rem_i128(lhs, rhs),
+                Int::BigInt(ref rhs) => rem_big(&lhs.into(), rhs),
             },
             Int::I128(lhs) => match *rhs {
-                Int::I64(rhs) => lhs.rem(i128::from(rhs)).minimize(),
-                Int::I128(rhs) => lhs.rem(rhs).minimize(),
-                Int::BigInt(ref rhs) => lhs.rem(rhs).minimize(),
+                Int::I64(rhs) => rem_i128(lhs, rhs),
+                Int::I128(rhs) => rem_i128(lhs, rhs),
+                Int::BigInt(ref rhs) => rem_big(&lhs.into(), rhs),
             },
             Int::BigInt(ref lhs) => match *rhs {
-                Int::I64(rhs) => lhs.rem(rhs).minimize(),
-                Int::I128(rhs) => lhs.rem(rhs).minimize(),
-                Int::BigInt(ref rhs) => lhs.rem(rhs).minimize(),
+                Int::I64(rhs) => rem_big(lhs, &rhs.into()),
+                Int::I128(rhs) => rem_big(lhs, &rhs.into()),
+                Int::BigInt(ref rhs) => rem_big(lhs, rhs),
             },
-        }
+        })
     }
+}
+
+fn rem_i64(lhs: i64, rhs: i64) -> Int {
+    let Some(n) = lhs.checked_rem(rhs) else {
+        return rem_i128(lhs, rhs);
+    };
+
+    Int::I64(n)
+}
+
+fn rem_i128(lhs: impl Into<i128>, rhs: impl Into<i128>) -> Int {
+    let lhs = lhs.into();
+    let rhs = rhs.into();
+
+    let Some(n) = lhs.checked_rem(rhs) else {
+        return rem_i128(lhs, rhs);
+    };
+
+    n.minimize()
+}
+
+fn rem_big(lhs: &BigInt, rhs: &BigInt) -> Int {
+    lhs.rem(rhs).minimize()
 }
 
 impl From<bool> for Int {
@@ -322,6 +385,30 @@ impl TryFrom<&Int> for i32 {
             Int::I64(value) => i32::try_from(value)?,
             Int::I128(value) => i32::try_from(value)?,
             Int::BigInt(ref value) => i32::try_from(value)?,
+        })
+    }
+}
+
+impl TryFrom<&Int> for usize {
+    type Error = eyre::Report;
+
+    fn try_from(value: &Int) -> Result<usize> {
+        Ok(match *value {
+            Int::I64(value) => usize::try_from(value)?,
+            Int::I128(value) => usize::try_from(value)?,
+            Int::BigInt(ref value) => usize::try_from(value)?,
+        })
+    }
+}
+
+impl TryFrom<&Int> for isize {
+    type Error = eyre::Report;
+
+    fn try_from(value: &Int) -> Result<isize> {
+        Ok(match *value {
+            Int::I64(value) => isize::try_from(value)?,
+            Int::I128(value) => isize::try_from(value)?,
+            Int::BigInt(ref value) => isize::try_from(value)?,
         })
     }
 }

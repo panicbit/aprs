@@ -3,7 +3,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, BitAnd, BitOr, Mul, Rem, Sub};
 
-use eyre::{Result, bail};
+use eyre::{Context, Result, bail};
 use num::traits::Pow;
 use tracing::error;
 
@@ -271,6 +271,32 @@ impl Value {
             (Value::Float(a), Value::Float(b)) => Self::mul_float(a, b),
             (Value::Int(a), Value::Float(b)) => Self::mul_float(a, b),
             (Value::Float(a), Value::Int(b)) => Self::mul_float(a, b),
+            (Value::Str(a), Value::Int(b)) => {
+                let repeats =
+                    isize::try_from(b).context("number of string repetitions is too big")?;
+
+                if repeats <= 0 {
+                    return Ok(Value::str(""));
+                }
+
+                let repeats =
+                    usize::try_from(repeats).context("number of string repetitions is too big")?;
+
+                Ok(Value::str(a.repeat(repeats)))
+            }
+            (Value::Int(a), Value::Str(b)) => {
+                let repeats =
+                    isize::try_from(a).context("number of string repetitions is too big")?;
+
+                if repeats <= 0 {
+                    return Ok(Value::str(""));
+                }
+
+                let repeats =
+                    usize::try_from(repeats).context("number of string repetitions is too big")?;
+
+                Ok(Value::str(b.repeat(repeats)))
+            }
 
             _ => bail!("Can't `mul` {self:?} and {rhs:?}"),
         }
@@ -303,12 +329,12 @@ impl Value {
         })
     }
 
-    pub fn r#mod(&self, rhs: &Value) -> Result<Value> {
+    pub fn modulo(&self, rhs: &Value) -> Result<Value> {
         Ok(match (self, rhs) {
-            (Value::Int(a), Value::Int(b)) => Value::Int(a.r#rem(b)),
-            (Value::Int(a), Value::Float(b)) => Value::Float(Float::try_from(a)?.rem(*b)),
-            (Value::Float(a), Value::Int(b)) => Value::Float(a.r#rem(Float::try_from(b)?)),
-            (Value::Float(a), Value::Float(b)) => Value::Float(a.r#rem(*b)),
+            (Value::Int(a), Value::Int(b)) => Value::Int(a.modulo(b)?),
+            (Value::Int(a), Value::Float(b)) => Value::Float(Float::try_from(a)?.modulo(b)?),
+            (Value::Float(a), Value::Int(b)) => Value::Float(a.modulo(&Float::try_from(b)?)?),
+            (Value::Float(a), Value::Float(b)) => Value::Float(a.modulo(b)?),
             _ => bail!("Can't `mod` {self:?} and {rhs:?}"),
         })
     }

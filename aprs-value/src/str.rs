@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Deref;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use eyre::{Error, Result, bail};
 use serde::{Deserialize, Serialize};
@@ -12,9 +12,11 @@ use crate::Value;
 #[derive(PartialEq, Eq, Clone, PartialOrd)]
 pub struct Str(Arc<String>);
 
+static EMPTY: LazyLock<Arc<String>> = LazyLock::new(|| Arc::new(String::new()));
+
 impl Str {
-    pub fn new() -> Self {
-        Self(Arc::new(String::new()))
+    pub fn empty() -> Self {
+        Self(EMPTY.clone())
     }
 
     pub fn as_str(&self) -> &str {
@@ -33,7 +35,7 @@ impl Str {
 
 impl Default for Str {
     fn default() -> Self {
-        Self::new()
+        Self::empty()
     }
 }
 
@@ -45,6 +47,10 @@ impl Hash for Str {
 
 impl From<String> for Str {
     fn from(value: String) -> Self {
+        if value.is_empty() {
+            return Str::empty();
+        }
+
         Self(Arc::new(value))
     }
 }

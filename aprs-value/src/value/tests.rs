@@ -1,4 +1,5 @@
 use std::ffi::CString;
+use std::sync::LazyLock;
 
 use itertools::Itertools;
 use num::BigInt;
@@ -335,15 +336,16 @@ enum UnaryOp {
 #[derive(VariantArray)]
 enum BinaryOp {
     Add,
-    // Mul,
-    // Pow,
-    // Mod,
-    // Min,
-    // Max,
-    // And,
-    // Or,
-    // Pop,
-    // Update,
+    Mul,
+    Pow,
+    Mod,
+    Min,
+    Max,
+    And,
+    Or,
+    // TODO: Pop,
+    // TODO: Update,
+    // TODO: Remove,
 }
 
 impl BinaryOp {
@@ -352,7 +354,14 @@ impl BinaryOp {
         let rhs = rhs.to_python();
 
         match self {
-            BinaryOp::Add => format!("{lhs} + {rhs}"),
+            BinaryOp::Add => format!("({lhs}) + ({rhs})"),
+            BinaryOp::Mul => format!("({lhs}) * ({rhs})"),
+            BinaryOp::Pow => format!("({lhs}) ** ({rhs})"),
+            BinaryOp::Mod => format!("({lhs}) % ({rhs})"),
+            BinaryOp::Min => format!("min({lhs}, {rhs})"),
+            BinaryOp::Max => format!("max({lhs}, {rhs})"),
+            BinaryOp::And => format!("({lhs}) & ({rhs})"),
+            BinaryOp::Or => format!("({lhs}) | ({rhs})"),
         }
     }
 
@@ -360,17 +369,22 @@ impl BinaryOp {
         let lhs = lhs.to_rust();
         let rhs = rhs.to_rust();
 
-        match self {
-            BinaryOp::Add => lhs
-                .add(&rhs)
-                .map(PythonValue::from)
-                .map_err(|err| err.to_string()),
-        }
+        let result = match self {
+            BinaryOp::Add => lhs.add(&rhs),
+            BinaryOp::Mul => lhs.mul(&rhs),
+            BinaryOp::Pow => lhs.pow(&rhs),
+            BinaryOp::Mod => lhs.modulo(&rhs),
+            BinaryOp::Min => lhs.min(&rhs).cloned(),
+            BinaryOp::Max => lhs.max(&rhs).cloned(),
+            BinaryOp::And => lhs.and(&rhs),
+            BinaryOp::Or => lhs.or(&rhs),
+        };
+
+        result.map(PythonValue::from).map_err(|err| err.to_string())
     }
 }
 
-#[test]
-fn foo() {
+fn test_binop(binop: BinaryOp) {
     let values = list![
         BigInt::from(i128::MIN) + BigInt::from(i128::MIN),
         i128::MIN,
@@ -410,29 +424,131 @@ fn foo() {
 
     for lhs in values {
         for rhs in values {
-            for binop in BinaryOp::VARIANTS {
-                let code = binop.to_python(lhs, rhs);
-                let python_result = eval_python(&code);
-                let rust_result = binop.eval_rust(lhs, rhs);
+            let code = binop.to_python(lhs, rhs);
 
-                eprintln!("Code: {code}");
+            if !resulting_size_is_ok(&binop, lhs, rhs) {
+                // eprintln!("SKIPPED (potentially big result)");
+                continue;
+            }
 
-                match (rust_result, python_result) {
-                    (Ok(rust), Ok(python)) => {
-                        assert_eq!(rust, python)
+            let python_result = eval_python(&code);
+            let rust_result = binop.eval_rust(lhs, rhs);
+
+            match (rust_result, python_result) {
+                (Ok(rust), Ok(python)) => {
+                    if rust != python {
+                        eprintln!("Code: {code}");
                     }
-                    (Ok(rust), Err(python)) => {
-                        panic!("  Rust: {rust:?}\nPython: {python:?}");
-                    }
-                    (Err(rust), Ok(python)) => {
-                        panic!("  Rust: {rust:?}\nPython: {python:?}");
-                    }
-                    (Err(rust), Err(python)) => {
-                        // TODO: figure out how to verify these are the same
-                        eprintln!("  Rust: {rust:?}\nPython: {python:?}");
-                    }
+                    assert_eq!(rust, python)
+                }
+                (Ok(rust), Err(python)) => {
+                    eprintln!("Code: {code}");
+                    panic!("  Rust: {rust:?}\nPython: {python:?}");
+                }
+                (Err(rust), Ok(python)) => {
+                    eprintln!("Code: {code}");
+                    panic!("  Rust: {rust:?}\nPython: {python:?}");
+                }
+                (Err(_rust), Err(_python)) => {
+                    // TODO: figure out how to verify these are the same
+                    // eprintln!("  Rust: {rust:?}\nPython: {python:?}");
                 }
             }
         }
     }
+}
+
+fn resulting_size_is_ok(op: &BinaryOp, lhs: &PythonValue, rhs: &PythonValue) -> bool {
+    match op {
+        BinaryOp::Add
+        | BinaryOp::Min
+        | BinaryOp::Max
+        | BinaryOp::And
+        | BinaryOp::Or
+        | BinaryOp::Mod => true,
+        BinaryOp::Mul | BinaryOp::Pow => {
+            let cond1 = !can_become_big(lhs) || is_small_int_or_other(rhs);
+            let cond2 = !can_become_big(rhs) || is_small_int_or_other(lhs);
+
+            cond1 && cond2
+        }
+    }
+}
+
+fn can_become_big(value: &PythonValue) -> bool {
+    match value {
+        PythonValue::Int(_)
+        | PythonValue::Str(_)
+        | PythonValue::List(_)
+        | PythonValue::Tuple(_) => true,
+        PythonValue::Float(_)
+        | PythonValue::Bool(_)
+        | PythonValue::Dict(_)
+        | PythonValue::Set(_)
+        | PythonValue::None => false,
+    }
+}
+
+fn is_small_int_or_other(value: &PythonValue) -> bool {
+    static INT_LIMIT: LazyLock<BigInt> = LazyLock::new(|| BigInt::from(255));
+
+    match value {
+        PythonValue::Int(value) => value <= &INT_LIMIT,
+        _ => true,
+    }
+}
+
+#[test]
+fn test_add() {
+    test_binop(BinaryOp::Add);
+}
+
+#[test]
+fn test_mul() {
+    test_binop(BinaryOp::Mul);
+}
+
+#[test]
+fn test_pow() {
+    test_binop(BinaryOp::Pow);
+}
+
+#[test]
+fn test_mod() {
+    test_binop(BinaryOp::Mod);
+}
+
+#[test]
+fn test_min() {
+    test_binop(BinaryOp::Min);
+}
+
+#[test]
+fn test_max() {
+    test_binop(BinaryOp::Max);
+}
+
+#[test]
+fn test_and() {
+    test_binop(BinaryOp::And);
+}
+
+#[test]
+fn test_or() {
+    test_binop(BinaryOp::Or);
+}
+
+#[test]
+fn test_pop() {
+    todo!()
+}
+
+#[test]
+fn test_update() {
+    todo!()
+}
+
+#[test]
+fn test_remove() {
+    todo!()
 }
