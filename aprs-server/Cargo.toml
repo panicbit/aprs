@@ -47,5 +47,5 @@ tracing-subscriber = { workspace = true }
 zip = "6.0.0"
 zstd = "0.13.3"
 
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
+[target.'cfg(not(target_os = "windows"))'.dependencies]
 tikv-jemallocator = "0.6"

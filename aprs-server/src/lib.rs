@@ -23,10 +23,10 @@ type Hasher = FxHasher;
 type FnvIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<Hasher>>;
 
 // TODO: put jemalloc behind a feature gate (allow reverse dependencies to opt out)
-#[cfg(not(target_env = "msvc"))]
+#[cfg(not(target_os = "windows"))]
 use tikv_jemallocator::Jemalloc;
 
-#[cfg(not(target_env = "msvc"))]
+#[cfg(not(target_os = "windows"))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
