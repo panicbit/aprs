@@ -4,6 +4,7 @@ use aprs_proto::{client, server};
 use eyre::{Context, ContextCompat, Result, bail};
 use futures::stream::SplitSink;
 use futures::{SinkExt, StreamExt};
+use itertools::Itertools;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio_tungstenite::tungstenite::Utf8Bytes;
@@ -82,8 +83,15 @@ impl Client {
 
             match message {
                 server::Message::Connected(connected) => return Ok(connected),
+                server::Message::ConnectionRefused(connection_refused) => bail!(
+                    "connection refused:\n{}",
+                    connection_refused
+                        .errors
+                        .iter()
+                        .map(|err| format!("- {err:?}"))
+                        .join("\n")
+                ),
                 server::Message::RoomInfo(_) => continue,
-                server::Message::ConnectionRefused(_) => continue,
                 server::Message::Retrieved(_) => continue,
                 server::Message::LocationInfo(_) => continue,
                 server::Message::SetReply(_) => continue,

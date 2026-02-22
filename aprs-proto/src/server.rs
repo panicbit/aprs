@@ -62,7 +62,7 @@ pub use hashed_game_data::HashedGameData;
 mod invalid_packet;
 pub use invalid_packet::{InvalidPacket, KnownPacketProblemType, PacketProblemType};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "cmd")]
 pub enum Message {
     RoomInfo(RoomInfo),
