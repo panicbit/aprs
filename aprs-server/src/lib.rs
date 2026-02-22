@@ -7,12 +7,7 @@ use std::time::Instant;
 use color_eyre::Result;
 use hashers::fx_hash::FxHasher;
 use indexmap::IndexMap;
-use tokio::runtime::Runtime;
 use tracing::info;
-use tracing::level_filters::LevelFilter;
-use tracing_error::ErrorLayer;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::game::Game;
 use crate::websocket_server::{Config, WebsocketServer};
@@ -36,8 +31,7 @@ use tikv_jemallocator::Jemalloc;
 static GLOBAL: Jemalloc = Jemalloc;
 
 pub fn run(cli: Cli) -> Result<()> {
-    color_eyre::install().unwrap();
-    configure_tracing();
+    let rt = aprs_utils::default_main_setup()?;
 
     info!("Loading world...");
     let load_start = Instant::now();
@@ -58,17 +52,5 @@ pub fn run(cli: Cli) -> Result<()> {
 
     let server = WebsocketServer::new(config, game.multi_data)?;
 
-    Runtime::new()?.block_on(server.run())
-}
-
-fn configure_tracing() {
-    tracing_subscriber::registry()
-        .with(LevelFilter::DEBUG)
-        .with(
-            tracing_subscriber::fmt::layer()
-                .with_target(false)
-                .without_time(),
-        )
-        .with(ErrorLayer::default())
-        .init();
+    rt.block_on(server.run())
 }

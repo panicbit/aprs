@@ -92,8 +92,11 @@ name = "aprs"
 version = "0.1.0"
 dependencies = [
  "aprs-server",
+ "aprs-tools",
+ "aprs-utils",
  "clap",
- "eyre",
+ "color-eyre",
+ "tokio",
 ]
 
 [[package]]
@@ -146,6 +149,7 @@ dependencies = [
  "aprs-pickle",
  "aprs-proto",
  "aprs-server-core",
+ "aprs-utils",
  "aprs-value",
  "bitflags",
  "bstr",
@@ -194,6 +198,28 @@ dependencies = [
  "fnv",
  "serde",
  "tracing",
+]
+
+[[package]]
+name = "aprs-tools"
+version = "0.1.0"
+dependencies = [
+ "aprs-client",
+ "aprs-proto",
+ "aprs-utils",
+ "clap",
+ "color-eyre",
+ "serde_json",
+]
+
+[[package]]
+name = "aprs-utils"
+version = "0.1.0"
+dependencies = [
+ "color-eyre",
+ "tokio",
+ "tracing-error",
+ "tracing-subscriber",
 ]
 
 [[package]]
