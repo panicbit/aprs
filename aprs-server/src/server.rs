@@ -8,8 +8,7 @@ use aprs_value::Value;
 use color_eyre::Result;
 use fnv::FnvHashMap;
 // use itertools::Itertools;
-use tokio::sync::Mutex;
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::{Mutex, mpsc};
 use tracing::{debug, error, info, warn};
 
 use crate::game::MultiData;
@@ -36,14 +35,15 @@ pub type ClientMessages = aprs_proto::client::Messages;
 pub struct Server {
     config: Config,
     multi_data: MultiData,
-    rx: Receiver<Event>,
+    tx: mpsc::Sender<Event>,
+    rx: mpsc::Receiver<Event>,
     // TODO: remove lock after moving to proper client ids
     clients: FnvHashMap<SocketAddr, Arc<Mutex<Client>>>,
     state: State,
 }
 
 impl Server {
-    pub fn new(config: Config, multi_data: MultiData, rx: Receiver<Event>) -> Result<Self> {
+    pub fn new(config: Config, multi_data: MultiData) -> Result<Self> {
         let state = match State::try_load(&config.state_path)? {
             Some(state) => {
                 info!("Loaded existing state from {:?}", config.state_path);
@@ -54,9 +54,11 @@ impl Server {
                 State::new(&multi_data)
             }
         };
+        let (tx, rx) = mpsc::channel(10_000);
 
         Ok(Self {
             config,
+            tx,
             rx,
             clients: FnvHashMap::default(),
             multi_data,
@@ -230,5 +232,26 @@ impl Server {
         } else {
             info!("Saved state successfuly after {elapsed:?}");
         }
+    }
+
+    pub fn handle(&self) -> ServerHandle {
+        ServerHandle {
+            tx: self.tx.clone(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ServerHandle {
+    tx: mpsc::Sender<Event>,
+}
+
+impl ServerHandle {
+    pub fn register_client(&self) {
+        todo!()
+    }
+
+    pub fn wait_for_stop(&self) -> impl Future<Output = ()> {
+        self.tx.closed()
     }
 }
