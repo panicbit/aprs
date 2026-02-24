@@ -8,18 +8,18 @@ use aprs_value::Value;
 use color_eyre::Result;
 use fnv::FnvHashMap;
 // use itertools::Itertools;
-use tokio::sync::Mutex;
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::{Mutex, mpsc};
 use tracing::{debug, error, info, warn};
 
 use crate::game::MultiData;
+use crate::server::control::ControlOrMessage;
 use crate::server::state::State;
 
 mod event_handlers;
 mod state;
 
 mod client;
-pub use client::Client;
+use client::Client;
 
 mod config;
 pub use config::Config;
@@ -36,14 +36,15 @@ pub type ClientMessages = aprs_proto::client::Messages;
 pub struct Server {
     config: Config,
     multi_data: MultiData,
-    rx: Receiver<Event>,
+    client_message_sender: ClientMessageSender,
+    client_message_receiver: ClientMessageReceiver,
     // TODO: remove lock after moving to proper client ids
     clients: FnvHashMap<SocketAddr, Arc<Mutex<Client>>>,
     state: State,
 }
 
 impl Server {
-    pub fn new(config: Config, multi_data: MultiData, rx: Receiver<Event>) -> Result<Self> {
+    pub fn new(config: Config, multi_data: MultiData) -> Result<Self> {
         let state = match State::try_load(&config.state_path)? {
             Some(state) => {
                 info!("Loaded existing state from {:?}", config.state_path);
@@ -54,10 +55,12 @@ impl Server {
                 State::new(&multi_data)
             }
         };
+        let (client_message_sender, client_message_receiver) = mpsc::channel(10_000);
 
         Ok(Self {
             config,
-            rx,
+            client_message_sender,
+            client_message_receiver,
             clients: FnvHashMap::default(),
             multi_data,
             state,
@@ -72,7 +75,7 @@ impl Server {
 
     pub async fn event_loop(mut self) {
         loop {
-            let Some(event) = self.rx.recv().await else {
+            let Some(event) = self.client_message_receiver.recv().await else {
                 debug!("Event channel closed.");
                 return;
             };
@@ -230,5 +233,84 @@ impl Server {
         } else {
             info!("Saved state successfuly after {elapsed:?}");
         }
+    }
+
+    pub fn handle(&self) -> ServerHandle {
+        ServerHandle {
+            client_message_sender: self.client_message_sender.clone(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ServerHandle {
+    client_message_sender: ClientMessageSender,
+}
+
+impl ServerHandle {
+    pub async fn client_accepted(&self, address: SocketAddr) -> Result<ClientToServerConnection> {
+        let (client_to_server_connection, server_to_client_connection) =
+            Connection::new_pair(1_000, 1_000);
+
+        self.client_message_sender
+            .send(Event::ClientAccepted(server_to_client_connection, address))
+            .await?;
+
+        Ok(client_to_server_connection)
+    }
+
+    pub async fn disconnect_client(&self, address: SocketAddr) -> Result<()> {
+        self.client_message_sender
+            .send(Event::ClientDisconnected(address))
+            .await?;
+        Ok(())
+    }
+
+    pub fn wait_for_stop(&self) -> impl Future<Output = ()> {
+        self.client_message_sender.closed()
+    }
+}
+
+pub type ClientMessageSender = mpsc::Sender<Event>;
+type ClientMessageReceiver = mpsc::Receiver<Event>;
+
+pub type ServerMessageReceiver = mpsc::Receiver<ControlOrMessage<Arc<ServerMessage>>>;
+type ServerMessageSender = mpsc::Sender<ControlOrMessage<Arc<ServerMessage>>>;
+
+pub type ClientToServerConnection = Connection<Event, ControlOrMessage<Arc<ServerMessage>>>;
+type ServerToClientConnection = Connection<ControlOrMessage<Arc<ServerMessage>>, Event>;
+
+pub struct Connection<S, R> {
+    sender: mpsc::Sender<S>,
+    receiver: mpsc::Receiver<R>,
+}
+
+impl<S, R> Connection<S, R> {
+    pub fn new_pair(s_capacity: usize, r_capacity: usize) -> (Connection<S, R>, Connection<R, S>) {
+        let (s_sender, s_receiver) = mpsc::channel(s_capacity);
+        let (r_sender, r_receiver) = mpsc::channel(r_capacity);
+
+        let conn1 = Connection {
+            sender: s_sender,
+            receiver: r_receiver,
+        };
+        let conn2 = Connection {
+            sender: r_sender,
+            receiver: s_receiver,
+        };
+
+        (conn1, conn2)
+    }
+
+    pub fn split(self) -> (mpsc::Sender<S>, mpsc::Receiver<R>) {
+        (self.sender, self.receiver)
+    }
+
+    pub async fn send(&self, message: S) -> Result<(), mpsc::error::SendError<S>> {
+        self.sender.send(message).await
+    }
+
+    pub async fn recv(&mut self) -> Option<R> {
+        self.receiver.recv().await
     }
 }

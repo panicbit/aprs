@@ -2,13 +2,12 @@ use std::net::SocketAddr;
 use std::pin::pin;
 use std::sync::Arc;
 
-use color_eyre::eyre::{Result, bail};
+use color_eyre::eyre::{Context, Result, bail};
 use format_serde_error::SerdeError;
 use futures::SinkExt;
 use smallvec::smallvec;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::select;
-use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio_stream::StreamExt;
 use tokio_tungstenite::tungstenite::handshake::server::Callback;
 use tokio_tungstenite::tungstenite::http::Uri;
@@ -17,41 +16,46 @@ use tracing::{debug, error};
 
 use crate::game::MultiData;
 use crate::server::control::{Close, Control, ControlOrMessage, Ping, Pong};
-use crate::server::{Client, ClientMessages, Event, Server, ServerMessage};
+use crate::server::{
+    ClientMessages, ClientToServerConnection, Event, Server, ServerHandle, ServerMessage,
+};
 
 mod config;
 pub use config::Config;
 
 pub struct WebsocketServer {
     server: Server,
+    server_handle: ServerHandle,
     config: Config,
-    tx: Sender<Event>,
 }
 
 impl WebsocketServer {
     pub fn new(config: Config, multi_data: MultiData) -> Result<Self> {
-        let (tx, rx) = mpsc::channel(10_000);
+        let server = Server::new(config.clone().into(), multi_data)?;
+        let server_handle = server.handle();
 
-        let server = Server::new(config.clone().into(), multi_data, rx)?;
-
-        Ok(Self { server, config, tx })
+        Ok(Self {
+            server,
+            server_handle,
+            config,
+        })
     }
 
     pub async fn run(self) -> Result<()> {
         let listen_address = self.config.listen_address;
         let listener = TcpListener::bind(listen_address).await?;
 
-        tokio::spawn(acceptor_loop(listener, self.tx.clone()));
+        tokio::spawn(acceptor_loop(listener, self.server_handle.clone()));
 
         self.server.run().await
     }
 }
 
-async fn acceptor_loop(listener: TcpListener, event_tx: Sender<Event>) {
+async fn acceptor_loop(listener: TcpListener, server_handle: ServerHandle) {
     loop {
         select! {
-            _ = event_tx.closed() => {
-                debug!("acceptor loop shutting down");
+            _ = server_handle.wait_for_stop() => {
+                debug!("WS: acceptor loop shutting down due to server shutdown");
                 return
             },
             accepted = listener.accept() => {
@@ -63,10 +67,10 @@ async fn acceptor_loop(listener: TcpListener, event_tx: Sender<Event>) {
                     }
                 };
 
-                let event_tx = event_tx.clone();
+                let server_handle = server_handle.clone();
 
                 tokio::spawn(async move {
-                    if let Err(err) = handle_accept(stream, address, event_tx).await {
+                    if let Err(err) = handle_accept(stream, address, server_handle).await {
                         error!("Failed to accept client {address}: {err:?}");
                     }
                 });
@@ -78,7 +82,7 @@ async fn acceptor_loop(listener: TcpListener, event_tx: Sender<Event>) {
 async fn handle_accept(
     stream: TcpStream,
     address: SocketAddr,
-    event_tx: Sender<Event>,
+    server_handle: ServerHandle,
 ) -> Result<()> {
     debug!("||| {address:?} connected");
 
@@ -105,24 +109,17 @@ async fn handle_accept(
     let mut data = Data::default();
     let stream = tokio_tungstenite::accept_hdr_async(stream, &mut data).await?;
 
-    let (server_message_tx, server_message_rx) = mpsc::channel(1_000);
+    let connection = server_handle
+        .client_accepted(address)
+        .await
+        .context("server could not accept client")?;
 
     tokio::spawn(client_loop(
         stream,
         address,
-        event_tx.clone(),
-        server_message_rx,
+        server_handle.clone(),
+        connection,
     ));
-
-    let client = Client::new(address, server_message_tx);
-
-    if event_tx
-        .send(Event::ClientAccepted(address, client))
-        .await
-        .is_err()
-    {
-        debug!("Can't accept client, event channel is closed");
-    }
 
     Ok(())
 }
@@ -130,16 +127,16 @@ async fn handle_accept(
 async fn client_loop(
     stream: WebSocketStream<TcpStream>,
     address: SocketAddr,
-    event_tx: Sender<Event>,
-    mut server_message_rx: Receiver<ControlOrMessage<Arc<ServerMessage>>>,
+    server_handle: ServerHandle,
+    mut connection: ClientToServerConnection,
 ) {
     let mut stream = pin!(stream);
     let stream = &mut *stream;
 
     loop {
         select! {
-            _ = event_tx.closed() => return,
-            server_message = server_message_rx.recv() => {
+            _ = server_handle.wait_for_stop() => return,
+            server_message = connection.recv() => {
                 let Some(server_message) = server_message else {
                     debug!("Server closed message channel to client");
                     return
@@ -149,7 +146,7 @@ async fn client_loop(
                 if let Err(err) = send(stream, server_message).await {
                     error!("failed to send message to client: {err:?}");
 
-                    event_tx.send(Event::ClientDisconnected(address)).await.ok();
+                    connection.send(Event::ClientDisconnected(address)).await.ok();
 
                     return;
                 }
@@ -161,13 +158,13 @@ async fn client_loop(
                     Err(err) => {
                         error!("Failed to receive client messages: {err:?}");
 
-                        event_tx.send(Event::ClientDisconnected(address)).await.ok();
+                        connection.send(Event::ClientDisconnected(address)).await.ok();
 
                         return
                     }
                 };
 
-                event_tx.send(event).await.ok();
+                connection.send(event).await.ok();
             }
         }
     }

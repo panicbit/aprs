@@ -1,10 +1,12 @@
 use std::net::SocketAddr;
 
 use crate::server::control::Control;
-use crate::server::{Client, ClientMessages};
+use crate::server::{
+    ClientMessages, ServerToClientConnection,
+};
 
 pub enum Event {
-    ClientAccepted(SocketAddr, Client),
+    ClientAccepted(ServerToClientConnection, SocketAddr),
     ClientDisconnected(SocketAddr),
     ClientMessages(SocketAddr, ClientMessages),
     ClientControl(SocketAddr, Control),

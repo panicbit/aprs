@@ -26,13 +26,14 @@ use crate::game::TeamAndSlot;
 use crate::server::client::Client;
 use crate::server::control::{Close, Control, Pong};
 use crate::server::event::Event;
-use crate::server::{ClientMessage, ClientMessages, ServerMessage};
+use crate::server::{ClientMessage, ClientMessages, ServerMessage, ServerToClientConnection};
 
 impl super::Server {
-    pub async fn on_event(&mut self, event: Event) {
+    pub(super) async fn on_event(&mut self, event: Event) {
         match event {
-            Event::ClientAccepted(address, client) => {
-                self.on_client_accepted(address, client).await
+            Event::ClientAccepted(server_to_client_connection, address) => {
+                self.on_client_accepted(server_to_client_connection, address)
+                    .await
             }
             Event::ClientDisconnected(address) => {
                 self.on_client_disconnected(address).await //
@@ -46,12 +47,16 @@ impl super::Server {
         }
     }
 
-    pub async fn on_client_accepted(&mut self, address: SocketAddr, client: Client) {
+    async fn on_client_accepted(
+        &mut self,
+        server_to_client_connection: ServerToClientConnection,
+        address: SocketAddr,
+    ) {
         debug!("New client connected: {}", address);
 
         // TODO: Generate and assign client id.
         // Stop using SocketAddr as identifier.
-
+        let client = Client::new(self, address, server_to_client_connection);
         let client = Arc::new(Mutex::new(client));
 
         self.clients.insert(address, client.clone());
@@ -86,11 +91,11 @@ impl super::Server {
             .await;
     }
 
-    pub async fn on_client_disconnected(&mut self, address: SocketAddr) {
+    async fn on_client_disconnected(&mut self, address: SocketAddr) {
         info!("Client disconnected: {}", address);
     }
 
-    pub async fn on_client_messages(&mut self, address: SocketAddr, messages: ClientMessages) {
+    async fn on_client_messages(&mut self, address: SocketAddr, messages: ClientMessages) {
         let Some(client) = self.clients.get(&address).cloned() else {
             return;
         };
@@ -104,7 +109,7 @@ impl super::Server {
         }
     }
 
-    pub async fn on_client_control(&mut self, address: SocketAddr, control: Control) {
+    async fn on_client_control(&mut self, address: SocketAddr, control: Control) {
         let Some(client) = self.clients.get(&address).cloned() else {
             return;
         };
@@ -120,7 +125,7 @@ impl super::Server {
         }
     }
 
-    pub async fn on_client_message(
+    async fn on_client_message(
         &mut self,
         client: &Mutex<Client>,
         message: ClientMessage,
@@ -172,7 +177,7 @@ impl super::Server {
         Ok(())
     }
 
-    pub async fn on_connect(&self, client: &Mutex<Client>, connect: Connect) -> Result<()> {
+    async fn on_connect(&self, client: &Mutex<Client>, connect: Connect) -> Result<()> {
         let Connect {
             password,
             game,
@@ -290,7 +295,7 @@ impl super::Server {
         Ok(())
     }
 
-    pub async fn on_say(&mut self, client: &Mutex<Client>, say: Say) {
+    async fn on_say(&mut self, client: &Mutex<Client>, say: Say) {
         let Say { text } = say;
         let text = text.trim();
 
@@ -382,7 +387,7 @@ impl super::Server {
         .await;
     }
 
-    pub async fn on_get(&mut self, client: &Mutex<Client>, get: Get) {
+    async fn on_get(&mut self, client: &Mutex<Client>, get: Get) {
         let Get { keys } = get;
 
         let mut retrieved = FnvHashMap::default();
@@ -447,7 +452,7 @@ impl super::Server {
         }
     }
 
-    pub async fn on_set_notify(&mut self, client: &Mutex<Client>, set_notify: SetNotify) {
+    async fn on_set_notify(&mut self, client: &Mutex<Client>, set_notify: SetNotify) {
         let SetNotify { keys } = set_notify;
 
         // TODO: prevent required conversion
@@ -456,7 +461,7 @@ impl super::Server {
         client.lock().await.wants_updates_for_keys = keys;
     }
 
-    pub async fn on_location_scouts(
+    async fn on_location_scouts(
         &mut self,
         client: &Mutex<Client>,
         location_scouts: LocationScouts,
@@ -492,7 +497,7 @@ impl super::Server {
         client.lock().await.send(LocationInfo { locations }).await;
     }
 
-    pub async fn on_location_checks(
+    async fn on_location_checks(
         &mut self,
         client: &Mutex<Client>,
         location_checks: LocationChecks,
@@ -564,7 +569,7 @@ impl super::Server {
         // TODO: send RoomUpdate for checked_locations
     }
 
-    pub async fn on_status_update(&mut self, client: &Mutex<Client>, status_update: StatusUpdate) {
+    async fn on_status_update(&mut self, client: &Mutex<Client>, status_update: StatusUpdate) {
         let StatusUpdate { status } = status_update;
 
         // TODO: handle other status updates
@@ -579,7 +584,7 @@ impl super::Server {
         };
     }
 
-    pub async fn on_goal_complete(&mut self, client: &Mutex<Client>) {
+    async fn on_goal_complete(&mut self, client: &Mutex<Client>) {
         let slot = client.lock().await.slot_id;
         let Some(slot_state) = self.state.get_slot_state(slot) else {
             error!("Tried to get slot state for unknown slot {slot:?}");
@@ -591,7 +596,7 @@ impl super::Server {
         self.check_locations(client, missing_locations).await;
     }
 
-    pub async fn on_get_data_package(
+    async fn on_get_data_package(
         &mut self,
         client: &Mutex<Client>,
         get_data_package: &GetDataPackage,
@@ -628,12 +633,12 @@ impl super::Server {
             .await;
     }
 
-    pub async fn on_sync(&mut self, client: &Mutex<Client>) {
+    async fn on_sync(&mut self, client: &Mutex<Client>) {
         client.lock().await.reset_received_items();
         self.sync_items_to_client(client).await;
     }
 
-    pub async fn on_bounce(&mut self, client: &Mutex<Client>, bounce: &Bounce) {
+    async fn on_bounce(&mut self, client: &Mutex<Client>, bounce: &Bounce) {
         let bounced = Bounced::from(bounce.clone());
         let bounced = Arc::<ServerMessage>::from(bounced);
 
@@ -648,7 +653,7 @@ impl super::Server {
         }
     }
 
-    pub async fn on_close(&mut self, client: &Mutex<Client>) {
+    async fn on_close(&mut self, client: &Mutex<Client>) {
         self.clients.remove(&client.lock().await.address);
     }
 }
