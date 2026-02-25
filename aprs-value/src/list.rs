@@ -90,7 +90,7 @@ impl List {
     pub fn cmp(&self, other: &List) -> Result<Option<Ordering>> {
         for ab in self.iter().zip_longest(other) {
             match ab {
-                EitherOrBoth::Both(a, b) => match a.cmp(&b)? {
+                EitherOrBoth::Both(a, b) => match a.partial_cmp(&b)? {
                     Some(Ordering::Equal) => {}
                     Some(ordering) => return Ok(Some(ordering)),
                     None => return Ok(None),

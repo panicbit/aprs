@@ -146,11 +146,7 @@ impl<'de> de::Visitor<'de> for ValueVisitor {
         E: de::Error,
     {
         // TODO: implement efficient bytes type
-        let list = v
-            .iter()
-            .copied()
-            .map(|byte| Value::int(byte))
-            .collect::<List>();
+        let list = v.iter().copied().map(Value::int).collect::<List>();
 
         Ok(Value::List(list))
     }

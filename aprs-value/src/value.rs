@@ -356,7 +356,7 @@ impl Value {
     }
 
     pub fn min<'a>(&'a self, other: &'a Value) -> Result<&'a Value> {
-        let ordering = self.cmp(other)?;
+        let ordering = self.partial_cmp(other)?;
 
         let Some(ordering) = ordering else {
             return Ok(self);
@@ -370,7 +370,7 @@ impl Value {
     }
 
     pub fn max<'a>(&'a self, other: &'a Value) -> Result<&'a Value> {
-        let ordering = self.cmp(other)?;
+        let ordering = self.partial_cmp(other)?;
 
         let Some(ordering) = ordering else {
             return Ok(self);
@@ -428,12 +428,11 @@ impl Value {
         this.update(dict)
     }
 
-    #[expect(clippy::should_implement_trait)]
-    pub fn cmp(&self, other: &Value) -> Result<Option<Ordering>> {
+    pub fn partial_cmp(&self, other: &Value) -> Result<Option<Ordering>> {
         Ok(match (self, other) {
             (Value::List(this), Value::List(other)) => this.cmp(other)?,
             (Value::Str(this), Value::Str(other)) => this.partial_cmp(other),
-            (Value::Tuple(this), Value::Tuple(other)) => this.cmp(other)?,
+            (Value::Tuple(this), Value::Tuple(other)) => this.partial_cmp(other)?,
             (Value::Set(this), Value::Set(other)) => this.partial_cmp(other),
             (Value::Int(this), Value::Int(other)) => this.cmp(other),
             (Value::Float(this), Value::Float(other)) => this.partial_cmp(other),

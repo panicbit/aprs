@@ -1,12 +1,10 @@
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
-use std::mem;
 use std::ops::{Add, BitAnd, BitOr, Mul, Rem, Sub};
 
 use eyre::{Context, ContextCompat, Result, bail};
-use num::traits::{Euclid, Pow};
+use num::traits::Pow;
 use num::{BigInt, FromPrimitive, One, Signed, ToPrimitive, Zero};
-use serde::de;
 
 use crate::{Bool, Float, Value};
 
@@ -815,28 +813,6 @@ impl PartialEq for Int {
             (Int::BigInt(a), Int::BigInt(b)) => a == b,
         }
     }
-}
-
-fn eq_i64(a: impl Into<i64>, b: impl Into<i64>) -> bool {
-    let a = a.into();
-    let b = b.into();
-
-    a.eq(&b)
-}
-
-fn eq_i128(a: impl Into<i128>, b: impl Into<i128>) -> bool {
-    let a = a.into();
-    let b = b.into();
-
-    a.eq(&b)
-}
-
-// TODO: optimization: only one operand needs to be converted BigInt
-fn eq_big_int(a: impl Into<BigInt>, b: impl Into<BigInt>) -> bool {
-    let a = a.into();
-    let b = b.into();
-
-    a.eq(&b)
 }
 
 impl PartialEq<Float> for Int {
