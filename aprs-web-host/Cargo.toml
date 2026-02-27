@@ -1,0 +1,25 @@
+[package]
+name = "aprs-web-host"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aprs-utils = { workspace = true }
+askama = { workspace = true }
+askama_web = { workspace = true, features = ["rocket-0.5"] }
+bb8 = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true }
+color-eyre = { workspace = true }
+diesel = { workspace = true, features = [
+    "returning_clauses_for_sqlite_3_35",
+    "uuid",
+    "chrono",
+] }
+diesel-async = { version = "0.7.4", features = ["sqlite", "pool", "bb8"] }
+diesel-derive-newtype = { workspace = true }
+diesel_migrations = { workspace = true, features = ["sqlite"] }
+libsqlite3-sys = { workspace = true, features = ["bundled"] }
+r2d2_sqlite = { workspace = true }
+rocket = { workspace = true, features = ["json", "uuid", "secrets"] }
+uuid = { workspace = true }

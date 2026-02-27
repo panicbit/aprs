@@ -1,0 +1,14 @@
+--- src/schema.rs	2026-02-28 23:27:46.109883498 +0100
++++ src/schema.mod.rs	2026-02-28 23:29:06.265393368 +0100
+@@ -1,9 +1,9 @@
+ // @generated automatically by Diesel CLI.
+ 
+ diesel::table! {
+     users (id) {
+         id -> Text,
+-        first_visit -> Text,
+-        last_visit -> Text,
++        first_visit -> TimestamptzSqlite,
++        last_visit -> TimestamptzSqlite,
+     }
+ }
