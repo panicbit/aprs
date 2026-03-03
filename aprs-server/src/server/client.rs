@@ -1,4 +1,3 @@
-use std::net::SocketAddr;
 use std::sync::Arc;
 
 use aprs_proto as proto;
@@ -12,13 +11,16 @@ use fnv::FnvHashSet;
 use itertools::Itertools;
 use tracing::{error, info};
 
+use crate::net::ClientAddr;
+use crate::server::client_id::ClientId;
 use crate::server::control::{Close, Control, ControlOrMessage};
 use crate::server::{Server, ServerMessage, ServerMessageSender, ServerToClientConnection};
 
 #[derive(Clone)]
 pub(super) struct Client {
     client_message_sender: ServerMessageSender,
-    pub address: SocketAddr,
+    pub id: ClientId,
+    pub address: ClientAddr,
     pub is_connected: bool,
     pub connect_name: ConnectName,
     pub slot_name: SlotName,
@@ -36,9 +38,10 @@ pub(super) struct Client {
 impl Client {
     pub fn new(
         server: &Server,
-        address: SocketAddr,
+        address: ClientAddr,
         server_to_client_connection: ServerToClientConnection,
     ) -> Self {
+        let id = ClientId::new();
         let (client_message_sender, mut server_message_receiver) =
             server_to_client_connection.split();
 
@@ -59,6 +62,7 @@ impl Client {
         }
 
         Self {
+            id,
             client_message_sender,
             address,
             is_connected: false,

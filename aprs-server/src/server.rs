@@ -1,4 +1,3 @@
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -11,7 +10,9 @@ use fnv::FnvHashMap;
 use tokio::sync::{Mutex, mpsc};
 use tracing::{debug, error, info, warn};
 
+use crate::config::Config;
 use crate::game::MultiData;
+use crate::net::ClientAddr;
 use crate::server::control::ControlOrMessage;
 use crate::server::state::State;
 
@@ -21,8 +22,8 @@ mod state;
 mod client;
 use client::Client;
 
-mod config;
-pub use config::Config;
+mod client_id;
+pub use client_id::ClientId;
 
 mod event;
 pub use event::Event;
@@ -39,7 +40,8 @@ pub struct Server {
     client_message_sender: ClientMessageSender,
     client_message_receiver: ClientMessageReceiver,
     // TODO: remove lock after moving to proper client ids
-    clients: FnvHashMap<SocketAddr, Arc<Mutex<Client>>>,
+    // TODO: definitely move away from ClientAddr and move to client ids
+    clients: FnvHashMap<ClientId, Arc<Mutex<Client>>>,
     state: State,
 }
 
@@ -248,20 +250,28 @@ pub struct ServerHandle {
 }
 
 impl ServerHandle {
-    pub async fn client_accepted(&self, address: SocketAddr) -> Result<ClientToServerConnection> {
+    pub async fn client_accepted(
+        &self,
+        client_id: ClientId,
+        address: ClientAddr,
+    ) -> Result<ClientToServerConnection> {
         let (client_to_server_connection, server_to_client_connection) =
             Connection::new_pair(1_000, 1_000);
 
         self.client_message_sender
-            .send(Event::ClientAccepted(server_to_client_connection, address))
+            .send(Event::ClientAccepted(
+                client_id,
+                server_to_client_connection,
+                address,
+            ))
             .await?;
 
         Ok(client_to_server_connection)
     }
 
-    pub async fn disconnect_client(&self, address: SocketAddr) -> Result<()> {
+    pub async fn disconnect_client(&self, client_id: ClientId, address: ClientAddr) -> Result<()> {
         self.client_message_sender
-            .send(Event::ClientDisconnected(address))
+            .send(Event::ClientDisconnected(client_id, address))
             .await?;
         Ok(())
     }

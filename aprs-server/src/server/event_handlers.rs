@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::net::SocketAddr;
 use std::sync::Arc;
 
 use aprs_proto::client::{
@@ -23,7 +22,9 @@ use tokio::sync::Mutex;
 use tracing::{debug, error, info, warn};
 
 use crate::game::TeamAndSlot;
+use crate::net::ClientAddr;
 use crate::server::client::Client;
+use crate::server::client_id::ClientId;
 use crate::server::control::{Close, Control, Pong};
 use crate::server::event::Event;
 use crate::server::{ClientMessage, ClientMessages, ServerMessage, ServerToClientConnection};
@@ -31,35 +32,36 @@ use crate::server::{ClientMessage, ClientMessages, ServerMessage, ServerToClient
 impl super::Server {
     pub(super) async fn on_event(&mut self, event: Event) {
         match event {
-            Event::ClientAccepted(server_to_client_connection, address) => {
-                self.on_client_accepted(server_to_client_connection, address)
+            Event::ClientAccepted(client_id, server_to_client_connection, address) => {
+                self.on_client_accepted(client_id, server_to_client_connection, address)
                     .await
             }
-            Event::ClientDisconnected(address) => {
-                self.on_client_disconnected(address).await //
+            Event::ClientDisconnected(client_id, address) => {
+                self.on_client_disconnected(client_id, address).await //
             }
-            Event::ClientMessages(address, messages) => {
-                self.on_client_messages(address, messages).await
+            Event::ClientMessages(client_id, messages) => {
+                self.on_client_messages(client_id, messages).await
             }
-            Event::ClientControl(address, control) => {
-                self.on_client_control(address, control).await
+            Event::ClientControl(client_id, control) => {
+                self.on_client_control(client_id, control).await
             }
         }
     }
 
     async fn on_client_accepted(
         &mut self,
+        client_id: ClientId,
         server_to_client_connection: ServerToClientConnection,
-        address: SocketAddr,
+        address: ClientAddr,
     ) {
-        debug!("New client connected: {}", address);
+        debug!("New client connected: {:?}", address);
 
         // TODO: Generate and assign client id.
-        // Stop using SocketAddr as identifier.
-        let client = Client::new(self, address, server_to_client_connection);
+        // Stop using ClientAddr as identifier.
+        let client = Client::new(self, address.clone(), server_to_client_connection);
         let client = Arc::new(Mutex::new(client));
 
-        self.clients.insert(address, client.clone());
+        self.clients.insert(client_id, client.clone());
 
         client
             .lock()
@@ -91,12 +93,13 @@ impl super::Server {
             .await;
     }
 
-    async fn on_client_disconnected(&mut self, address: SocketAddr) {
-        info!("Client disconnected: {}", address);
+    async fn on_client_disconnected(&mut self, client_id: ClientId, address: ClientAddr) {
+        // TODO: Remove the client here? Note that the client is getting removed in `on_client_message` too
+        info!("Client disconnected: {client_id:?}, {address:?}");
     }
 
-    async fn on_client_messages(&mut self, address: SocketAddr, messages: ClientMessages) {
-        let Some(client) = self.clients.get(&address).cloned() else {
+    async fn on_client_messages(&mut self, client_id: ClientId, messages: ClientMessages) {
+        let Some(client) = self.clients.get(&client_id).cloned() else {
             return;
         };
 
@@ -104,13 +107,13 @@ impl super::Server {
             if let Err(err) = self.on_client_message(&client, message).await {
                 debug!("||| {err:?}");
                 client.lock().await.send_control(Close).await;
-                self.clients.remove(&address);
+                self.clients.remove(&client_id);
             }
         }
     }
 
-    async fn on_client_control(&mut self, address: SocketAddr, control: Control) {
-        let Some(client) = self.clients.get(&address).cloned() else {
+    async fn on_client_control(&mut self, client_id: ClientId, control: Control) {
+        let Some(client) = self.clients.get(&client_id).cloned() else {
             return;
         };
 
@@ -654,6 +657,6 @@ impl super::Server {
     }
 
     async fn on_close(&mut self, client: &Mutex<Client>) {
-        self.clients.remove(&client.lock().await.address);
+        self.clients.remove(&client.lock().await.id);
     }
 }

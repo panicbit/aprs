@@ -1,23 +1,27 @@
 #![allow(clippy::let_and_return)]
 
 use std::hash::BuildHasherDefault;
-use std::net::Ipv4Addr;
 use std::time::Instant;
 
 use color_eyre::Result;
+use color_eyre::eyre::Context;
 use hashers::fx_hash::FxHasher;
 use indexmap::IndexMap;
 use tracing::info;
 
+use crate::config::Config;
 use crate::game::Game;
-use crate::websocket_server::{Config, WebsocketServer};
+use crate::net::Bind;
+use crate::server::Server;
 
 mod cli;
 pub use cli::Cli;
 
+pub mod config;
 pub mod game;
+pub mod net;
 pub mod server;
-pub mod websocket_server;
+pub mod websocket;
 
 type Hasher = FxHasher;
 type FnvIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<Hasher>>;
@@ -44,13 +48,26 @@ pub fn run(cli: Cli) -> Result<()> {
     }
 
     let config = Config {
-        listen_address: (Ipv4Addr::UNSPECIFIED, 18283).into(),
+        bind_address: cli.bind_address,
         state_path: cli.multiworld_path.with_extension("aprs.state"),
     };
 
+    rt.block_on(start(game, config))
+}
+
+async fn start(game: Game, config: Config) -> Result<()> {
+    let listener = config
+        .bind_address
+        .bind()
+        .await
+        .with_context(|| format!("failed to listen on {:?})", config.bind_address))?;
+
+    let server = Server::new(config, game.multi_data)?;
+    let server_handle = server.handle();
+
+    websocket::start(listener, server_handle);
+
     info!("Server started.");
 
-    let server = WebsocketServer::new(config, game.multi_data)?;
-
-    rt.block_on(server.run())
+    server.run().await
 }
