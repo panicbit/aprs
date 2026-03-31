@@ -32,7 +32,7 @@ use crate::server::{ClientMessage, ClientMessages, ServerMessage, ServerToClient
 impl super::Server {
     pub(super) async fn on_event(&mut self, event: Event) {
         match event {
-            Event::ClientAccepted(client_id, server_to_client_connection, address) => {
+            Event::ClientConnected(client_id, server_to_client_connection, address) => {
                 self.on_client_accepted(client_id, server_to_client_connection, address)
                     .await
             }
@@ -58,7 +58,7 @@ impl super::Server {
 
         // TODO: Generate and assign client id.
         // Stop using ClientAddr as identifier.
-        let client = Client::new(self, address.clone(), server_to_client_connection);
+        let client = Client::new(client_id, self, server_to_client_connection);
         let client = Arc::new(Mutex::new(client));
 
         self.clients.insert(client_id, client.clone());

@@ -11,16 +11,14 @@ use fnv::FnvHashSet;
 use itertools::Itertools;
 use tracing::{error, info};
 
-use crate::net::ClientAddr;
 use crate::server::client_id::ClientId;
 use crate::server::control::{Close, Control, ControlOrMessage};
-use crate::server::{Server, ServerMessage, ServerMessageSender, ServerToClientConnection};
+use crate::server::{Event, Server, ServerMessage, ServerMessageSender, ServerToClientConnection};
 
 #[derive(Clone)]
 pub(super) struct Client {
     client_message_sender: ServerMessageSender,
     pub id: ClientId,
-    pub address: ClientAddr,
     pub is_connected: bool,
     pub connect_name: ConnectName,
     pub slot_name: SlotName,
@@ -37,11 +35,10 @@ pub(super) struct Client {
 
 impl Client {
     pub fn new(
+        id: ClientId,
         server: &Server,
-        address: ClientAddr,
         server_to_client_connection: ServerToClientConnection,
     ) -> Self {
-        let id = ClientId::new();
         let (client_message_sender, mut server_message_receiver) =
             server_to_client_connection.split();
 
@@ -50,9 +47,15 @@ impl Client {
         // At the very least try to avoid having multiple tasks somehow.
         {
             let server_message_sender = server.client_message_sender.clone();
+
             tokio::spawn(async move {
-                while let Some(message) = server_message_receiver.recv().await {
-                    if server_message_sender.send(message).await.is_err() {
+                while let Some(control_or_message) = server_message_receiver.recv().await {
+                    let event = match control_or_message {
+                        ControlOrMessage::Control(control) => Event::ClientControl(id, control),
+                        ControlOrMessage::Message(messages) => Event::ClientMessages(id, messages),
+                    };
+
+                    if server_message_sender.send(event).await.is_err() {
                         break;
                     }
                 }
@@ -64,7 +67,6 @@ impl Client {
         Self {
             id,
             client_message_sender,
-            address,
             is_connected: false,
             connect_name: ConnectName::new(),
             slot_name: SlotName::new(),

@@ -4,7 +4,7 @@ use crate::server::control::Control;
 use crate::server::{ClientMessages, ServerToClientConnection};
 
 pub enum Event {
-    ClientAccepted(ClientId, ServerToClientConnection, ClientAddr),
+    ClientConnected(ClientId, ServerToClientConnection, ClientAddr),
     ClientDisconnected(ClientId, ClientAddr),
     ClientMessages(ClientId, ClientMessages),
     ClientControl(ClientId, Control),

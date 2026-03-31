@@ -14,9 +14,7 @@ use tracing::{debug, error};
 
 use crate::net::{Accept, ClientAddr, Listener, Stream};
 use crate::server::control::{Close, Control, ControlOrMessage, Ping, Pong};
-use crate::server::{
-    ClientId, ClientMessages, ClientToServerConnection, Event, ServerHandle, ServerMessage,
-};
+use crate::server::{ClientMessages, ClientToServerConnection, ServerHandle, ServerMessage};
 
 pub fn start(listener: Listener, server_handle: ServerHandle) {
     tokio::spawn(acceptor_loop(listener, server_handle.clone()));
@@ -80,27 +78,18 @@ async fn handle_accept(
     let mut data = Data::default();
     let stream = tokio_tungstenite::accept_hdr_async(stream, &mut data).await?;
 
-    let client_id = ClientId::new();
     let connection = server_handle
-        .client_accepted(client_id, address.clone())
+        .connect(address.clone())
         .await
-        .context("server could not accept client")?;
+        .context("could not connect to server")?;
 
-    tokio::spawn(client_loop(
-        client_id,
-        stream,
-        address,
-        server_handle.clone(),
-        connection,
-    ));
+    tokio::spawn(client_loop(stream, server_handle.clone(), connection));
 
     Ok(())
 }
 
 async fn client_loop(
-    client_id: ClientId,
     stream: WebSocketStream<Stream>,
-    address: ClientAddr,
     server_handle: ServerHandle,
     mut connection: ClientToServerConnection,
 ) {
@@ -108,8 +97,6 @@ async fn client_loop(
     let stream = &mut *stream;
 
     loop {
-        let address = address.clone();
-
         select! {
             _ = server_handle.wait_for_stop() => return,
             server_message = connection.recv() => {
@@ -122,25 +109,24 @@ async fn client_loop(
                 if let Err(err) = send(stream, server_message).await {
                     error!("failed to send message to client: {err:?}");
 
-                    connection.send(Event::ClientDisconnected(client_id, address)).await.ok();
+                    connection.send(Close.into()).await.ok();
 
                     return;
                 }
             }
             client_messages = recv(stream) => {
-                let event = match client_messages {
-                    Ok(ControlOrMessage::Control(control)) => Event::ClientControl(client_id, control),
-                    Ok(ControlOrMessage::Message(messages)) => Event::ClientMessages(client_id, messages),
+                let control_or_message = match client_messages {
+                    Ok(control_or_message) => control_or_message,
                     Err(err) => {
                         error!("Failed to receive client messages: {err:?}");
 
-                        connection.send(Event::ClientDisconnected(client_id, address)).await.ok();
+                        connection.send(Close.into()).await.ok();
 
                         return
                     }
                 };
 
-                connection.send(event).await.ok();
+                connection.send(control_or_message).await.ok();
             }
         }
     }

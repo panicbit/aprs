@@ -6,7 +6,6 @@ use aprs_proto::server::NetworkPlayer;
 use aprs_value::Value;
 use color_eyre::Result;
 use fnv::FnvHashMap;
-// use itertools::Itertools;
 use tokio::sync::{Mutex, mpsc};
 use tracing::{debug, error, info, warn};
 
@@ -250,16 +249,13 @@ pub struct ServerHandle {
 }
 
 impl ServerHandle {
-    pub async fn client_accepted(
-        &self,
-        client_id: ClientId,
-        address: ClientAddr,
-    ) -> Result<ClientToServerConnection> {
+    pub async fn connect(&self, address: ClientAddr) -> Result<ClientToServerConnection> {
+        let client_id = ClientId::new();
         let (client_to_server_connection, server_to_client_connection) =
             Connection::new_pair(1_000, 1_000);
 
         self.client_message_sender
-            .send(Event::ClientAccepted(
+            .send(Event::ClientConnected(
                 client_id,
                 server_to_client_connection,
                 address,
@@ -287,8 +283,10 @@ type ClientMessageReceiver = mpsc::Receiver<Event>;
 pub type ServerMessageReceiver = mpsc::Receiver<ControlOrMessage<Arc<ServerMessage>>>;
 type ServerMessageSender = mpsc::Sender<ControlOrMessage<Arc<ServerMessage>>>;
 
-pub type ClientToServerConnection = Connection<Event, ControlOrMessage<Arc<ServerMessage>>>;
-type ServerToClientConnection = Connection<ControlOrMessage<Arc<ServerMessage>>, Event>;
+pub type ClientToServerConnection =
+    Connection<ControlOrMessage<ClientMessages>, ControlOrMessage<Arc<ServerMessage>>>;
+type ServerToClientConnection =
+    Connection<ControlOrMessage<Arc<ServerMessage>>, ControlOrMessage<ClientMessages>>;
 
 pub struct Connection<S, R> {
     sender: mpsc::Sender<S>,
