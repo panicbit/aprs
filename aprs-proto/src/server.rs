@@ -56,9 +56,6 @@ pub use data_package::{DataPackage, DataPackageData};
 mod game_data;
 pub use game_data::GameData;
 
-mod hashed_game_data;
-pub use hashed_game_data::HashedGameData;
-
 mod invalid_packet;
 pub use invalid_packet::{InvalidPacket, KnownPacketProblemType, PacketProblemType};
 

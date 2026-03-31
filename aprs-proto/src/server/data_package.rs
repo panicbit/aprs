@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::server::HashedGameData;
+use crate::server::GameData;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DataPackage {
@@ -12,5 +12,5 @@ pub struct DataPackage {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DataPackageData {
-    pub games: Arc<BTreeMap<String, HashedGameData>>,
+    pub games: Arc<BTreeMap<String, GameData>>,
 }

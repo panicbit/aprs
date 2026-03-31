@@ -9,7 +9,7 @@ use aprs_proto::client::{
 use aprs_proto::primitives::LocationId;
 use aprs_proto::server::{
     Bounced, CommandPermission, Connected, ConnectionRefused, DataPackage, DataPackageData,
-    GameData, HashedGameData, LocationInfo, Message, NetworkItem, Permissions, PrintJson,
+    GameData, LocationInfo, Message, NetworkItem, Permissions, PrintJson,
     RemainingCommandPermission, Retrieved, RoomInfo, RoomUpdate, SetReply, Time,
 };
 use aprs_server_core::bounce_matches;
@@ -67,7 +67,7 @@ impl super::Server {
             .lock()
             .await
             .send(RoomInfo {
-                version: (0, 5, 1).into(),
+                version: (0, 6, 6).into(),
                 generator_version: self.multi_data.version,
                 tags: vec!["APRS".into(), "100% python and gluten free".into()],
                 password: self.multi_data.server_options.client_password.is_some(),
@@ -604,7 +604,7 @@ impl super::Server {
         client: &Mutex<Client>,
         get_data_package: &GetDataPackage,
     ) {
-        let GetDataPackage { games: _ } = get_data_package;
+        let GetDataPackage { games } = get_data_package;
 
         let client = client.lock().await;
 
@@ -614,15 +614,13 @@ impl super::Server {
             .data_package
             .iter()
             .map(|(key, value)| {
-                let hashed_game_data = HashedGameData {
+                let game_data = GameData {
                     checksum: value.checksum.clone(),
-                    game_data: GameData {
-                        item_name_to_id: value.game_data.item_name_to_id.clone(),
-                        location_name_to_id: value.game_data.location_name_to_id.clone(),
-                    },
+                    item_name_to_id: value.game_data.item_name_to_id.clone(),
+                    location_name_to_id: value.game_data.location_name_to_id.clone(),
                 };
 
-                (key.clone(), hashed_game_data)
+                (key.clone(), game_data)
             })
             .collect::<BTreeMap<_, _>>();
 
