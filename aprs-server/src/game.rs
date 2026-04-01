@@ -263,30 +263,6 @@ pub enum ReleaseMode {
     Goal,
 }
 
-// impl<'de> Deserialize<'de> for ReleaseMode {
-//     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-//     where
-//         D: Deserializer<'de>,
-//     {
-//         // let s = String::deserialize(deserializer)?;
-//         #[derive(Deserialize, Default, Debug)]
-//         #[serde(rename_all = "kebab-case")]
-//         pub enum Blah {
-//             Disabled,
-//             Enabled,
-//             #[default]
-//             Auto,
-//             AutoEnabled,
-//             Goal,
-//         }
-
-//         let v = Blah::deserialize(deserializer)?;
-
-//         eprintln!("res = {v:?}");
-//         todo!()
-//     }
-// }
-
 #[derive(Deserialize, Default, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub enum CollectMode {
