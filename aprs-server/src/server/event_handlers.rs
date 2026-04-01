@@ -613,14 +613,16 @@ impl super::Server {
             .multi_data
             .data_package
             .iter()
-            .map(|(key, value)| {
+            // TODO: maybe turn `games` into a set first?
+            .filter(|(game, _)| games.contains(game))
+            .map(|(game, value)| {
                 let game_data = GameData {
                     checksum: value.checksum.clone(),
                     item_name_to_id: value.game_data.item_name_to_id.clone(),
                     location_name_to_id: value.game_data.location_name_to_id.clone(),
                 };
 
-                (key.clone(), game_data)
+                (game.clone(), game_data)
             })
             .collect::<BTreeMap<_, _>>();
 
