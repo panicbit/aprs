@@ -9,15 +9,13 @@ use hashers::fx_hash::FxHasher;
 use indexmap::IndexMap;
 use tracing::info;
 
-use crate::config::Config;
 use crate::game::Game;
 use crate::net::Bind;
-use crate::server::Server;
+use crate::server::{Config, Server};
 
 mod cli;
 pub use cli::Cli;
 
-pub mod config;
 pub mod game;
 pub mod net;
 pub mod server;
@@ -47,21 +45,18 @@ pub fn run(cli: Cli) -> Result<()> {
         return Ok(());
     }
 
-    let config = Config {
-        bind_address: cli.bind_address,
-        state_path: cli.multiworld_path.with_extension("aprs.state"),
-    };
-
-    rt.block_on(start(game, config))
+    rt.block_on(start(game, cli))
 }
 
-async fn start(game: Game, config: Config) -> Result<()> {
-    let listener = config
+async fn start(game: Game, cli: Cli) -> Result<()> {
+    let listener = cli
         .bind_address
         .bind()
         .await
-        .with_context(|| format!("failed to listen on {:?})", config.bind_address))?;
+        .with_context(|| format!("failed to listen on {:?})", cli.bind_address))?;
 
+    let state_path = cli.multiworld_path.with_extension("aprs.state");
+    let config = Config::new().with_state_path(state_path);
     let server = Server::new(config, game.multi_data)?;
     let server_handle = server.handle();
 

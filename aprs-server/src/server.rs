@@ -9,13 +9,12 @@ use fnv::FnvHashMap;
 use tokio::sync::{Mutex, mpsc};
 use tracing::{debug, error, info, warn};
 
-use crate::config::Config;
 use crate::game::MultiData;
 use crate::server::control::ControlOrMessage;
 use crate::server::state::State;
 
-mod event_handlers;
-mod state;
+mod config;
+pub use config::Config;
 
 mod server_handle;
 pub use server_handle::ServerHandle;
@@ -35,6 +34,9 @@ pub type ServerMessage = aprs_proto::server::Message;
 pub type ClientMessage = aprs_proto::client::Message;
 pub type ClientMessages = aprs_proto::client::Messages;
 
+mod event_handlers;
+mod state;
+
 pub struct Server {
     config: Config,
     multi_data: MultiData,
@@ -48,16 +50,7 @@ pub struct Server {
 
 impl Server {
     pub fn new(config: Config, multi_data: MultiData) -> Result<Self> {
-        let state = match State::try_load(&config.state_path)? {
-            Some(state) => {
-                info!("Loaded existing state from {:?}", config.state_path);
-                state
-            }
-            None => {
-                info!("No existing state found at {:?}", config.state_path);
-                State::new(&multi_data)
-            }
-        };
+        let state = Self::load_state(&config, &multi_data)?;
         let (client_message_sender, client_message_receiver) = mpsc::channel(10_000);
 
         Ok(Self {
@@ -67,6 +60,26 @@ impl Server {
             clients: FnvHashMap::default(),
             multi_data,
             state,
+        })
+    }
+
+    fn load_state(config: &Config, multi_data: &MultiData) -> Result<State> {
+        let state_path = config.state_path();
+
+        let Some(state_path) = state_path else {
+            warn!("No state path set => SAVING IS DISABLED",);
+            return Ok(State::new(multi_data));
+        };
+
+        Ok(match State::try_load(state_path)? {
+            Some(state) => {
+                info!("Loaded existing state from {:?}", state_path);
+                state
+            }
+            None => {
+                info!("No existing state found at {:?}", state_path);
+                State::new(multi_data)
+            }
         })
     }
 
@@ -226,9 +239,13 @@ impl Server {
     }
 
     fn save_state(&self) {
+        let Some(state_path) = self.config.state_path() else {
+            return;
+        };
+
         info!("Saving state...");
         let start = Instant::now();
-        let result = self.state.save(&self.config.state_path);
+        let result = self.state.save(state_path);
         let elapsed = start.elapsed();
 
         if let Err(err) = result {
