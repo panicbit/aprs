@@ -18,7 +18,7 @@ use color_eyre::eyre::{ContextCompat, Result, bail};
 use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
 use levenshtein::levenshtein;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, oneshot};
 use tracing::{debug, error, info, warn};
 
 use crate::game::TeamAndSlot;
@@ -27,14 +27,15 @@ use crate::server::client::Client;
 use crate::server::client_id::ClientId;
 use crate::server::control::{Close, Control, Pong};
 use crate::server::event::Event;
-use crate::server::{ClientMessage, ClientMessages, ServerMessage, ServerToClientConnection};
+use crate::server::{
+    ClientMessage, ClientMessages, ClientToServerConnection, Connection, ServerMessage,
+};
 
 impl super::Server {
     pub(super) async fn on_event(&mut self, event: Event) {
         match event {
-            Event::ClientConnected(client_id, server_to_client_connection, address) => {
-                self.on_client_accepted(client_id, server_to_client_connection, address)
-                    .await
+            Event::ClientConnected(address, reply_tx) => {
+                self.on_client_accepted(address, reply_tx).await
             }
             Event::ClientDisconnected(client_id, address) => {
                 self.on_client_disconnected(client_id, address).await //
@@ -50,18 +51,20 @@ impl super::Server {
 
     async fn on_client_accepted(
         &mut self,
-        client_id: ClientId,
-        server_to_client_connection: ServerToClientConnection,
         address: ClientAddr,
+        reply_tx: oneshot::Sender<ClientToServerConnection>,
     ) {
         debug!("New client connected: {:?}", address);
 
-        // TODO: Generate and assign client id.
-        // Stop using ClientAddr as identifier.
+        let client_id = ClientId::new();
+        let (client_to_server_connection, server_to_client_connection) =
+            Connection::new_pair(1_000, 1_000);
         let client = Client::new(client_id, self, server_to_client_connection);
         let client = Arc::new(Mutex::new(client));
 
         self.clients.insert(client_id, client.clone());
+
+        reply_tx.send(client_to_server_connection).ok();
 
         client
             .lock()
