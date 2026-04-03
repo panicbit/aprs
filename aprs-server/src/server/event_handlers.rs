@@ -35,10 +35,10 @@ impl super::Server {
     pub(super) async fn on_event(&mut self, event: Event) {
         match event {
             Event::ClientConnected(address, reply_tx) => {
-                self.on_client_accepted(address, reply_tx).await
+                self.on_client_connected(address, reply_tx).await
             }
-            Event::ClientDisconnected(client_id, address) => {
-                self.on_client_disconnected(client_id, address).await //
+            Event::ClientDisconnected(client_id) => {
+                self.on_client_disconnected(client_id).await //
             }
             Event::ClientMessages(client_id, messages) => {
                 self.on_client_messages(client_id, messages).await
@@ -49,7 +49,7 @@ impl super::Server {
         }
     }
 
-    async fn on_client_accepted(
+    async fn on_client_connected(
         &mut self,
         address: ClientAddr,
         reply_tx: oneshot::Sender<ClientToServerConnection>,
@@ -59,7 +59,7 @@ impl super::Server {
         let client_id = ClientId::new();
         let (client_to_server_connection, server_to_client_connection) =
             Connection::new_pair(1_000, 1_000);
-        let client = Client::new(client_id, self, server_to_client_connection);
+        let client = Client::new(client_id, self, server_to_client_connection, address);
         let client = Arc::new(Mutex::new(client));
 
         self.clients.insert(client_id, client.clone());
@@ -96,9 +96,17 @@ impl super::Server {
             .await;
     }
 
-    async fn on_client_disconnected(&mut self, client_id: ClientId, address: ClientAddr) {
+    async fn on_client_disconnected(&mut self, client_id: ClientId) {
         // TODO: Remove the client here? Note that the client is getting removed in `on_client_message` too
+        let Some(client) = self.clients.get(&client_id) else {
+            error!("on_client_disconnected: client {client_id:?} does not exist");
+            return;
+        };
+        let address = client.lock().await.address.clone();
+
         info!("Client disconnected: {client_id:?}, {address:?}");
+
+        self.clients.remove(&client_id);
     }
 
     async fn on_client_messages(&mut self, client_id: ClientId, messages: ClientMessages) {
@@ -110,7 +118,7 @@ impl super::Server {
             if let Err(err) = self.on_client_message(&client, message).await {
                 debug!("||| {err:?}");
                 client.lock().await.send_control(Close).await;
-                self.clients.remove(&client_id);
+                self.on_client_disconnected(client_id).await;
             }
         }
     }

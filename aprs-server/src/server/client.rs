@@ -11,6 +11,7 @@ use fnv::FnvHashSet;
 use itertools::Itertools;
 use tracing::{error, info};
 
+use crate::net::ClientAddr;
 use crate::server::client_id::ClientId;
 use crate::server::control::{Close, Control, ControlOrMessage};
 use crate::server::{Event, Server, ServerMessage, ServerMessageSender, ServerToClientConnection};
@@ -19,6 +20,7 @@ use crate::server::{Event, Server, ServerMessage, ServerMessageSender, ServerToC
 pub(super) struct Client {
     client_message_sender: ServerMessageSender,
     pub id: ClientId,
+    pub address: ClientAddr,
     pub is_connected: bool,
     pub connect_name: ConnectName,
     pub slot_name: SlotName,
@@ -38,6 +40,7 @@ impl Client {
         id: ClientId,
         server: &Server,
         server_to_client_connection: ServerToClientConnection,
+        address: ClientAddr,
     ) -> Self {
         let (client_message_sender, mut server_message_receiver) =
             server_to_client_connection.split();
@@ -66,6 +69,7 @@ impl Client {
 
         Self {
             id,
+            address,
             client_message_sender,
             is_connected: false,
             connect_name: ConnectName::new(),

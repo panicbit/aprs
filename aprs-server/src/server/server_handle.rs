@@ -27,9 +27,9 @@ impl ServerHandle {
         Ok(client_to_server_connection)
     }
 
-    pub async fn disconnect_client(&self, client_id: ClientId, address: ClientAddr) -> Result<()> {
+    pub async fn disconnect_client(&self, client_id: ClientId) -> Result<()> {
         self.client_message_sender
-            .send(Event::ClientDisconnected(client_id, address))
+            .send(Event::ClientDisconnected(client_id))
             .await?;
         Ok(())
     }

@@ -7,7 +7,7 @@ use crate::server::{ClientMessages, ClientToServerConnection};
 
 pub enum Event {
     ClientConnected(ClientAddr, oneshot::Sender<ClientToServerConnection>),
-    ClientDisconnected(ClientId, ClientAddr),
+    ClientDisconnected(ClientId),
     ClientMessages(ClientId, ClientMessages),
     ClientControl(ClientId, Control),
 }
