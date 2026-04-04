@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use aprs_proto::client::{
@@ -60,7 +61,7 @@ impl super::Server {
         let (client_to_server_connection, server_to_client_connection) =
             Connection::new_pair(1_000, 1_000);
         let client = Client::new(client_id, self, server_to_client_connection, address);
-        let client = Arc::new(Mutex::new(client));
+        let client = Rc::new(Mutex::new(client));
 
         self.clients.insert(client_id, client.clone());
 

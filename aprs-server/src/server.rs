@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -44,7 +45,7 @@ pub struct Server {
     client_message_receiver: ClientMessageReceiver,
     // TODO: remove lock after moving to proper client ids
     // TODO: definitely move away from ClientAddr and move to client ids
-    clients: FnvHashMap<ClientId, Arc<Mutex<Client>>>,
+    clients: FnvHashMap<ClientId, Rc<Mutex<Client>>>,
     state: State,
 }
 
