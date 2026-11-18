@@ -4,6 +4,7 @@ resolver = "3"
 
 [workspace.dependencies]
 aprs-client = { path = "aprs-client" }
+aprs-gen = { path = "aprs-gen" }
 aprs-pickle = { path = "aprs-pickle" }
 aprs-proto = { path = "aprs-proto" }
 aprs-server = { path = "aprs-server" }
@@ -23,6 +24,7 @@ color-eyre = "0.6.5"
 diesel = "2.3.6"
 diesel_migrations = "2.3.1"
 diesel-derive-newtype = "2.1.2"
+either = "1.19.0"
 eyre = "0.6.12"
 fnv = "1.0.7"
 futures = "0.3.31"
@@ -31,12 +33,14 @@ hex = "0.4.3"
 indexmap = { version = "2.12.0", features = ["serde"] }
 itertools = "0.14.0"
 libsqlite3-sys = "0.35.0"
+maplit = "1.0.2"
 num = "0.4.3"
 ordered-float = "5.1.0"
 parking_lot = "0.12.5"
 pin-project = "1.1.11"
 pyo3 = "0.28.1"
 r2d2_sqlite = "0.31.0"
+rand = { version = "0.10.4", features = ["chacha"] }
 rocket = { version = "0.5.1" }
 rustls = "0.23.36"
 serde = { version = "1.0.228", features = ["derive", "rc"] }

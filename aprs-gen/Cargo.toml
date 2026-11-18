@@ -1,0 +1,13 @@
+[package]
+name = "aprs-gen"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+aprs-proto.workspace = true
+aprs-utils.workspace = true
+bitflags.workspace = true
+either.workspace = true
+maplit.workspace = true
+rand.workspace = true

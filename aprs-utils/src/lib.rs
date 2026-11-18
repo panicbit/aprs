@@ -5,6 +5,15 @@ use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+mod iterator_ext;
+pub use iterator_ext::IteratorExt;
+
+pub mod shared_str;
+pub use shared_str::SharedStr;
+
+pub mod collections;
+pub mod hasher;
+
 pub fn default_main_setup() -> Result<Runtime> {
     color_eyre::install().unwrap();
     configure_tracing();

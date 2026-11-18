@@ -1,8 +1,3 @@
-use std::hash::BuildHasherDefault;
-
-use hashers::fx_hash::FxHasher;
-use indexmap::{IndexMap, IndexSet};
-
 mod connect_name;
 pub use connect_name::ConnectName;
 
@@ -24,6 +19,6 @@ pub use slot_name::SlotName;
 mod team_id;
 pub use team_id::TeamId;
 
-pub type Hasher = FxHasher;
-pub type FnvIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<Hasher>>;
-pub type FnvIndexSet<K> = IndexSet<K, BuildHasherDefault<Hasher>>;
+pub type Hasher = aprs_utils::hasher::FxHasher;
+pub type Map<K, V> = aprs_utils::collections::FxIndexMap<K, V>;
+pub type Set<K> = aprs_utils::collections::FxIndexSet<K>;

@@ -1,19 +1,14 @@
 // This module and its submodules is based on:
 // https://github.com/python/cpython/blob/a3990df6121880e8c67824a101bb1316de232898/Lib/pickle.py#L306
 
-use std::hash::BuildHasherDefault;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
+use aprs_utils::collections::FxIndexMap;
 use aprs_value::{Int, Str, Value};
 use eyre::{Context, ContextCompat, Result, anyhow, bail};
-use hashers::fx_hash::FxHasher;
-use indexmap::IndexMap;
 use itertools::Itertools;
 use smallvec::SmallVec;
-
-type Hasher = FxHasher;
-type FnvIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<Hasher>>;
 
 pub mod op;
 
@@ -134,7 +129,7 @@ struct Unpickler<'a, FindClass> {
     proto: u8,
     stack: Vec<Value>,
     meta_stack: Vec<Vec<Value>>,
-    memo: FnvIndexMap<Value, Value>,
+    memo: FxIndexMap<Value, Value>,
     find_class: FindClass,
     result: Option<Value>,
 }
@@ -149,7 +144,7 @@ where
             proto: 0,
             stack: Vec::new(),
             meta_stack: Vec::new(),
-            memo: FnvIndexMap::default(),
+            memo: FxIndexMap::default(),
             find_class,
             result: None,
         }

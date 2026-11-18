@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-color-eyre = { workspace = true }
-tokio = { workspace = true }
-tracing-error = { workspace = true }
-tracing-subscriber = { workspace = true }
+color-eyre.workspace = true
+hashers.workspace = true
+indexmap.workspace = true
+tokio.workspace = true
+tracing-error.workspace = true
+tracing-subscriber.workspace = true

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::{Deserialize, Serialize, de};
 
 #[derive(Serialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -28,5 +30,11 @@ impl<'de> Deserialize<'de> for SlotId {
             IntOrString::Int(n) => SlotId(n),
             IntOrString::String(n) => n.parse::<i64>().map(SlotId).map_err(de::Error::custom)?,
         })
+    }
+}
+
+impl fmt::Display for SlotId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
